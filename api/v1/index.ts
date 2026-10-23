@@ -1538,9 +1538,16 @@ v1Router.post('/remote-sync/deploy-dist', async (req: Request, res: Response) =>
       });
     }
 
-    // Step 2: Collect eligible dist files
+    // Step 2: Collect eligible dist files and sort so assets upload first and index.html/.htaccess upload last
     const allDistFiles = getDistFilesRecursive(distDir);
-    const eligibleFiles = allDistFiles.filter(f => !selectedPaths || selectedPaths.includes(f.path));
+    const eligibleFiles = allDistFiles
+      .filter(f => !selectedPaths || selectedPaths.includes(f.path))
+      .sort((a, b) => {
+        const aIsEntry = a.path === 'index.html' || a.path === '.htaccess' ? 1 : 0;
+        const bIsEntry = b.path === 'index.html' || b.path === '.htaccess' ? 1 : 0;
+        if (aIsEntry !== bIsEntry) return aIsEntry - bIsEntry;
+        return a.size - b.size;
+      });
 
     if (eligibleFiles.length === 0) {
       return res.status(400).json({
@@ -1549,8 +1556,8 @@ v1Router.post('/remote-sync/deploy-dist', async (req: Request, res: Response) =>
       });
     }
 
-    // Step 3: Transmit in resilient batches (~1.5 MB per batch) to prevent shared host timeouts
-    const MAX_BATCH_BYTES = 1500 * 1024;
+    // Step 3: Transmit in resilient batches (~1.2 MB per batch) with automatic retry to prevent shared host timeouts
+    const MAX_BATCH_BYTES = 1200 * 1024;
     const batches: Array<typeof eligibleFiles> = [];
     let currentBatch: typeof eligibleFiles = [];
     let currentBatchBytes = 0;
@@ -1584,35 +1591,49 @@ v1Router.post('/remote-sync/deploy-dist', async (req: Request, res: Response) =>
         }
       }
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000);
+      const payloadBody = JSON.stringify({
+        files: textFiles,
+        textFiles: textFiles,
+        base64_files: base64Files,
+        deploy_key: deployKey,
+        clean_assets: i === 0 ? cleanAssets : false
+      });
 
-      let remoteRes: any;
-      try {
-        remoteRes = await fetch(targetUrl, {
-          method: 'POST',
-          signal: controller.signal,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Deploy-Key': deployKey
-          },
-          body: JSON.stringify({
-            files: textFiles,
-            textFiles: textFiles,
-            base64_files: base64Files,
-            deploy_key: deployKey,
-            clean_assets: i === 0 ? cleanAssets : false
-          })
-        });
-      } catch (fetchErr: any) {
-        clearTimeout(timeoutId);
+      let remoteRes: any = null;
+      let lastFetchErr: any = null;
+
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 120000);
+        try {
+          remoteRes = await fetch(targetUrl, {
+            method: 'POST',
+            signal: controller.signal,
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Deploy-Key': deployKey
+            },
+            body: payloadBody
+          });
+          clearTimeout(timeoutId);
+          lastFetchErr = null;
+          break;
+        } catch (fetchErr: any) {
+          clearTimeout(timeoutId);
+          lastFetchErr = fetchErr;
+          if (attempt < 3) {
+            await new Promise(r => setTimeout(r, 1500 * attempt));
+          }
+        }
+      }
+
+      if (lastFetchErr || !remoteRes) {
         return res.status(502).json({
           success: false,
-          message: `Network failure sending batch ${i + 1}/${batches.length} to ${targetUrl}: ${fetchErr.message}`,
+          message: `Network failure sending batch ${i + 1}/${batches.length} to ${targetUrl}: ${lastFetchErr?.message || 'Aborted'}`,
           hint: `Check network connection or remote server timeout limits.`
         });
       }
-      clearTimeout(timeoutId);
 
       const responseText = await remoteRes.text();
       if (!remoteRes.ok) {

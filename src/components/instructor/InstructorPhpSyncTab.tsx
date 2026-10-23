@@ -417,9 +417,40 @@ export const InstructorPhpSyncTab: React.FC = () => {
     }
 
     setIsPushing(true);
-    addLog(`[DEPLOY] 🚀 Deploying ${targets.length} built dist files in 1 request to ${frontendRemoteUrl} ...`, 'cmd');
+    addLog(`[DEPLOY] 🚀 Deploying ${targets.length} built dist files in resilient batches to ${frontendRemoteUrl} ...`, 'cmd');
 
-    // Step A: Attempt Direct Browser Single POST
+    // Step A: Resilient Batched Server Deployment (uploads assets first, index.html last, with automatic retries)
+    try {
+      const data = await localApiFetch('/api/v1/remote-sync/deploy-dist', {
+        method: 'POST',
+        body: JSON.stringify({
+          remoteUrl: frontendRemoteUrl,
+          deployKey,
+          filePaths: targets,
+          cleanAssets: cleanAssetsOnDeploy
+        })
+      });
+
+      if (data && data.success) {
+        addLog(`[DEPLOY] ✓ Frontend Deployment Succeeded! ${data.deployedCount} dist files written to web root.`, 'success');
+        if (data.remoteResponse && data.remoteResponse.updated_files) {
+          const sample = data.remoteResponse.updated_files.slice(0, 8);
+          sample.forEach((f: any) => {
+            addLog(`  └── written -> /${f.path} (${Math.round((f.bytes || 0) / 1024)} KB)`, 'success');
+          });
+          if (data.remoteResponse.updated_files.length > 8) {
+            addLog(`  └── ...and ${data.remoteResponse.updated_files.length - 8} more files.`, 'info');
+          }
+        }
+        checkRemoteStatus(frontendRemoteUrl);
+        setIsPushing(false);
+        return;
+      }
+    } catch {
+      addLog('[DEPLOY] Server batched transport unavailable, trying direct browser transport...', 'info');
+    }
+
+    // Step B: Direct Browser Fallback
     try {
       const payloadRes = await localApiFetch('/api/v1/remote-sync/get-dist-payload', {
         method: 'POST',
@@ -429,10 +460,7 @@ export const InstructorPhpSyncTab: React.FC = () => {
       if (payloadRes && payloadRes.success && payloadRes.files) {
         addLog(`[DEPLOY] Transmitting ${payloadRes.totalFiles} dist files directly to ${frontendRemoteUrl}...`, 'info');
 
-        let proxyUrl = frontendRemoteUrl;
-        // Frontend proxy not fully set up in server.ts, but let's try just in case, 
-        // actually no, ROOT_URL is the domain, let's keep it as is for now as it hits the root, not API
-        const directPushRes = await fetch(proxyUrl, {
+        const directPushRes = await fetch(frontendRemoteUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -456,45 +484,8 @@ export const InstructorPhpSyncTab: React.FC = () => {
             });
           }
           checkRemoteStatus(frontendRemoteUrl);
-          setIsPushing(false);
-          return;
-        }
-      }
-    } catch {
-      addLog('[DEPLOY] Direct browser transport unavailable, trying server proxy...', 'info');
-    }
-
-    // Step B: Server Proxy Fallback
-    try {
-      const data = await localApiFetch('/api/v1/remote-sync/deploy-dist', {
-        method: 'POST',
-        body: JSON.stringify({
-          remoteUrl: frontendRemoteUrl,
-          deployKey,
-          filePaths: targets,
-          cleanAssets: cleanAssetsOnDeploy
-        })
-      });
-
-      if (data && data.success) {
-        addLog(`[DEPLOY] ✓ Frontend Deployment Succeeded! ${data.deployedCount} dist files written to web root.`, 'success');
-        if (data.remoteResponse && data.remoteResponse.updated_files) {
-          const sample = data.remoteResponse.updated_files.slice(0, 5);
-          sample.forEach((f: any) => {
-            addLog(`  └── written -> /${f.path} (${Math.round((f.bytes || 0) / 1024)} KB)`, 'success');
-          });
-          if (data.remoteResponse.updated_files.length > 5) {
-            addLog(`  └── ...and ${data.remoteResponse.updated_files.length - 5} more files.`, 'info');
-          }
-        }
-        checkRemoteStatus(frontendRemoteUrl);
-      } else {
-        addLog(`[DEPLOY] ✕ Dist deployment failed: ${data?.message}`, 'error');
-        if (data?.details) {
-          addLog(`  └── Server response: ${data.details.substring(0, 200)}`, 'warn');
-        }
-        if (data?.hint) {
-          addLog(`  └── Hint: ${data.hint}`, 'info');
+        } else {
+          addLog(`[DEPLOY] ✕ Dist deployment failed with HTTP ${directPushRes.status}`, 'error');
         }
       }
     } catch (err: any) {

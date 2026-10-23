@@ -1,9 +1,5 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import UserPortal from './components/user/App';
-import InstructorApp from './components/instructor/App';
-import ReviewerApp from './components/reviewer/App';
-import AdminApp from './components/admin/App';
 import { InstructorLoginPage } from './components/instructor/InstructorLoginPage';
 import { ReviewerLoginPage } from './components/reviewer/ReviewerLoginPage';
 import { AdminLoginPage } from './components/admin/AdminLoginPage';
@@ -12,6 +8,11 @@ import { TopLoadingBar } from './components/common/TopLoadingBar';
 import { DeveloperPortalSwitcher } from './components/common/DeveloperPortalSwitcher';
 import { useApp } from './context/AppContext';
 import { isDeveloperUser } from './lib/developer';
+
+const UserPortal = React.lazy(() => import('./components/user/App'));
+const InstructorApp = React.lazy(() => import('./components/instructor/App'));
+const ReviewerApp = React.lazy(() => import('./components/reviewer/App'));
+const AdminApp = React.lazy(() => import('./components/admin/App'));
 
 /**
  * Route protection wrapper that seamlessly redirects unauthorized users
@@ -106,7 +107,7 @@ export default function App() {
 
       {/* Main Routed Applications with Robust Authentication State Transitions */}
       <div className="flex-1">
-
+        <Suspense fallback={<TopLoadingBar />}>
         {isAdminHost ? (
           <Routes>
             <Route
@@ -350,7 +351,7 @@ export default function App() {
             <Route path="/*" element={<UserPortal />} />
           </Routes>
         )}
-
+        </Suspense>
       </div>
     </div>
   );
