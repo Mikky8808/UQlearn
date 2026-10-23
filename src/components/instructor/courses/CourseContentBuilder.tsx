@@ -169,6 +169,21 @@ export const CourseContentBuilder: React.FC<CourseContentBuilderProps> = ({
     showNotification('Resource detached from lecture', 'info');
   };
 
+  const handleAddPresetResource = (preset: { name: string; url: string; fileType: string; fileSize: string }) => {
+    if (!currentLesson) return;
+    const newResource = {
+      id: `res-preset-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      name: preset.name,
+      url: preset.url,
+      fileSize: preset.fileSize,
+      type: 'file',
+      fileType: preset.fileType
+    };
+    const updatedResources = [...(currentLesson.resources || []), newResource];
+    handleUpdateCurrentLesson({ resources: updatedResources });
+    showNotification(`Added lecture resource: "${preset.name}"`, 'success');
+  };
+
   // Fetch all user-uploaded videos from remote backend API like in Film & Edit
   const fetchUserVideos = async () => {
     setIsLoadingMedia(true);
@@ -215,7 +230,7 @@ export const CourseContentBuilder: React.FC<CourseContentBuilderProps> = ({
     }
   }, [isMediaLibraryOpen]);
 
-  // Merge all available videos (from prop videos + fetched API videos)
+  // Merge all available videos (from prop videos + fetched API videos) and filter by current user only
   const allAvailableVideos = useMemo(() => {
     const list: any[] = [...propFilmVideos];
     fetchedUserVideos.forEach(fv => {
@@ -223,8 +238,21 @@ export const CourseContentBuilder: React.FC<CourseContentBuilderProps> = ({
         list.push(fv);
       }
     });
-    return list;
-  }, [propFilmVideos, fetchedUserVideos]);
+
+    const currentUserId = (currentUser?.id || '').toString().trim();
+    const currentUserEmail = (currentUser?.email || '').toLowerCase().trim();
+    const currentUserName = (currentUser?.name || '').toLowerCase().trim();
+
+    return list.filter(video => {
+      const uBy = (video.uploadedBy || '').toString().trim().toLowerCase();
+      const isOwn = !uBy || 
+        uBy === currentUserId.toLowerCase() || 
+        (currentUserEmail && uBy.includes(currentUserEmail)) ||
+        (currentUserName && uBy.includes(currentUserName)) ||
+        ((!currentUserId || currentUserId === 'instructor_user') && (uBy === 'instructor_user' || uBy === 'anonymous'));
+      return isOwn;
+    });
+  }, [propFilmVideos, fetchedUserVideos, currentUser]);
 
   // Filtered media library videos
   const filteredMediaVideos = useMemo(() => {
@@ -573,7 +601,7 @@ export const CourseContentBuilder: React.FC<CourseContentBuilderProps> = ({
         <main className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-50/70 dark:bg-slate-950/40">
           <div className="max-w-4xl mx-auto space-y-6 pb-16">
             {currentLesson ? (
-              <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 space-y-6 shadow-xs">
+              <div className="bg-white dark:bg-slate-900 rounded-none border border-slate-200 dark:border-slate-800 p-6 sm:p-8 space-y-6 shadow-none">
                 
                 {/* Lecture Config Bar: Type Selector & Free Preview Toggle */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
@@ -727,20 +755,21 @@ export const CourseContentBuilder: React.FC<CourseContentBuilderProps> = ({
                 </div>
               )}
 
-              {/* Lecture Resources & Supporting Media Studio */}
-              <div className="p-5 rounded-2xl bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 space-y-4">
+              {/* Lecture Resources & Document Vault Selector */}
+              <div className="p-5 rounded-none bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/60 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center space-x-2">
-                    <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-black">
+                    <div className="w-7 h-7 rounded-none bg-emerald-600 text-white flex items-center justify-center font-black">
                       <FileText className="w-4 h-4" />
                     </div>
                     <div>
                       <h4 className="text-xs font-black text-slate-900 dark:text-slate-100 flex items-center space-x-2">
-                        <span>Lecture Resources & Supporting Media</span>
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold">
+                        <span>Lecture Resources & Document Vault</span>
+                        <span className="px-2 py-0.5 rounded-none bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold">
                           {(currentLesson.resources || []).length} attached
                         </span>
                       </h4>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Quick-attach lecture notes, presentation slides, code archives, or select from template document vault.</p>
                     </div>
                   </div>
 
@@ -748,13 +777,13 @@ export const CourseContentBuilder: React.FC<CourseContentBuilderProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowAddLinkForm(!showAddLinkForm)}
-                      className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center space-x-1"
+                      className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-slate-700 rounded-none text-xs font-bold transition-colors cursor-pointer flex items-center space-x-1"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>{showAddLinkForm ? 'Cancel Link' : 'Add Web Link'}</span>
                     </button>
 
-                    <label className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black flex items-center space-x-1.5 transition-colors cursor-pointer shadow-xs">
+                    <label className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-none text-xs font-black flex items-center space-x-1.5 transition-colors cursor-pointer shadow-none">
                       {isResourceUploading ? (
                         <>
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -763,7 +792,7 @@ export const CourseContentBuilder: React.FC<CourseContentBuilderProps> = ({
                       ) : (
                         <>
                           <Upload className="w-3.5 h-3.5" />
-                          <span>Attach File</span>
+                          <span>Upload File</span>
                           <input
                             type="file"
                             className="hidden"
@@ -776,9 +805,35 @@ export const CourseContentBuilder: React.FC<CourseContentBuilderProps> = ({
                   </div>
                 </div>
 
+                {/* Quick Preset Document Vault Selector */}
+                <div className="p-3 bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800/80 rounded-none space-y-2">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Quick Document Vault Templates (Click to Attach):</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
+                    {[
+                      { name: 'Lecture Presentation Slides.pdf', fileType: 'pdf', fileSize: '2.4 MB', url: 'https://uqlearn.org/assets/docs/slides.pdf' },
+                      { name: 'Source Code Starter.zip', fileType: 'zip', fileSize: '5.1 MB', url: 'https://uqlearn.org/assets/docs/starter.zip' },
+                      { name: 'Reference Cheat Sheet.pdf', fileType: 'pdf', fileSize: '1.2 MB', url: 'https://uqlearn.org/assets/docs/cheatsheet.pdf' },
+                      { name: 'Lab Exercise Workbook.docx', fileType: 'docx', fileSize: '850 KB', url: 'https://uqlearn.org/assets/docs/workbook.docx' },
+                    ].map((preset, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleAddPresetResource(preset)}
+                        className="p-2 bg-slate-50 dark:bg-slate-800/80 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-slate-200 dark:border-slate-700 hover:border-emerald-300 rounded-none text-left transition-all cursor-pointer flex items-center space-x-2"
+                      >
+                        <span className="text-base shrink-0">{preset.fileType === 'pdf' ? '📕' : preset.fileType === 'zip' ? '📦' : '📘'}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[11px] font-black text-slate-800 dark:text-slate-200 truncate">{preset.name}</p>
+                          <p className="text-[9px] text-slate-400">{preset.fileSize}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Optional Web Link Form */}
                 {showAddLinkForm && (
-                  <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800/80 space-y-3 animate-in fade-in duration-200">
+                  <div className="p-3.5 rounded-none bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800/80 space-y-3">
                     <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Attach Web Link / External Workspace Resource</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <input
@@ -786,21 +841,21 @@ export const CourseContentBuilder: React.FC<CourseContentBuilderProps> = ({
                         placeholder="Link Name (e.g. GitHub Starter Code, Figma File)"
                         value={newResourceLinkName}
                         onChange={(e) => setNewResourceLinkName(e.target.value)}
-                        className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+                        className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-none text-xs"
                       />
                       <input
                         type="url"
                         placeholder="URL (e.g. https://github.com/org/repo)"
                         value={newResourceLinkUrl}
                         onChange={(e) => setNewResourceLinkUrl(e.target.value)}
-                        className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+                        className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-none text-xs"
                       />
                     </div>
                     <div className="flex justify-end">
                       <button
                         type="button"
                         onClick={handleAddLinkResource}
-                        className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-black cursor-pointer"
+                        className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-none text-xs font-black cursor-pointer"
                       >
                         Save Resource Link
                       </button>
@@ -824,7 +879,7 @@ export const CourseContentBuilder: React.FC<CourseContentBuilderProps> = ({
                       return (
                         <div
                           key={res.id}
-                          className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs hover:border-emerald-300 dark:hover:border-emerald-800 transition-all"
+                          className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none shadow-none hover:border-emerald-300 dark:hover:border-emerald-800 transition-all"
                         >
                           <div className="flex items-center space-x-3 min-w-0 flex-1">
                             <span className="text-xl shrink-0">{icon}</span>
@@ -839,7 +894,6 @@ export const CourseContentBuilder: React.FC<CourseContentBuilderProps> = ({
                           </div>
 
                           <div className="flex items-center space-x-1.5 shrink-0 ml-2">
-                            {/* Preview Button */}
                             <button
                               type="button"
                               onClick={() => {
@@ -853,18 +907,17 @@ export const CourseContentBuilder: React.FC<CourseContentBuilderProps> = ({
                                 });
                                 setIsPreviewModalOpen(true);
                               }}
-                              className="p-1.5 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900 text-emerald-700 dark:text-emerald-300 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center space-x-1"
+                              className="p-1.5 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900 text-emerald-700 dark:text-emerald-300 rounded-none text-xs font-bold transition-colors cursor-pointer flex items-center space-x-1"
                               title="Live Preview Resource"
                             >
                               <Eye className="w-3.5 h-3.5" />
                               <span className="text-[10px] hidden md:inline">Preview</span>
                             </button>
 
-                            {/* Remove Button */}
                             <button
                               type="button"
                               onClick={() => handleRemoveResource(res.id)}
-                              className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-colors cursor-pointer"
+                              className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-none transition-colors cursor-pointer"
                               title="Detach Resource"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -875,9 +928,9 @@ export const CourseContentBuilder: React.FC<CourseContentBuilderProps> = ({
                     })}
                   </div>
                 ) : (
-                  <div className="p-4 rounded-xl bg-white/60 dark:bg-slate-900/60 border border-dashed border-emerald-200 dark:border-emerald-900/60 text-center space-y-1">
+                  <div className="p-4 rounded-none bg-white/60 dark:bg-slate-900/60 border border-dashed border-emerald-200 dark:border-emerald-900/60 text-center space-y-1">
                     <p className="text-xs font-bold text-slate-600 dark:text-slate-300">No supporting resources attached yet</p>
-                    <p className="text-[10px] text-slate-400">Attach lecture slides, PDFs, code zip archives, or web links for your students</p>
+                    <p className="text-[10px] text-slate-400">Attach lecture slides, PDFs, code zip archives, or select from template vault above</p>
                   </div>
                 )}
               </div>

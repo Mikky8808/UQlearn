@@ -183,8 +183,13 @@ if ($method === 'GET') {
             $query = "SELECT * FROM `uploaded_videos` WHERE 1=1";
             $params = [];
             $types = "";
-            if (!empty($userId)) {
-                $query .= " AND (`user_id` = ? OR `user_id` = 'instructor_user' OR `user_id` = 'anonymous')";
+            if (!empty($userId) && $userId !== 'instructor_user' && $userId !== 'anonymous' && $userId !== 'me') {
+                $query .= " AND (`user_id` = ? OR `user_email` = ?)";
+                $params[] = $userId;
+                $params[] = $userId;
+                $types .= "ss";
+            } else if ($userId === 'instructor_user' || $userId === 'anonymous') {
+                $query .= " AND (`user_id` = ? OR `user_id` = 'instructor_user' OR `user_id` = 'anonymous' OR `user_id` IS NULL)";
                 $params[] = $userId;
                 $types .= "s";
             }
@@ -221,19 +226,29 @@ if ($method === 'GET') {
         $vidKey = $v['id'] ?? $v['upload_id'] ?? '';
         if ($vidKey && !isset($mergedMap[$vidKey])) {
             if (empty($folder) || strcasecmp($v['folder'] ?? '', $folder) === 0) {
-                $mergedMap[$vidKey] = [
-                    'upload_id' => $v['id'] ?? '',
-                    'user_id' => $v['user_id'] ?? 'instructor_user',
-                    'user_email' => $v['user_email'] ?? '',
-                    'file_name' => $v['filename'] ?? 'video.mp4',
-                    'file_path' => $v['file_path'] ?? $v['url'] ?? '',
-                    'file_url' => $v['url'] ?? '',
-                    'file_size' => $v['file_size'] ?? 0,
-                    'folder' => $v['folder'] ?? 'film-edit-studio',
-                    'folder_id' => $v['folder_id'] ?? null,
-                    'source' => $v['source'] ?? 'film_and_edit',
-                    'created_at' => $v['created_at'] ?? date('Y-m-d H:i:s')
-                ];
+                $vUserId = $v['user_id'] ?? '';
+                $vUserEmail = $v['user_email'] ?? '';
+                $matchesUser = true;
+                if (!empty($userId) && $userId !== 'instructor_user' && $userId !== 'anonymous' && $userId !== 'me') {
+                    $matchesUser = (strcasecmp($vUserId, $userId) === 0 || strcasecmp($vUserEmail, $userId) === 0);
+                } else if ($userId === 'instructor_user' || $userId === 'anonymous') {
+                    $matchesUser = ($vUserId === 'instructor_user' || $vUserId === 'anonymous' || empty($vUserId));
+                }
+                if ($matchesUser) {
+                    $mergedMap[$vidKey] = [
+                        'upload_id' => $v['id'] ?? '',
+                        'user_id' => $v['user_id'] ?? 'instructor_user',
+                        'user_email' => $v['user_email'] ?? '',
+                        'file_name' => $v['filename'] ?? 'video.mp4',
+                        'file_path' => $v['file_path'] ?? $v['url'] ?? '',
+                        'file_url' => $v['url'] ?? '',
+                        'file_size' => $v['file_size'] ?? 0,
+                        'folder' => $v['folder'] ?? 'film-edit-studio',
+                        'folder_id' => $v['folder_id'] ?? null,
+                        'source' => $v['source'] ?? 'film_and_edit',
+                        'created_at' => $v['created_at'] ?? date('Y-m-d H:i:s')
+                    ];
+                }
             }
         }
     }

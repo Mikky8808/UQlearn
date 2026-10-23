@@ -2350,6 +2350,7 @@ v1Router.delete('/payout-banks.php', handlePayoutBanksPost);
 interface UserVideoRecord {
   id: string;
   user_id: string;
+  user_email?: string;
   filename: string;
   url: string;
   file_path: string;
@@ -2395,8 +2396,13 @@ const handleUserVideosGet = (req: Request, res: Response) => {
   const limit = parseInt((req.query.limit || '100') as string, 10);
 
   let filtered = [...localUserVideos];
-  if (userId) {
-    filtered = filtered.filter(v => v.user_id.toLowerCase() === userId.toLowerCase() || v.user_id === 'instructor_user');
+  if (userId && userId !== 'instructor_user' && userId !== 'anonymous' && userId !== 'me') {
+    filtered = filtered.filter(v => 
+      (v.user_id && v.user_id.toLowerCase() === userId.toLowerCase()) || 
+      (v.user_email && v.user_email.toLowerCase() === userId.toLowerCase())
+    );
+  } else if (userId === 'instructor_user' || userId === 'anonymous') {
+    filtered = filtered.filter(v => !v.user_id || v.user_id === 'instructor_user' || v.user_id === 'anonymous' || v.user_id === userId);
   }
   if (folderId) {
     filtered = filtered.filter(v => v.folder_id === folderId);
@@ -3231,27 +3237,37 @@ v1Router.get('/reminders', handleRemindersApi);
 v1Router.post('/reminders', handleRemindersApi);
 
 // TikTok Pixel Integration API
-let tiktokPixels: Record<string, string> = {};
+interface TiktokIntegrationRecord {
+  pixelId: string;
+  accessToken?: string;
+  status: string;
+}
+let tiktokIntegrations: Record<string, TiktokIntegrationRecord> = {};
+
 const handleTiktokPixelApi = (req: Request, res: Response) => {
   if (req.method === 'GET') {
-    const userId = (req.query.userId as string) || '';
-    const pixelId = tiktokPixels[userId] || '';
-    return res.json({ success: true, pixelId, status: pixelId ? 'active' : 'inactive' });
+    const userId = (req.query.userId as string) || (req.query.user_id as string) || '';
+    const record = tiktokIntegrations[userId] || { pixelId: '', accessToken: '', status: 'inactive' };
+    return res.json({ success: true, pixelId: record.pixelId, accessToken: record.accessToken || '', status: record.pixelId ? 'active' : 'inactive' });
   }
 
   if (req.method === 'POST') {
-    const { userId, pixelId } = req.body;
+    const { userId, pixelId, accessToken } = req.body;
     if (!userId || !pixelId) {
       return res.status(400).json({ success: false, message: 'User ID and Pixel ID are required.' });
     }
-    tiktokPixels[userId] = pixelId;
-    return res.json({ success: true, message: 'TikTok Pixel ID saved successfully!', pixelId });
+    tiktokIntegrations[userId] = {
+      pixelId,
+      accessToken: accessToken || '',
+      status: 'active'
+    };
+    return res.json({ success: true, message: 'TikTok Pixel ID and Events API Access Token saved successfully!', pixelId, accessToken });
   }
 
   return res.status(405).json({ success: false, message: 'Method not allowed.' });
 };
 
-v1Router.get(['/tiktok-pixel.php', '/tiktok-pixel'], handleTiktokPixelApi);
-v1Router.post(['/tiktok-pixel.php', '/tiktok-pixel'], handleTiktokPixelApi);
+v1Router.get(['/tiktok-pixel.php', '/tiktok-pixel', '/instructor/integrations.php', '/instructor/integrations'], handleTiktokPixelApi);
+v1Router.post(['/tiktok-pixel.php', '/tiktok-pixel', '/instructor/integrations.php', '/instructor/integrations'], handleTiktokPixelApi);
 
 export default v1Router;

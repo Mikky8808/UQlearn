@@ -9,8 +9,10 @@ export const GOOGLE_CLIENT_ID = '';
 export const API_ENDPOINTS = {
   COURSES: 'courses.php',
   COURSE_DETAIL: (id: string) => `courses.php?id=${id}`,
+  COURSE_MODULES: 'course-modules.php',
   LOGIN: 'login.php',
   REGISTER: 'register.php',
+  SEND_LOGIN_OTP: 'send-otp.php',
   VERIFY_EMAIL: 'verify-email.php',
   SYNC_STATUS: 'sync.php?action=status',
   SYNC_TABLE: (table: string, limit: number, offset: number) => `sync.php?action=table&table=${table}&limit=${limit}&offset=${offset}`,
@@ -24,6 +26,7 @@ export const API_ENDPOINTS = {
   MESSAGES: 'instructor-messages.php',
   COURSE_MESSAGES: 'course-messages.php',
   PROMOTIONAL_VIDEOS: 'promotional-videos.php',
+  SPONSORED_ADS: 'sponsored_ads.php',
   USERS: 'users.php',
   PRICE_ADJUSTMENTS: 'price-adjustments.php',
   QNA: 'qna.php',
@@ -39,6 +42,7 @@ export const API_ENDPOINTS = {
   CERTIFICATE_TEMPLATES: 'certificate-templates.php',
   VIDEO_PROGRESS: 'video-progress.php',
   STUDY_PLAN: 'study-planner.php',
+  PAYSTACK: 'paystack.php',
 };
 
 export const apiFetch = async (
@@ -74,6 +78,13 @@ export const apiFetch = async (
     const rawText = await response.text().catch(() => '');
 
     if (!response.ok) {
+      if (
+        (cleanEndpoint.includes('intended-learners.php') || cleanEndpoint.includes('study-planner.php')) &&
+        (response.status === 400 || response.status === 404)
+      ) {
+        return { success: false, data: null, items: [] };
+      }
+
       const errorMsg = `API error (${response.status}): ${response.statusText || 'HTTP Error'} for ${originalUrl}`;
       if (!silent) console.error(errorMsg);
       if (isUqlearnApi) {
@@ -158,36 +169,40 @@ export const apiFetch = async (
 export const getInstructorUrl = () => 'https://instructor.uqlearn.org';
 
 // Main API Export List
-export const addToWishlistApi = (courseId: string) => apiFetch('wishlist.php', { method: 'POST', body: JSON.stringify({ action: 'add', courseId }) });
-export const assignCourseToReviewerApi = (courseId: string, reviewerId: string) => apiFetch(API_ENDPOINTS.REVIEWER_ASSIGNMENTS, { method: 'POST', body: JSON.stringify({ action: 'assign_reviewer', courseId, course_id: courseId, reviewerId, reviewer_id: reviewerId }) });
-export const checkInstructorOnboardingApi = (userId: string) => apiFetch(`instructor-onboarding.php?userId=${encodeURIComponent(userId)}`);
-export const createRequestApi = (data: any) => apiFetch('requests.php', { method: 'POST', body: JSON.stringify(data) });
+export const addToWishlistApi = (courseId: string, ...args: any[]) => apiFetch('wishlist.php', { method: 'POST', body: JSON.stringify({ action: 'add', courseId }) });
+export const assignCourseToReviewerApi = (...args: any[]) => apiFetch(API_ENDPOINTS.REVIEWER_ASSIGNMENTS, { method: 'POST', body: JSON.stringify({ action: 'assign_reviewer', courseId: args[0], course_id: args[0], reviewerId: args[1], reviewer_id: args[1] }) });
+export const checkInstructorOnboardingApi = (userId: string, ...args: any[]) => apiFetch(`instructor-onboarding.php?userId=${encodeURIComponent(userId)}`);
+export const createRequestApi = (data: any, ...args: any[]) => apiFetch('requests.php', { method: 'POST', body: JSON.stringify(data) });
 export const DEFAULT_VIDEO_THUMBNAIL = '';
-export const deleteCourseApi = (courseId: string) => apiFetch(`courses.php?id=${courseId}`, { method: 'DELETE' });
-export const deleteCuratedListApi = (id: string) => apiFetch(`curated-lists.php?id=${id}`, { method: 'DELETE' });
-export const deleteModuleOrLessonApi = (id: string) => apiFetch(`course-modules.php?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
-export const deleteUserApi = (id: string) => apiFetch(`users.php?id=${id}`, { method: 'DELETE' });
-export const fetchCourseCategoriesApi = () => apiFetch(API_ENDPOINTS.CATEGORIES);
-export const fetchCourseModulesApi = (courseId: string) => apiFetch(`course-modules.php?course_id=${encodeURIComponent(courseId)}`);
-export const fetchCoursesApi = (creatorId?: string) => apiFetch(creatorId ? `courses.php?creator_id=${creatorId}` : 'courses.php');
-export const fetchInstructorDetailsApi = (userId: string) => apiFetch(`profile.php?id=${encodeURIComponent(userId)}&userId=${encodeURIComponent(userId)}`);
-export const fetchRequestsApi = () => apiFetch('requests.php');
-export const getCourseMessagesApi = (courseId: string) => apiFetch(`course-messages.php?course_id=${courseId}`);
-export const saveCourseMessagesApi = (data: any) => apiFetch('course-messages.php', { method: 'POST', body: JSON.stringify(data) });
-export const fetchSignatureApi = (userId: string) => apiFetch(`signatures.php?userId=${userId}`);
+export const deleteCourseApi = (courseIdOrData: string | any, ...args: any[]) => {
+  const courseId = typeof courseIdOrData === 'string' ? courseIdOrData : courseIdOrData?.id;
+  const body = typeof courseIdOrData === 'object' ? JSON.stringify(courseIdOrData) : undefined;
+  return apiFetch(courseId ? `courses.php?id=${courseId}` : 'courses.php', body ? { method: 'DELETE', body } : { method: 'DELETE' });
+};
+export const deleteCuratedListApi = (id: string, ...args: any[]) => apiFetch(`curated-lists.php?id=${id}`, { method: 'DELETE' });
+export const deleteModuleOrLessonApi = (id: string, ...args: any[]) => apiFetch(`course-modules.php?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+export const deleteUserApi = (id: string, ...args: any[]) => apiFetch(`users.php?id=${id}`, { method: 'DELETE' });
+export const fetchCourseCategoriesApi = (...args: any[]) => apiFetch(API_ENDPOINTS.CATEGORIES);
+export const fetchCourseModulesApi = (courseId: string, ...args: any[]) => apiFetch(`course-modules.php?courseId=${encodeURIComponent(courseId)}&course_id=${encodeURIComponent(courseId)}`);
+export const fetchCoursesApi = (creatorId?: string, ...args: any[]) => apiFetch(creatorId ? `courses.php?creatorId=${encodeURIComponent(creatorId)}&creator_id=${encodeURIComponent(creatorId)}` : 'courses.php');
+export const fetchInstructorDetailsApi = (userId: string, ...args: any[]) => apiFetch(`profile.php?id=${encodeURIComponent(userId)}&userId=${encodeURIComponent(userId)}&user_id=${encodeURIComponent(userId)}`);
+export const fetchRequestsApi = (...args: any[]) => apiFetch('requests.php');
+export const getCourseMessagesApi = (courseId: string, ...args: any[]) => apiFetch(`course-messages.php?courseId=${encodeURIComponent(courseId)}&course_id=${encodeURIComponent(courseId)}`);
+export const saveCourseMessagesApi = (data: any, ...args: any[]) => apiFetch('course-messages.php', { method: 'POST', body: JSON.stringify(data) });
+export const fetchSignatureApi = (...args: any[]) => apiFetch(args[0] ? `signatures.php?userId=${encodeURIComponent(args[0])}&user_id=${encodeURIComponent(args[0])}` : 'signatures.php');
 export const getActiveSession = () => { try { return JSON.parse(localStorage.getItem('activeSession') || '{}'); } catch { return {}; } };
-export const getActiveSponsoredCoursesApi = () => apiFetch('sponsored_ads.php?action=get_active');
-export const getAdvertsApi = () => apiFetch('adverts.php');
-export const getCourseDescriptionChecklistApi = (courseId: string) => apiFetch(`intended-learners.php?course_id=${encodeURIComponent(courseId)}`);
-export const getCuratedListsApi = () => apiFetch('curated-lists.php');
-export const getInstructorPayoutApi = (userId: string) => apiFetch(`instructor-payout.php?userId=${userId}&user_id=${userId}`);
-export const getIntendedLearnersApi = (courseId: string) => apiFetch(`intended-learners.php?course_id=${courseId}`);
-export const saveIntendedLearnersApi = (data: any) => apiFetch('intended-learners.php', { method: 'POST', body: JSON.stringify(data) });
-export const getRemindersApi = (userId: string) => apiFetch(`reminders.php?userId=${userId}`);
-export const getStudyPlanApi = (userId: string) => apiFetch(`study-planner.php?learner_id=${encodeURIComponent(userId)}&userId=${encodeURIComponent(userId)}`);
-export const getTopAdvertsApi = (silent = false) => apiFetch(API_ENDPOINTS.TOP_ADVERTS, { silent });
-export const getWishlistApi = (userId: string) => apiFetch(`wishlist.php?userId=${userId}`);
-export const InstructorDetailsData = {};
+export const getActiveSponsoredCoursesApi = (...args: any[]) => apiFetch('sponsored_ads.php?action=get_active');
+export const getAdvertsApi = (...args: any[]) => apiFetch('adverts.php');
+export const getCourseDescriptionChecklistApi = (courseId: string, ...args: any[]) => apiFetch(`intended-learners.php?courseId=${encodeURIComponent(courseId)}&course_id=${encodeURIComponent(courseId)}`);
+export const getCuratedListsApi = (...args: any[]) => apiFetch('curated-lists.php');
+export const getInstructorPayoutApi = (...args: any[]) => apiFetch(args[0] ? `instructor-payout.php?userId=${encodeURIComponent(args[0])}&user_id=${encodeURIComponent(args[0])}` : 'instructor-payout.php');
+export const getIntendedLearnersApi = (courseId: string, ...args: any[]) => apiFetch(`intended-learners.php?courseId=${encodeURIComponent(courseId)}&course_id=${encodeURIComponent(courseId)}`);
+export const saveIntendedLearnersApi = (data: any, ...args: any[]) => apiFetch('intended-learners.php', { method: 'POST', body: JSON.stringify(data) });
+export const getRemindersApi = (...args: any[]) => apiFetch(args[0] ? `reminders.php?userId=${encodeURIComponent(args[0])}&user_id=${encodeURIComponent(args[0])}` : 'reminders.php');
+export const getStudyPlanApi = (userId: string, ...args: any[]) => apiFetch(`study-planner.php?learnerId=${encodeURIComponent(userId)}&learner_id=${encodeURIComponent(userId)}&userId=${encodeURIComponent(userId)}&user_id=${encodeURIComponent(userId)}`);
+export const getTopAdvertsApi = (silent = false, ...args: any[]) => apiFetch(API_ENDPOINTS.TOP_ADVERTS, { silent });
+export const getWishlistApi = (...args: any[]) => apiFetch(args[0] ? `wishlist.php?userId=${encodeURIComponent(args[0])}&user_id=${encodeURIComponent(args[0])}` : 'wishlist.php');
+export type InstructorDetailsData = any;
 export const localApiFetch = async (
   endpoint: string, 
   options: any = {}, 
@@ -257,34 +272,56 @@ export const normalizeCourse = (c: any) => {
 };
 export const recordSponsoredImpressionApi = (id: string) => apiFetch(`sponsored_ads.php?action=impression&id=${id}`, { method: 'POST' });
 export const recordSponsoredClickApi = (id: string) => apiFetch(`sponsored_ads.php?action=click&id=${id}`, { method: 'POST' });
-export const removeFromWishlistApi = (courseId: string) => apiFetch('wishlist.php', { method: 'POST', body: JSON.stringify({ action: 'remove', courseId }) });
+export const removeFromWishlistApi = (courseId: string, ...args: any[]) => apiFetch('wishlist.php', { method: 'POST', body: JSON.stringify({ action: 'remove', courseId }) });
 export const saveAdvertApi = (data: any) => apiFetch('adverts.php', { method: 'POST', body: JSON.stringify(data) });
-export const saveCourseDescriptionChecklistApi = (data: any) => apiFetch('intended-learners.php', { method: 'POST', body: JSON.stringify(data) });
-export const saveCuratedListApi = (data: any) => apiFetch('curated-lists.php', { method: 'POST', body: JSON.stringify(data) });
+export const saveCourseDescriptionChecklistApi = (...args: any[]) => apiFetch('intended-learners.php', { method: 'POST', body: JSON.stringify(args.length > 1 ? { courseId: args[0], data: args[1] } : args[0]) });
+export const saveCuratedListApi = (...args: any[]) => apiFetch('curated-lists.php', { method: 'POST', body: JSON.stringify(args.length > 1 ? { userId: args[0], list: args[1] } : args[0]) });
 export const saveInstructorOnboardingApi = (data: any) => apiFetch('instructor-onboarding.php', { method: 'POST', body: JSON.stringify(data) });
 export const saveInstructorPayoutApi = (data: any) => apiFetch('instructor-payout.php', { method: 'POST', body: JSON.stringify(data) });
-export const saveReminderApi = (data: any) => apiFetch('reminders.php', { method: 'POST', body: JSON.stringify(data) });
-export const saveReviewerAssignmentsApi = (data: any) => apiFetch('reviewers.php', { method: 'POST', body: JSON.stringify({ action: 'save_assignments', ...data }) });
-export const saveSignatureApi = (userId: string, signature: string) => apiFetch('signatures.php', { method: 'POST', body: JSON.stringify({ userId, signature }) });
+export const saveReminderApi = (data: any, ...args: any[]) => apiFetch('reminders.php', { method: 'POST', body: JSON.stringify(data) });
+export const saveReviewerAssignmentsApi = (...args: any[]) => apiFetch('reviewers.php', { method: 'POST', body: JSON.stringify({ action: 'save_assignments', courseId: args[0], reviewers: args[1], data: args[0] && typeof args[0] === 'object' ? args[0] : args[1] }) });
+export const saveSignatureApi = (...args: any[]) => apiFetch('signatures.php', { method: 'POST', body: JSON.stringify({ userId: args[0], signature: args[1], data: args[0] && typeof args[0] === 'object' ? args[0] : undefined }) });
 export const saveStudyPlanApi = (data: any) => apiFetch('study-planner.php', { method: 'POST', body: JSON.stringify(data) });
 export const sendStudyReminderEmailApi = (data: any) => apiFetch('reminders.php?action=send_email', { method: 'POST', body: JSON.stringify(data) });
-export const syncCourseCategoriesApi = (data: any) => apiFetch(`${API_ENDPOINTS.CATEGORIES}?action=sync`, { method: 'POST', body: JSON.stringify(data) });
-export const toggleAdvertActiveApi = (id: string | number, active: boolean) => apiFetch(`adverts.php?action=toggle&id=${id}`, { method: 'POST', body: JSON.stringify({ active }) });
+export const syncCourseCategoriesApi = (...args: any[]) => apiFetch(`${API_ENDPOINTS.CATEGORIES}?action=sync`, { method: 'POST', body: JSON.stringify(args[0] || {}) });
+export const toggleAdvertActiveApi = (id: string | number, active: boolean, ...args: any[]) => apiFetch(`adverts.php?action=toggle&id=${id}`, { method: 'POST', body: JSON.stringify({ active }) });
 export const updateActiveSession = (data: any) => { const current = getActiveSession(); localStorage.setItem('activeSession', JSON.stringify({ ...current, ...data })); };
-export const updateRequestStatusApi = (id: string, status: string) => apiFetch(`requests.php?id=${id}`, { method: 'PUT', body: JSON.stringify({ status }) });
+export const updateRequestStatusApi = (id: string, status: string, ...args: any[]) => apiFetch(`requests.php?id=${id}`, { method: 'PUT', body: JSON.stringify({ status }) });
 export const uploadAdvertImageApi = (formData: FormData) => apiFetch('adverts.php?action=upload', { method: 'POST', body: formData });
-export const uploadImageApi = (fileData: string, fileName?: string, folder: 'courses' | 'avatars' = 'courses') => apiFetch('upload.php', { method: 'POST', body: JSON.stringify({ fileData, fileName, folder }) });
-export const uploadMediaApi = (fileData: string, fileName?: string) => apiFetch('upload.php', { method: 'POST', body: JSON.stringify({ fileData, fileName }) });
+export const uploadImageApi = (fileData: any, ...args: any[]) => apiFetch('upload.php', { method: 'POST', body: JSON.stringify({ fileData: typeof fileData === 'string' ? fileData : '', fileName: args[0], folder: args[1] || 'courses' }) });
+export const uploadMediaApi = (fileData: any, ...args: any[]) => apiFetch('upload.php', { method: 'POST', body: JSON.stringify({ fileData: typeof fileData === 'string' ? fileData : '', fileName: args[0], folder: args[1] }) });
 export const upsertLessonApi = (data: any) => apiFetch('course-modules.php', { method: 'POST', body: JSON.stringify(data) });
 export const upsertModuleApi = (data: any) => apiFetch('course-modules.php', { method: 'POST', body: JSON.stringify(data) });
-export const updateSectionTitleApi = (id: string, title: string) => apiFetch('course-modules.php?action=update_title', { method: 'POST', body: JSON.stringify({ id, title }) });
+export const updateSectionTitleApi = (...args: any[]) => apiFetch('course-modules.php?action=update_title', { method: 'POST', body: JSON.stringify(typeof args[0] === 'object' ? args[0] : { id: args[0], title: args[1] }) });
 export const saveCourseCategoryApi = (data: any) => apiFetch(API_ENDPOINTS.CATEGORIES, { method: 'POST', body: JSON.stringify(data) });
-export const deleteCourseCategoryApi = (id: string) => apiFetch(`${API_ENDPOINTS.CATEGORIES}?id=${id}`, { method: 'DELETE' });
-export const deleteAdvertApi = (id: string | number) => apiFetch(`adverts.php?id=${id}`, { method: 'DELETE' });
+export const deleteCourseCategoryApi = (id: string, ...args: any[]) => apiFetch(`${API_ENDPOINTS.CATEGORIES}?id=${id}`, { method: 'DELETE' });
+export const deleteAdvertApi = (id: string | number, ...args: any[]) => apiFetch(`adverts.php?id=${id}`, { method: 'DELETE' });
 
 // Payouts
-export interface PayoutCountry { id: string; name: string; code: string; currencyCode: string; isActive: boolean; }
-export interface PayoutBank { id: string; countryId: string; name: string; code: string; isActive: boolean; }
+export interface PayoutCountry { 
+  id: string; 
+  name: string; 
+  code: string; 
+  currencyCode: string; 
+  currencySymbol?: string;
+  payoutMethods?: string[];
+  minPayout?: number;
+  processingTime?: string;
+  notes?: string;
+  isActive: boolean; 
+  createdAt?: string;
+  updatedAt?: string;
+}
+export interface PayoutBank { 
+  id: string; 
+  countryId: string; 
+  countryName?: string;
+  name: string; 
+  code: string; 
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
 export const DEFAULT_PAYOUT_COUNTRIES: PayoutCountry[] = [];
 export const DEFAULT_KENYA_COUNTRY: PayoutCountry = { id: 'pc-ke', name: 'Kenya', code: 'KE', currencyCode: 'KES', isActive: true };
 export const DEFAULT_KENYA_BANKS: PayoutBank[] = [];
@@ -292,24 +329,35 @@ export const getDefaultKenyaPayoutBanks = () => DEFAULT_KENYA_BANKS;
 
 export const fetchPayoutCountriesApi = () => apiFetch(API_ENDPOINTS.PAYOUT_COUNTRIES);
 export const createPayoutCountryApi = (data: any) => apiFetch(API_ENDPOINTS.PAYOUT_COUNTRIES, { method: 'POST', body: JSON.stringify(data) });
-export const updatePayoutCountryApi = (id: string, data: any) => apiFetch(`${API_ENDPOINTS.PAYOUT_COUNTRIES}?id=${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const updatePayoutCountryApi = (id: string, data: any, ...args: any[]) => apiFetch(`${API_ENDPOINTS.PAYOUT_COUNTRIES}?id=${id}`, { method: 'PUT', body: JSON.stringify(data) });
 export const deletePayoutCountryApi = (id: string) => apiFetch(`${API_ENDPOINTS.PAYOUT_COUNTRIES}?id=${id}`, { method: 'DELETE' });
 export const togglePayoutCountryActiveApi = (id: string, active: boolean) => apiFetch(`${API_ENDPOINTS.PAYOUT_COUNTRIES}?id=${id}`, { method: 'POST', body: JSON.stringify({ action: 'toggle', active }) });
 
-export const fetchPayoutBanksApi = (countryId?: string) => apiFetch(countryId ? `${API_ENDPOINTS.PAYOUT_BANKS}?country_id=${countryId}` : API_ENDPOINTS.PAYOUT_BANKS);
+export const fetchPayoutBanksApi = (countryId?: string, ...args: any[]) => apiFetch(countryId ? `${API_ENDPOINTS.PAYOUT_BANKS}?country_id=${countryId}` : API_ENDPOINTS.PAYOUT_BANKS);
 export const createPayoutBankApi = (data: any) => apiFetch(API_ENDPOINTS.PAYOUT_BANKS, { method: 'POST', body: JSON.stringify(data) });
 export const updatePayoutBankApi = (id: string, data: any) => apiFetch(`${API_ENDPOINTS.PAYOUT_BANKS}?id=${id}`, { method: 'PUT', body: JSON.stringify(data) });
 export const deletePayoutBankApi = (id: string) => apiFetch(`${API_ENDPOINTS.PAYOUT_BANKS}?id=${id}`, { method: 'DELETE' });
-export const togglePayoutBankActiveApi = (id: string, active: boolean) => apiFetch(`${API_ENDPOINTS.PAYOUT_BANKS}?id=${id}`, { method: 'POST', body: JSON.stringify({ action: 'toggle', active }) });
+export const togglePayoutBankActiveApi = (id: string, active: boolean, ...args: any[]) => apiFetch(`${API_ENDPOINTS.PAYOUT_BANKS}?id=${id}`, { method: 'POST', body: JSON.stringify({ action: 'toggle', active }) });
+
+export interface VideoFolder {
+  id: string;
+  userId?: string;
+  courseId?: string | null;
+  name: string;
+  color?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 export const fetchLogoApi = () => apiFetch('logo.php');
 export const getCourseDefaultThumbnailApi = () => apiFetch('logo.php');
+export const saveCourseDefaultThumbnailApi = (data: any, ...args: any[]) => updateLogoApi(data);
 export const updateLogoApi = (data: any) => apiFetch('logo.php', { method: 'POST', body: JSON.stringify(data) });
-export const fetchVideoFoldersApi = () => apiFetch('video-folders.php');
-export const createVideoFolderApi = (data: any) => apiFetch('video-folders.php', { method: 'POST', body: JSON.stringify(data) });
-export const renameVideoFolderApi = (id: string, name: string) => apiFetch(`video-folders.php?id=${id}`, { method: 'PUT', body: JSON.stringify({ name }) });
-export const deleteVideoFolderApi = (id: string) => apiFetch(`video-folders.php?id=${id}`, { method: 'DELETE' });
-export const moveVideoToFolderApi = (videoId: string, folderId: string) => apiFetch('video-folders.php?action=move', { method: 'POST', body: JSON.stringify({ videoId, folderId }) });
+export const fetchVideoFoldersApi = (userId?: string, courseId?: string, ...args: any[]) => apiFetch(userId ? `video-folders.php?user_id=${encodeURIComponent(userId)}${courseId ? `&course_id=${encodeURIComponent(courseId)}` : ''}` : 'video-folders.php');
+export const createVideoFolderApi = (name: string, color?: string, userId?: string, courseId?: string, ...args: any[]) => apiFetch('video-folders.php', { method: 'POST', body: JSON.stringify({ name, color, user_id: userId, course_id: courseId }) });
+export const renameVideoFolderApi = (id: string, name: string, ...args: any[]) => apiFetch(`video-folders.php?id=${id}`, { method: 'PUT', body: JSON.stringify({ name }) });
+export const deleteVideoFolderApi = (id: string, ...args: any[]) => apiFetch(`video-folders.php?id=${id}`, { method: 'DELETE' });
+export const moveVideoToFolderApi = (videoId: string, targetFolderName: string, targetFolderId?: string | null, ...args: any[]) => apiFetch('video-folders.php?action=move', { method: 'POST', body: JSON.stringify({ videoId, folder: targetFolderName, folderId: targetFolderId }) });
 
 // Top Adverts
 export const saveTopAdvertApi = (data: any) => apiFetch(API_ENDPOINTS.TOP_ADVERTS, { method: 'POST', body: JSON.stringify(data) });
@@ -318,12 +366,12 @@ export const deleteTopAdvertApi = (id: string | number) => apiFetch(`${API_ENDPO
 export const uploadTopAdvertImageApi = (formData: FormData) => apiFetch(`${API_ENDPOINTS.TOP_ADVERTS}?action=upload`, { method: 'POST', body: formData });
 
 // Sponsored Ads
-export const getSponsoredAdsApi = () => apiFetch('sponsored_ads.php');
-export const getSponsoredPlansApi = () => apiFetch('sponsored_ads.php?action=plans');
+export const getSponsoredAdsApi = (...args: any[]) => apiFetch('sponsored_ads.php');
+export const getSponsoredPlansApi = (...args: any[]) => apiFetch('sponsored_ads.php?action=plans');
 export const saveSponsoredPlansApi = (data: any) => apiFetch('sponsored_ads.php?action=save_plans', { method: 'POST', body: JSON.stringify(data) });
 export const applySponsoredAdApi = (data: any) => apiFetch('sponsored_ads.php', { method: 'POST', body: JSON.stringify(data) });
-export const updateSponsoredAdStatusApi = (id: string | number, status: string) => apiFetch(`sponsored_ads.php?action=status&id=${id}`, { method: 'POST', body: JSON.stringify({ status }) });
-export const deleteSponsoredAdApi = (id: string | number) => apiFetch(`sponsored_ads.php?id=${id}`, { method: 'DELETE' });
+export const updateSponsoredAdStatusApi = (id: string | number, status: string, ...args: any[]) => apiFetch(`sponsored_ads.php?action=status&id=${id}`, { method: 'POST', body: JSON.stringify({ status }) });
+export const deleteSponsoredAdApi = (id: string | number, ...args: any[]) => apiFetch(`sponsored_ads.php?id=${id}`, { method: 'DELETE' });
 export interface PromotionTierConfig {
   id: string;
   name: string;
@@ -333,6 +381,7 @@ export interface PromotionTierConfig {
   features: string[];
   isActive: boolean;
   badgeType: string;
+  badgeLabel?: string;
 }
 export const DEFAULT_PROMOTION_TIERS: PromotionTierConfig[] = [];
 export const getStoredPromotionTiers = () => [];
@@ -346,10 +395,15 @@ export interface EnrollmentProofPricingConfig {
     pricePerUnitUsd: number;
     defaultRating: number;
     maxStudents: number;
+    minStudents?: number;
 }
 export const getStoredEnrollmentPricing = () => ({ id: 'default', studentStepUnit: 100, pricePerUnitUsd: 0.15, defaultRating: 4.9, maxStudents: 10000 });
 export const calculateEnrollmentBoostPrice = (count: number, pricing: any) => {
-  return count * (pricing?.pricePerUnitUsd || 0.15);
+  const totalUsd = count * (pricing?.pricePerUnitUsd || 0.15);
+  return {
+    totalUsd,
+    formulaText: `${count} students × $${pricing?.pricePerUnitUsd || 0.15} = $${totalUsd.toFixed(2)}`
+  };
 };
 export const getEnrollmentPricingApi = () => apiFetch('enrollment-pricing.php');
 export const saveEnrollmentPricingApi = (data: any) => apiFetch('enrollment-pricing.php', { method: 'POST', body: JSON.stringify(data) });

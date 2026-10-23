@@ -8,6 +8,7 @@ interface TiktokPixelSettingsProps {
 
 export const TiktokPixelSettings: React.FC<TiktokPixelSettingsProps> = ({ currentUser }) => {
   const [pixelId, setPixelId] = useState('');
+  const [accessToken, setAccessToken] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -29,9 +30,14 @@ export const TiktokPixelSettings: React.FC<TiktokPixelSettingsProps> = ({ curren
     setIsLoading(true);
     try {
       const res = await apiFetch(`tiktok-pixel.php?userId=${encodeURIComponent(currentUser.id)}`);
-      if (res && res.success && res.pixelId) {
-        setPixelId(res.pixelId);
-        setIsValid(validatePixelId(res.pixelId));
+      if (res && res.success) {
+        if (res.pixelId) {
+          setPixelId(res.pixelId);
+          setIsValid(validatePixelId(res.pixelId));
+        }
+        if (res.accessToken) {
+          setAccessToken(res.accessToken);
+        }
       }
     } catch (err) {
       console.error('Failed to fetch TikTok Pixel ID', err);
@@ -56,15 +62,15 @@ export const TiktokPixelSettings: React.FC<TiktokPixelSettingsProps> = ({ curren
     try {
       const res = await apiFetch('tiktok-pixel.php', {
         method: 'POST',
-        body: JSON.stringify({ userId: currentUser.id, pixelId })
+        body: JSON.stringify({ userId: currentUser.id, pixelId, accessToken, platform: 'tiktok', status: 'active' })
       });
       if (res && res.success) {
-        setMessage('TikTok Pixel ID saved successfully!');
+        setMessage('✅ Success! Your TikTok Pixel and Events API have been linked. Conversions on your courses will now be tracked.');
       } else {
-        throw new Error(res.message || 'Failed to save TikTok Pixel ID');
+        throw new Error(res.message || 'Failed to save TikTok Pixel settings');
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to save TikTok Pixel ID');
+      setError(err.message || 'Failed to save TikTok Pixel settings');
     } finally {
       setIsSaving(false);
       setTimeout(() => setMessage(''), 4000);
@@ -130,6 +136,54 @@ export const TiktokPixelSettings: React.FC<TiktokPixelSettingsProps> = ({ curren
           <p className="text-[10px] text-slate-400 mt-1.5 flex items-center space-x-1">
              <Info className="w-3 h-3" />
              <span>The Pixel ID must start with 'C' followed by 15 alphanumeric characters.</span>
+          </p>
+
+          <div className="mt-3 p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-xl space-y-3">
+            <p className="text-xs text-slate-700 dark:text-slate-300 font-medium">
+              Don't have a TikTok Pixel ID yet? You need a TikTok Ads Manager account to create one.{' '}
+              <a 
+                href="https://ads.tiktok.com" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-indigo-600 dark:text-indigo-400 font-bold underline hover:text-indigo-500"
+              >
+                Click here to register for TikTok Ads Manager
+              </a>{' '}
+              (Registration is free, and you only need to provide basic business information).
+            </p>
+            <div className="border-t border-slate-200 dark:border-slate-700 pt-2.5 space-y-2">
+              <p className="text-[11px] font-bold text-slate-800 dark:text-slate-200">How to get your TikTok Pixel ID:</p>
+              <ul className="list-disc list-inside text-[11px] text-slate-600 dark:text-slate-400 space-y-1">
+                <li><strong className="text-slate-700 dark:text-slate-300">Register/Log in:</strong> Go to TikTok Ads Manager and complete account registration (usually requires review, which takes about 24 hours).</li>
+                <li><strong className="text-slate-700 dark:text-slate-300">Create Pixel:</strong> After logging in, go to Tools &gt; Events, click Connect Data Source, select Web, and follow the prompts to create a Pixel.</li>
+                <li><strong className="text-slate-700 dark:text-slate-300">Copy ID:</strong> After creation, find your Pixel ID (a string starting with 'C' followed by 15 characters) on the data source details page, copy it, and paste it above.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Events API Access Token Section */}
+        <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              TikTok Events API Access Token (Optional)
+            </label>
+            <span className="px-2 py-0.5 text-[10px] font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/60 dark:text-indigo-400">
+              Recommended for Purchases
+            </span>
+          </div>
+          <div className="relative">
+            <input
+              type="password"
+              value={accessToken}
+              onChange={(e) => setAccessToken(e.target.value)}
+              placeholder="e.g. tt_access_token_..."
+              className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-none text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none"
+            />
+          </div>
+          <p className="text-[10px] text-slate-400 mt-1.5 flex items-center space-x-1">
+             <Info className="w-3 h-3" />
+             <span>Optional, but highly recommended for accurate <strong>CompletePayment</strong> purchase tracking (bypasses ad blockers for up to a 15% improvement on CPA).</span>
           </p>
         </div>
         

@@ -1803,7 +1803,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
         uBy === currentUserId.toLowerCase() || 
         (currentUserEmail && uBy.includes(currentUserEmail)) ||
         (currentUserName && uBy.includes(currentUserName)) ||
-        uBy === 'instructor_user';
+        ((!currentUserId || currentUserId === 'instructor_user') && (uBy === 'instructor_user' || uBy === 'anonymous'));
       
       if (!isOwn) return false;
 
