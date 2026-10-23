@@ -1,0 +1,95 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique user ID" },
+        "firebaseUid": { "type": "string", "description": "The Firebase Authentication UID" },
+        "name": { "type": "string", "description": "User's display name", "maxLength": 100 },
+        "email": { "type": "string", "description": "User's email address", "format": "email" },
+        "role": { "type": "string", "enum": ["learner", "instructor", "admin"] },
+        "avatar": { "type": "string", "description": "URL to the user's avatar image" },
+        "enrolledCourseIds": { "type": "array", "description": "List of course IDs the user is enrolled in" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "email", "role"]
+    },
+    "Course": {
+      "title": "Course",
+      "description": "Course information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique course ID" },
+        "title": { "type": "string", "description": "Course title", "maxLength": 200 },
+        "subtitle": { "type": "string", "description": "Course subtitle", "maxLength": 300 },
+        "description": { "type": "string", "description": "Full course description" },
+        "instructor": { "type": "string", "description": "Name of the instructor" },
+        "instructorId": { "type": "string", "description": "ID of the instructor (User.id)" },
+        "price": { "type": "number", "description": "Current price of the course" },
+        "originalPrice": { "type": "number", "description": "Original price before discount" },
+        "category": { "type": "string", "description": "Course category" },
+        "level": { "type": "string", "enum": ["Beginner", "Intermediate", "Expert", "All Levels"] },
+        "image": { "type": "string", "description": "URL to course thumbnail" },
+        "isApprovedByAdmin": { "type": "boolean", "description": "Whether the course is approved by an admin" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "instructor", "price", "category"]
+    },
+    "Note": {
+      "title": "Note",
+      "description": "Student notes on video lectures",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique note ID" },
+        "userId": { "type": "string", "description": "The user ID who created the note" },
+        "lessonId": { "type": "string", "description": "The lesson ID" },
+        "timestamp": { "type": "number", "description": "Video timestamp in seconds" },
+        "content": { "type": "string", "description": "Note content" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "lessonId", "timestamp", "content", "createdAt"]
+    },
+    "ErrorLog": {
+      "title": "ErrorLog",
+      "description": "Centralized API error log entry for diagnosing uqlearn.org/api/v1/ failures",
+      "type": "object",
+      "properties": {
+        "endpoint": { "type": "string", "description": "API endpoint path", "maxLength": 500 },
+        "url": { "type": "string", "description": "Full request URL or proxied path", "maxLength": 1000 },
+        "originalUrl": { "type": "string", "description": "Original uqlearn.org/api/v1/ URL", "maxLength": 1000 },
+        "method": { "type": "string", "description": "HTTP method", "maxLength": 20 },
+        "status": { "type": "number", "description": "HTTP status code (0 for network/parse failure)" },
+        "statusText": { "type": "string", "description": "HTTP status text", "maxLength": 200 },
+        "errorMessage": { "type": "string", "description": "Error message or diagnostic details", "maxLength": 2000 },
+        "responsePreview": { "type": "string", "description": "Truncated response body preview", "maxLength": 2000 },
+        "domain": { "type": "string", "description": "Target API domain", "maxLength": 100 },
+        "userId": { "type": "string", "description": "ID of user or anonymous", "maxLength": 128 },
+        "timestamp": { "type": "string", "description": "ISO 8601 client timestamp", "maxLength": 64 },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["endpoint", "url", "method", "status", "errorMessage", "domain", "timestamp", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile collection"
+    },
+    "/courses/{courseId}": {
+      "schema": "Course",
+      "description": "Courses collection"
+    },
+    "/notes/{noteId}": {
+      "schema": "Note",
+      "description": "Notes collection"
+    },
+    "/error_logs/{logId}": {
+      "schema": "ErrorLog",
+      "description": "API error logs collection for uqlearn.org/api/v1/"
+    }
+  }
+}

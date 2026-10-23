@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>UQlearn</title>
+    <script>
+      (function() {
+        try {
+          var fullUrl = window.location.pathname + window.location.search + window.location.hash;
+          if (fullUrl && fullUrl !== '/' && fullUrl !== '/404.html') {
+            sessionStorage.setItem('uq_redirect', fullUrl);
+          }
+        } catch (e) {}
+        window.location.replace('/');
+      })();
+    </script>
+  </head>
+  <body>
+  </body>
+</html>

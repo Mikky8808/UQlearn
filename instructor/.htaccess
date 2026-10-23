@@ -1,0 +1,38 @@
+DirectoryIndex index.html instructor.html
+
+<IfModule mod_mime.c>
+  AddType application/javascript .js .mjs
+  AddType text/css .css
+  AddType image/svg+xml .svg
+  AddType image/webp .webp
+  AddType application/json .json
+  AddType font/woff .woff
+  AddType font/woff2 .woff2
+</IfModule>
+
+<IfModule mod_headers.c>
+  SetEnvIfNoCase Origin "(.+)" CORS_ORIGIN=$1
+  Header always set Access-Control-Allow-Origin "%{CORS_ORIGIN}e" env=CORS_ORIGIN
+  Header always set Access-Control-Allow-Credentials "true" env=CORS_ORIGIN
+  Header always set Access-Control-Allow-Origin "*" "expr=-z %{ENV:CORS_ORIGIN}"
+</IfModule>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /instructor/
+
+  # 1. Forward relative /api/ requests to the main domain if accessed under instructor folder docroot
+  RewriteRule ^api/(.*)$ https://uqlearn.org/api/$1 [R=307,L]
+
+  # 2. Serve existing static files and directories directly
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # 3. Never rewrite static asset files to instructor.html (prevents MIME mismatch / CORB)
+  RewriteCond %{REQUEST_URI} \.(js|mjs|css|png|jpg|jpeg|gif|webp|svg|ico|woff|woff2|ttf|eot|json|map)$ [NC]
+  RewriteRule ^ - [R=404,L]
+
+  # 4. Fallback to instructor.html for Single Page Application routes
+  RewriteRule ^ index.html [L]
+</IfModule>

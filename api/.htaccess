@@ -1,0 +1,42 @@
+ErrorDocument 404 "{\"success\":false,\"message\":\"API endpoint not found\"}"
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /api/
+
+  # Enable Universal CORS across all origins and subdomains
+  <IfModule mod_headers.c>
+    SetEnvIfNoCase Origin "(.+)" CORS_ORIGIN=$1
+    Header always set Access-Control-Allow-Origin "%{CORS_ORIGIN}e" env=CORS_ORIGIN
+    Header always set Access-Control-Allow-Credentials "true" env=CORS_ORIGIN
+    Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH, HEAD"
+    Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, X-User-Id, X-User-Email, Accept, Origin, Content-Range, Range, X-Upload-Id, X-File-Name, X-File-Size, X-Folder, X-Sync-Key, X-Deploy-Key, Cache-Control, Pragma, If-Modified-Since, DNT, Keep-Alive, User-Agent"
+    Header always set Access-Control-Expose-Headers "Content-Range, Range, Location, X-Upload-Id, Content-Length, X-User-Id, Content-Type"
+    Header always set Access-Control-Max-Age "86400"
+  </IfModule>
+
+  # If OPTIONS method, return 200 OK immediately
+  RewriteCond %{REQUEST_METHOD} OPTIONS
+  RewriteRule ^(.*)$ - [R=200,L]
+
+  # Allow direct access to real existing files and directories (including v1 and v2 folder)
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Route root /api/* calls to v1 endpoints (e.g. /api/logo -> /api/v1/logo.php)
+  RewriteRule ^logo/?$ v1/logo.php [QSA,L]
+  RewriteRule ^upload/?$ v1/upload.php [QSA,L]
+  RewriteRule ^courses/?$ v1/courses.php [QSA,L]
+  RewriteRule ^course-categories/?$ v1/course-categories.php [QSA,L]
+  RewriteRule ^delete-course/?$ v1/delete-course.php [QSA,L]
+  RewriteRule ^login/?$ v1/login.php [QSA,L]
+  RewriteRule ^register/?$ v1/register.php [QSA,L]
+  RewriteRule ^verify-email/?$ v1/verify-email.php [QSA,L]
+  RewriteRule ^sync/?$ v1/sync.php [QSA,L]
+  RewriteRule ^assign-reviewer/?$ v1/assign-reviewer.php [QSA,L]
+
+  # Automatic extensionless PHP rewrite
+  RewriteCond %{REQUEST_FILENAME}.php -f
+  RewriteRule ^(.*)$ $1.php [QSA,L]
+</IfModule>

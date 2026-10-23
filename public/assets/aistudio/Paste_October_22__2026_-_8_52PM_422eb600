@@ -1,0 +1,1068 @@
+	
+success	true
+data	
+0	
+id	"course-1792664256449"
+title	"TYUHUH"
+subtitle	"TYUHUH"
+description	""
+instructor	"RAJAB WAMUU"
+instructor_title	""
+instructor_avatar	"https://ui-avatars.com/api/?name=RAJAB+WAMUU&background=random&size=128"
+instructor_description	""
+created_by	"usr_72d652019007df0e"
+category	"Development"
+subcategory	""
+primary_taught	""
+level	"Beginner"
+price	0
+original_price	"0.00"
+rating	5
+review_count	"0"
+learners_enrolled	"0"
+students_enrolled	"0"
+image	""
+promo_video	""
+duration	""
+language	"English"
+is_published	"1"
+best_seller	"0"
+is_premium	"0"
+is_approved_by_admin	"0"
+is_deleted	"0"
+deleted_at	null
+created_at	"2026-10-22 13:17:34"
+updated_at	"2026-10-22 13:17:34"
+assigned_reviewer_id	null
+assigned_reviewer_name	null
+assigned_reviewer_email	null
+modules_count	"0"
+lessons_count	"0"
+createdBy	"usr_72d652019007df0e"
+isDeleted	false
+deletedAt	null
+isPublished	true
+bestSeller	false
+isPremium	false
+isApprovedByAdmin	false
+modulesCount	0
+lessonsCount	0
+originalPrice	0
+reviewCount	0
+learnersEnrolled	0
+primaryTaught	""
+promoVideo	""
+instructorDescription	""
+instructorAvatar	"https://ui-avatars.com/api/?name=RAJAB+WAMUU&background=random&size=128"
+instructorImage	"https://ui-avatars.com/api/?name=RAJAB+WAMUU&background=random&size=128"
+learningOutcomes	[]
+whatYouWillLearn	[]
+1	
+id	"course-1792503373353"
+title	"youtube"
+subtitle	"youtube"
+description	""
+instructor	"RAJAB WAMUU"
+instructor_title	""
+instructor_avatar	"https://ui-avatars.com/api/?name=RAJAB+WAMUU&background=random&size=128"
+instructor_description	""
+created_by	"usr_72d652019007df0e"
+category	"Graphic Design & Illustration"
+subcategory	""
+primary_taught	""
+level	"Beginner"
+price	0
+original_price	"0.00"
+rating	5
+review_count	"0"
+learners_enrolled	"0"
+students_enrolled	"0"
+image	""
+promo_video	""
+duration	""
+language	"English"
+is_published	"1"
+best_seller	"0"
+is_premium	"0"
+is_approved_by_admin	"0"
+is_deleted	"0"
+deleted_at	null
+created_at	"2026-10-20 16:36:12"
+updated_at	"2026-10-20 16:36:12"
+assigned_reviewer_id	null
+assigned_reviewer_name	null
+assigned_reviewer_email	null
+modules_count	"0"
+lessons_count	"0"
+createdBy	"usr_72d652019007df0e"
+isDeleted	false
+deletedAt	null
+isPublished	true
+bestSeller	false
+isPremium	false
+isApprovedByAdmin	false
+modulesCount	0
+lessonsCount	0
+originalPrice	0
+reviewCount	0
+learnersEnrolled	0
+primaryTaught	""
+promoVideo	""
+instructorDescription	""
+instructorAvatar	"https://ui-avatars.com/api/?name=RAJAB+WAMUU&background=random&size=128"
+instructorImage	"https://ui-avatars.com/api/?name=RAJAB+WAMUU&background=random&size=128"
+learningOutcomes	[]
+whatYouWillLearn	[]
+2	
+id	"course-1792412128195"
+title	"Full stack Developer"
+subtitle	"Full stack Developer"
+description	""
+instructor	"RAJAB WAMUU"
+instructor_title	""
+instructor_avatar	"https://ui-avatars.com/api/?name=RAJAB+WAMUU&background=random&size=128"
+instructor_description	""
+created_by	"usr_72d652019007df0e"
+category	"Web Development"
+subcategory	""
+primary_taught	""
+level	"Beginner"
+price	0
+original_price	"0.00"
+rating	5
+review_count	"0"
+learners_enrolled	"0"
+students_enrolled	"0"
+image	""
+promo_video	""
+duration	""
+language	"English"
+is_published	"1"
+best_seller	"0"
+is_premium	"0"
+is_approved_by_admin	"0"
+is_deleted	"0"
+deleted_at	null
+created_at	"2026-10-19 15:15:26"
+updated_at	"2026-10-19 15:15:26"
+assigned_reviewer_id	null
+assigned_reviewer_name	null
+assigned_reviewer_email	null
+modules_count	"0"
+lessons_count	"0"
+createdBy	"usr_72d652019007df0e"
+isDeleted	false
+deletedAt	null
+isPublished	true
+bestSeller	false
+isPremium	false
+isApprovedByAdmin	false
+modulesCount	0
+lessonsCount	0
+originalPrice	0
+reviewCount	0
+learnersEnrolled	0
+primaryTaught	""
+promoVideo	""
+instructorDescription	""
+instructorAvatar	"https://ui-avatars.com/api/?name=RAJAB+WAMUU&background=random&size=128"
+instructorImage	"https://ui-avatars.com/api/?name=RAJAB+WAMUU&background=random&size=128"
+learningOutcomes	[]
+whatYouWillLearn	[]
+3	
+id	"course-1792323007723"
+title	"Abagusii Language & Culture"
+subtitle	"For Beginners in Kenya & Abroad"
+description	""
+instructor	"Lameck Elijah"
+instructor_title	""
+instructor_avatar	"https://ui-avatars.com/api/?name=amazonbrish%40gmail.com&background=random&size=128"
+instructor_description	""
+created_by	"usr_f75aee6713a59d6a"
+category	"Language Learning"
+subcategory	""
+primary_taught	""
+level	"Beginner"
+price	0
+original_price	"0.00"
+rating	5
+review_count	"0"
+learners_enrolled	"0"
+students_enrolled	"0"
+image	""
+promo_video	""
+duration	""
+language	"English"
+is_published	"1"
+best_seller	"1"
+is_premium	"1"
+is_approved_by_admin	"1"
+is_deleted	"0"
+deleted_at	null
+created_at	"2026-10-18 14:30:08"
+updated_at	"2026-10-18 17:06:59"
+assigned_reviewer_id	null
+assigned_reviewer_name	null
+assigned_reviewer_email	null
+modules_count	"0"
+lessons_count	"0"
+createdBy	"usr_f75aee6713a59d6a"
+isDeleted	false
+deletedAt	null
+isPublished	true
+bestSeller	true
+isPremium	true
+isApprovedByAdmin	true
+modulesCount	0
+lessonsCount	0
+originalPrice	0
+reviewCount	0
+learnersEnrolled	0
+primaryTaught	""
+promoVideo	""
+instructorDescription	""
+instructorAvatar	"https://ui-avatars.com/api/?name=amazonbrish%40gmail.com&background=random&size=128"
+instructorImage	"https://ui-avatars.com/api/?name=amazonbrish%40gmail.com&background=random&size=128"
+learningOutcomes	[]
+whatYouWillLearn	[]
+4	
+id	"course-1792003718222"
+title	"youtube"
+subtitle	"youtube"
+description	"Are you an Omogusii who can't speak Ekegusii fluently? This complete masterclass takes you from zero to confident speaker, preserving our language, culture and wisdom. I am Eng. Lameck Otete Elijah, a native from Kisii, and I will teach you practical Ekegusii for real life — at home, market, garage, church and with elders.\n\nWho This Course Is For:\nThis course is for youth from Kisii living in Nairobi or diaspora in US, UK, Australia who want to reconnect with mother tongue; for parents who want their children to learn Ekegusii; for non-Abagusii teachers, doctors, engineers, business people working in Gusii land who want to build trust with locals; and for anyone passionate about preserving Kenyan native languages and getting hired as a local language expert, freelancer or translator.\n\nMandatory Bonuses and Guarantee:\nYou get Best Seller Course Status materials, 80+ Hours Video / Audio & Practical Materials, Premium Coaching Details from a native instructor, 24-Hour Support Guarantee to answer all questions, 100% Practical Content focused on daily conversation, and Real-Time Hands-On from Lecture 1. You will learn to Grow Agency, Build Strategy with ChatGPT to practice Ekegusii, Become Freelancer offering translation, and Get Hired as Expert in Gusii region. Our Languages. Our Culture. Our Future."
+instructor	"Lameck Elijah"
+instructor_title	"Principal Software Architect"
+instructor_avatar	"https://ui-avatars.com/api/?name=RAJAB+WAMUU&background=random&size=128"
+instructor_description	"FASHION DESIGN AND COSMETOLOGY DETAILS OF TRAINERS YET TO BE TRAINED IN CBET bvjfvbdshfgfifheowhdvrjhfwos;jdbncm,xmxnscn mjsns sjsdhs sjdhsdsdh "
+created_by	"usr_f75aee6713a59d6a"
+category	"IT Certifications"
+subcategory	""
+primary_taught	""
+level	"Beginner"
+price	3.850000000000000088817841970012523233890533447265625JS:3.85
+original_price	"0.00"
+rating	5
+review_count	"0"
+learners_enrolled	"0"
+students_enrolled	"0"
+image	""
+promo_video	"No file selected"
+duration	"1 hours"
+language	"English"
+is_published	"0"
+best_seller	"0"
+is_premium	"0"
+is_approved_by_admin	"0"
+is_deleted	"0"
+deleted_at	null
+created_at	"2026-10-14 21:48:38"
+updated_at	"2026-10-18 15:37:04"
+assigned_reviewer_id	null
+assigned_reviewer_name	null
+assigned_reviewer_email	null
+modules_count	"1"
+lessons_count	"2"
+createdBy	"usr_f75aee6713a59d6a"
+isDeleted	false
+deletedAt	null
+isPublished	false
+bestSeller	false
+isPremium	false
+isApprovedByAdmin	false
+modulesCount	1
+lessonsCount	2
+originalPrice	0
+reviewCount	0
+learnersEnrolled	0
+primaryTaught	""
+promoVideo	"No file selected"
+instructorDescription	"FASHION DESIGN AND COSMETOLOGY DETAILS OF TRAINERS YET TO BE TRAINED IN CBET bvjfvbdshfgfifheowhdvrjhfwos;jdbncm,xmxnscn mjsns sjsdhs sjdhsdsdh "
+instructorAvatar	"https://ui-avatars.com/api/?name=RAJAB+WAMUU&background=random&size=128"
+instructorImage	"https://ui-avatars.com/api/?name=RAJAB+WAMUU&background=random&size=128"
+learningOutcomes	[]
+whatYouWillLearn	[]
+5	
+id	"course-1791119606169"
+title	"support@uqlearn.org"
+subtitle	"support@uqlearn.org"
+description	""
+instructor	"User Educator"
+instructor_title	""
+instructor_avatar	"https://uqlearn.org/uploads/avatars/1789200809_35be4a2e52a1c6aab5ded8987ba23ee0.png"
+instructor_description	""
+created_by	"usr_2b71e08138dd7ae2"
+category	"Research"
+subcategory	""
+primary_taught	""
+level	"Beginner"
+price	49.99000000000000198951966012828052043914794921875JS:49.99
+original_price	"99.99"
+rating	5
+review_count	"0"
+learners_enrolled	"0"
+students_enrolled	"0"
+image	""
+promo_video	""
+duration	""
+language	"English"
+is_published	"1"
+best_seller	"0"
+is_premium	"0"
+is_approved_by_admin	"0"
+is_deleted	"0"
+deleted_at	null
+created_at	"2026-10-04 16:13:26"
+updated_at	"2026-10-04 16:13:26"
+assigned_reviewer_id	null
+assigned_reviewer_name	null
+assigned_reviewer_email	null
+modules_count	"0"
+lessons_count	"0"
+createdBy	"usr_2b71e08138dd7ae2"
+isDeleted	false
+deletedAt	null
+isPublished	true
+bestSeller	false
+isPremium	false
+isApprovedByAdmin	false
+modulesCount	0
+lessonsCount	0
+originalPrice	99.9899999999999948840923025272786617279052734375JS:99.99
+reviewCount	0
+learnersEnrolled	0
+primaryTaught	""
+promoVideo	""
+instructorDescription	""
+instructorAvatar	"https://uqlearn.org/uploads/avatars/1789200809_35be4a2e52a1c6aab5ded8987ba23ee0.png"
+instructorImage	"https://uqlearn.org/uploads/avatars/1789200809_35be4a2e52a1c6aab5ded8987ba23ee0.png"
+learningOutcomes	[]
+whatYouWillLearn	[]
+6	
+id	"course-1791116184092"
+title	"support@uqlearn.org"
+subtitle	"support@uqlearn.org"
+description	""
+instructor	"User Educator"
+instructor_title	""
+instructor_avatar	"https://uqlearn.org/uploads/avatars/1789200809_35be4a2e52a1c6aab5ded8987ba23ee0.png"
+instructor_description	""
+created_by	"usr_2b71e08138dd7ae2"
+category	"Development"
+subcategory	""
+primary_taught	""
+level	"Beginner"
+price	49.99000000000000198951966012828052043914794921875JS:49.99
+original_price	"99.99"
+rating	5
+review_count	"0"
+learners_enrolled	"0"
+students_enrolled	"0"
+image	""
+promo_video	""
+duration	""
+language	"English"
+is_published	"1"
+best_seller	"0"
+is_premium	"0"
+is_approved_by_admin	"0"
+is_deleted	"0"
+deleted_at	null
+created_at	"2026-10-04 15:16:28"
+updated_at	"2026-10-04 15:16:28"
+assigned_reviewer_id	null
+assigned_reviewer_name	null
+assigned_reviewer_email	null
+modules_count	"0"
+lessons_count	"0"
+createdBy	"usr_2b71e08138dd7ae2"
+isDeleted	false
+deletedAt	null
+isPublished	true
+bestSeller	false
+isPremium	false
+isApprovedByAdmin	false
+modulesCount	0
+lessonsCount	0
+originalPrice	99.9899999999999948840923025272786617279052734375JS:99.99
+reviewCount	0
+learnersEnrolled	0
+primaryTaught	""
+promoVideo	""
+instructorDescription	""
+instructorAvatar	"https://uqlearn.org/uploads/avatars/1789200809_35be4a2e52a1c6aab5ded8987ba23ee0.png"
+instructorImage	"https://uqlearn.org/uploads/avatars/1789200809_35be4a2e52a1c6aab5ded8987ba23ee0.png"
+learningOutcomes	[]
+whatYouWillLearn	[]
+7	
+id	"course-1791064806247"
+title	"GRAPHICS DESIGN"
+subtitle	"GRAPHICS DESIGN"
+description	""
+instructor	"User Educator"
+instructor_title	"Principal Software Architect"
+instructor_avatar	"https://uqlearn.org/uploads/avatars/1789200809_35be4a2e52a1c6aab5ded8987ba23ee0.png"
+instructor_description	""
+created_by	"usr_2b71e08138dd7ae2"
+category	"GRAPHICS DESIGN"
+subcategory	""
+primary_taught	""
+level	"Beginner"
+price	5
+original_price	"99.99"
+rating	5
+review_count	"0"
+learners_enrolled	"0"
+students_enrolled	"0"
+image	""
+promo_video	""
+duration	"1 hours"
+language	"English"
+is_published	"0"
+best_seller	"0"
+is_premium	"0"
+is_approved_by_admin	"0"
+is_deleted	"0"
+deleted_at	null
+created_at	"2026-10-04 01:00:08"
+updated_at	"2026-10-04 01:03:47"
+assigned_reviewer_id	null
+assigned_reviewer_name	null
+assigned_reviewer_email	null
+modules_count	"0"
+lessons_count	"0"
+createdBy	"usr_2b71e08138dd7ae2"
+isDeleted	false
+deletedAt	null
+isPublished	false
+bestSeller	false
+isPremium	false
+isApprovedByAdmin	false
+modulesCount	0
+lessonsCount	0
+originalPrice	99.9899999999999948840923025272786617279052734375JS:99.99
+reviewCount	0
+learnersEnrolled	0
+primaryTaught	""
+promoVideo	""
+instructorDescription	""
+instructorAvatar	"https://uqlearn.org/uploads/avatars/1789200809_35be4a2e52a1c6aab5ded8987ba23ee0.png"
+instructorImage	"https://uqlearn.org/uploads/avatars/1789200809_35be4a2e52a1c6aab5ded8987ba23ee0.png"
+learningOutcomes	[]
+whatYouWillLearn	[]
+8	
+id	"course-1790922895516"
+title	"tiktok"
+subtitle	"tiktok"
+description	""
+instructor	"User Educator"
+instructor_title	"Principal Software Architect"
+instructor_avatar	"https://uqlearn.org/uploads/avatars/1789200809_35be4a2e52a1c6aab5ded8987ba23ee0.png"
+instructor_description	""
+created_by	"usr_2b71e08138dd7ae2"
+category	"Development"
+subcategory	""
+primary_taught	""
+level	"Beginner"
+price	49.99000000000000198951966012828052043914794921875JS:49.99
+original_price	"99.99"
+rating	5
+review_count	"0"
+learners_enrolled	"0"
+students_enrolled	"0"
+image	""
+promo_video	""
+duration	"1 hours"
+language	"English"
+is_published	"1"
+best_seller	"0"
+is_premium	"0"
+is_approved_by_admin	"0"
+is_deleted	"0"
+deleted_at	null
+created_at	"2026-10-02 09:34:58"
+updated_at	"2026-10-04 01:02:46"
+assigned_reviewer_id	"rev-1790925928-577"
+assigned_reviewer_name	"George Nyamweya"
+assigned_reviewer_email	"geonny25@gmail.com"
+modules_count	"1"
+lessons_count	"1"
+createdBy	"usr_2b71e08138dd7ae2"
+isDeleted	false
+deletedAt	null
+isPublished	true
+bestSeller	false
+isPremium	false
+isApprovedByAdmin	false
+modulesCount	1
+lessonsCount	1
+originalPrice	99.9899999999999948840923025272786617279052734375JS:99.99
+reviewCount	0
+learnersEnrolled	0
+primaryTaught	""
+promoVideo	""
+instructorDescription	""
+instructorAvatar	"https://uqlearn.org/uploads/avatars/1789200809_35be4a2e52a1c6aab5ded8987ba23ee0.png"
+instructorImage	"https://uqlearn.org/uploads/avatars/1789200809_35be4a2e52a1c6aab5ded8987ba23ee0.png"
+learningOutcomes	[]
+whatYouWillLearn	[]
+9	
+id	"course-1790882981263"
+title	"kenya"
+subtitle	"kenya"
+description	""
+instructor	"User Educator"
+instructor_title	""
+instructor_avatar	"https://uqlearn.org/uploads/avatars/1789200809_35be4a2e52a1c6aab5ded8987ba23ee0.png"
+instructor_description	""
+created_by	"usr_2b71e08138dd7ae2"
+category	"Development"
+subcategory	""
+primary_taught	""
+level	"Beginner"
+price	49.99000000000000198951966012828052043914794921875JS:49.99
+original_price	"99.99"
+rating	5
+review_count	"0"
+learners_enrolled	"0"
+students_enrolled	"0"
+image	""
+promo_video	""
+duration	""
+language	"English"
+is_published	"1"
+best_seller	"0"
+is_premium	"0"
+is_approved_by_admin	"0"
+is_deleted	"0"
+deleted_at	null
+created_at	"2026-10-01 22:29:43"
+updated_at	"2026-10-02 10:33:38"
+assigned_reviewer_id	"rev-1790925928-577"
+assigned_reviewer_name	"George Nyamweya"
+assigned_reviewer_email	"geonny25@gmail.com"
+modules_count	"0"
+lessons_count	"0"
+createdBy	"usr_2b71e08138dd7ae2"
+isDeleted	false
+deletedAt	null
+isPublished	true
+bestSeller	false
+isPremium	false
+isApprovedByAdmin	false
+modulesCount	0
+lessonsCount	0
+originalPrice	99.9899999999999948840923025272786617279052734375JS:99.99
+reviewCount	0
+learnersEnrolled	0
+primaryTaught	""
+promoVideo	""
+instructorDescription	""
+instructorAvatar	"https://uqlearn.org/uploads/avatars/1789200809_35be4a2e52a1c6aab5ded8987ba23ee0.png"
+instructorImage	"https://uqlearn.org/uploads/avatars/1789200809_35be4a2e52a1c6aab5ded8987ba23ee0.png"
+learningOutcomes	[]
+whatYouWillLearn	[]
+10	
+id	"course-1790759368731"
+title	"TIKTOK"
+subtitle	"TIKTOK"
+description	""
+instructor	"User Educator"
+instructor_title	""
+instructor_avatar	"https://uqlearn.org/uploads/avatars/1789200809_35be4a2e52a1c6aab5ded8987ba23ee0.png"
+instructor_description	""
+created_by	"usr_2b71e08138dd7ae2"
+category	"Development"
+subcategory	""
+primary_taught	""
+level	"Beginner"
+price	49.99000000000000198951966012828052043914794921875JS:49.99
+original_price	"99.99"
+rating	5
+review_count	"0"
+learners_enrolled	"0"
+students_enrolled	"0"
+image	""
+promo_video	""
+duration	""
+language	"English"
+is_published	"1"
+best_seller	"0"
+is_premium	"0"
+is_approved_by_admin	"0"
+is_deleted	"0"
+deleted_at	null
+created_at	"2026-09-30 12:09:27"
+updated_at	"2026-10-02 10:33:33"
+assigned_reviewer_id	"rev-1790925928-577"
+assigned_reviewer_name	"George Nyamweya"
+assigned_reviewer_email	"geonny25@gmail.com"
+modules_count	"0"
+lessons_count	"0"
+createdBy	"usr_2b71e08138dd7ae2"
+isDeleted	false
+deletedAt	null
+isPublished	true
+bestSeller	false
+isPremium	false
+isApprovedByAdmin	false
+modulesCount	0
+lessonsCount	0
+originalPrice	99.9899999999999948840923025272786617279052734375JS:99.99
+reviewCount	0
+learnersEnrolled	0
+primaryTaught	""
+promoVideo	""
+instructorDescription	""
+instructorAvatar	"https://uqlearn.org/uploads/avatars/1789200809_35be4a2e52a1c6aab5ded8987ba23ee0.png"
+instructorImage	"https://uqlearn.org/uploads/avatars/1789200809_35be4a2e52a1c6aab5ded8987ba23ee0.png"
+learningOutcomes	[]
+whatYouWillLearn	[]
+11	
+id	"course-1790753970515"
+title	"tiktok"
+subtitle	"tiktok"
+description	""
+instructor	"User Educator"
+instructor_title	"Principal Software Architect"
+instructor_avatar	"https://uqlearn.org/uploads/avatars/1789200809_35be4a2e52a1c6aab5ded8987ba23ee0.png"
+instructor_description	""
+created_by	"usr_2b71e08138dd7ae2"
+category	"Development"
+subcategory	""
+primary_taught	""
+level	"Beginner"
+price	27.46000000000000085265128291212022304534912109375JS:27.46
+original_price	"76.92"
+rating	5
+review_count	"0"
+learners_enrolled	"0"
+students_enrolled	"0"
+image	""
+promo_video	""
+duration	"1 hours"
+language	"English"
+is_published	"0"
+best_seller	"0"
+is_premium	"0"
+is_approved_by_admin	"0"
+is_deleted	"0"
+deleted_at	null
+created_at	"2026-09-30 10:39:30"
+updated_at	"2026-09-30 12:39:37"
+assigned_reviewer_id	null
+assigned_reviewer_name	null
+assigned_reviewer_email	null
+modules_count	"0"
+lessons_count	"0"
+createdBy	"usr_2b71e08138dd7ae2"
+isDeleted	false
+deletedAt	null
+isPublished	false
+bestSeller	false
+isPremium	false
+isApprovedByAdmin	false
+modulesCount	0
+lessonsCount	0
+originalPrice	76.9200000000000017053025658242404460906982421875JS:76.92
+reviewCount	0
+learnersEnrolled	0
+primaryTaught	""
+promoVideo	""
+instructorDescription	""
+instructorAvatar	"https://uqlearn.org/uploads/avatars/1789200809_35be4a2e52a1c6aab5ded8987ba23ee0.png"
+instructorImage	"https://uqlearn.org/uploads/avatars/1789200809_35be4a2e52a1c6aab5ded8987ba23ee0.png"
+learningOutcomes	[]
+whatYouWillLearn	[]
+12	
+id	"course-1790752677775"
+title	"youtube"
+subtitle	"youtube"
+description	""
+instructor	"User Educator"
+instructor_title	"Principal Software Architect"
+instructor_avatar	"https://uqlearn.org/uploads/avatars/1789200809_35be4a2e52a1c6aab5ded8987ba23ee0.png"
+instructor_description	""
+created_by	"usr_2b71e08138dd7ae2"
+category	"Development"
+subcategory	""
+primary_taught	""
+level	"Beginner"
+price	49.99000000000000198951966012828052043914794921875JS:49.99
+original_price	"99.99"
+rating	5
+review_count	"0"
+learners_enrolled	"0"
+students_enrolled	"0"
+image	""
+promo_video	""
+duration	"1 hours"
+language	"English"
+is_published	"0"
+best_seller	"0"
+is_premium	"0"
+is_approved_by_admin	"0"
+is_deleted	"0"
+deleted_at	null
+created_at	"2026-09-30 10:17:58"
+updated_at	"2026-09-30 10:39:36"
+assigned_reviewer_id	null
+assigned_reviewer_name	null
+assigned_reviewer_email	null
+modules_count	"0"
+lessons_count	"0"
+createdBy	"usr_2b71e08138dd7ae2"
+isDeleted	false
+deletedAt	null
+isPublished	false
+bestSeller	false
+isPremium	false
+isApprovedByAdmin	false
+modulesCount	0
+lessonsCount	0
+originalPrice	99.9899999999999948840923025272786617279052734375JS:99.99
+reviewCount	0
+learnersEnrolled	0
+primaryTaught	""
+promoVideo	""
+instructorDescription	""
+instructorAvatar	"https://uqlearn.org/uploads/avatars/1789200809_35be4a2e52a1c6aab5ded8987ba23ee0.png"
+instructorImage	"https://uqlearn.org/uploads/avatars/1789200809_35be4a2e52a1c6aab5ded8987ba23ee0.png"
+learningOutcomes	[]
+whatYouWillLearn	[]
+13	
+id	"course-1790404597288"
+title	"Youtube"
+subtitle	"Youtube"
+description	"A YouTube monetization course is designed to equip aspiring content creators and digital entrepreneurs with the strategies needed to transform their channels into profitable, sustainable businesses. Learners are guided through the fundamental eligibility milestones of the YouTube Partner Program, mastering how to optimize video content, leverage search engine optimization (SEO), and maximize audience retention to drive consistent ad revenue.\n\nBeyond standard ad earnings, the curriculum delves into diverse revenue streams such as channel memberships, fan funding features, brand sponsorships, and affiliate marketing. Students gain actionable insights into analyzing channel metrics, avoiding common copyright pitfalls, and building a diversified digital brand that generates reliable income long-term."
+instructor	"User Educator"
+instructor_title	"Principal Software Architect"
+instructor_avatar	"https://uqlearn.org/uploads/avatars/1789200809_35be4a2e52a1c6aab5ded8987ba23ee0.png"
+instructor_description	""
+created_by	"usr_2b71e08138dd7ae2"
+category	"Design"
+subcategory	""
+primary_taught	""
+level	"Beginner"
+price	14
+original_price	"99.99"
+rating	5
+review_count	"1206"
+learners_enrolled	"0"
+students_enrolled	"0"
+image	"https://uqlearn.org/uploads/courses/1790446968_d7c6fac34ff10a6e6868744f9b57baed.png"
+promo_video	""
+duration	"1 hours"
+language	"English"
+is_published	"1"
+best_seller	"1"
+is_premium	"1"
+is_approved_by_admin	"1"
+is_deleted	"0"
+deleted_at	null
+created_at	"2026-09-26 09:36:39"
+updated_at	"2026-09-26 21:54:51"
+assigned_reviewer_id	null
+assigned_reviewer_name	null
+assigned_reviewer_email	null
+modules_count	"1"
+lessons_count	"1"
+createdBy	"usr_2b71e08138dd7ae2"
+isDeleted	false
+deletedAt	null
+isPublished	true
+bestSeller	true
+isPremium	true
+isApprovedByAdmin	true
+modulesCount	1
+lessonsCount	1
+originalPrice	99.9899999999999948840923025272786617279052734375JS:99.99
+reviewCount	1206
+learnersEnrolled	0
+primaryTaught	""
+promoVideo	""
+instructorDescription	""
+instructorAvatar	"https://uqlearn.org/uploads/avatars/1789200809_35be4a2e52a1c6aab5ded8987ba23ee0.png"
+instructorImage	"https://uqlearn.org/uploads/avatars/1789200809_35be4a2e52a1c6aab5ded8987ba23ee0.png"
+learningOutcomes	[]
+whatYouWillLearn	[]
+14	
+id	"course-1789748988342"
+title	"jmkm mkomom"
+subtitle	"kkmkmkmko"
+description	""
+instructor	"User"
+instructor_title	""
+instructor_avatar	"https://ui-avatars.com/api/?name=obondokevin12%40gmail.com&background=random&size=128"
+instructor_description	""
+created_by	"usr_6b32f76b3ca0f023"
+category	"Development"
+subcategory	""
+primary_taught	""
+level	"Beginner"
+price	49.99000000000000198951966012828052043914794921875JS:49.99
+original_price	"99.99"
+rating	5
+review_count	"0"
+learners_enrolled	"0"
+students_enrolled	"0"
+image	""
+promo_video	""
+duration	""
+language	"English"
+is_published	"1"
+best_seller	"1"
+is_premium	"1"
+is_approved_by_admin	"1"
+is_deleted	"0"
+deleted_at	null
+created_at	"2026-09-18 19:29:52"
+updated_at	"2026-09-20 08:54:09"
+assigned_reviewer_id	null
+assigned_reviewer_name	null
+assigned_reviewer_email	null
+modules_count	"0"
+lessons_count	"0"
+createdBy	"usr_6b32f76b3ca0f023"
+isDeleted	false
+deletedAt	null
+isPublished	true
+bestSeller	true
+isPremium	true
+isApprovedByAdmin	true
+modulesCount	0
+lessonsCount	0
+originalPrice	99.9899999999999948840923025272786617279052734375JS:99.99
+reviewCount	0
+learnersEnrolled	0
+primaryTaught	""
+promoVideo	""
+instructorDescription	""
+instructorAvatar	"https://ui-avatars.com/api/?name=obondokevin12%40gmail.com&background=random&size=128"
+instructorImage	"https://ui-avatars.com/api/?name=obondokevin12%40gmail.com&background=random&size=128"
+learningOutcomes	[]
+whatYouWillLearn	[]
+15	
+id	"course-1789559622102"
+title	"IGUUFYYU"
+subtitle	"IGUUFYYU"
+description	""
+instructor	"User"
+instructor_title	""
+instructor_avatar	"https://ui-avatars.com/api/?name=kennedyochieng%40kisiipoly.ac.ke&background=random&size=128"
+instructor_description	""
+created_by	"usr_9b0b0a5b4504d393"
+category	"Design"
+subcategory	""
+primary_taught	""
+level	"Beginner"
+price	49.99000000000000198951966012828052043914794921875JS:49.99
+original_price	"99.99"
+rating	5
+review_count	"0"
+learners_enrolled	"0"
+students_enrolled	"0"
+image	""
+promo_video	""
+duration	""
+language	"English"
+is_published	"1"
+best_seller	"0"
+is_premium	"1"
+is_approved_by_admin	"1"
+is_deleted	"0"
+deleted_at	null
+created_at	"2026-09-16 14:53:41"
+updated_at	"2026-09-20 15:41:39"
+assigned_reviewer_id	null
+assigned_reviewer_name	null
+assigned_reviewer_email	null
+modules_count	"0"
+lessons_count	"0"
+createdBy	"usr_9b0b0a5b4504d393"
+isDeleted	false
+deletedAt	null
+isPublished	true
+bestSeller	false
+isPremium	true
+isApprovedByAdmin	true
+modulesCount	0
+lessonsCount	0
+originalPrice	99.9899999999999948840923025272786617279052734375JS:99.99
+reviewCount	0
+learnersEnrolled	0
+primaryTaught	""
+promoVideo	""
+instructorDescription	""
+instructorAvatar	"https://ui-avatars.com/api/?name=kennedyochieng%40kisiipoly.ac.ke&background=random&size=128"
+instructorImage	"https://ui-avatars.com/api/?name=kennedyochieng%40kisiipoly.ac.ke&background=random&size=128"
+learningOutcomes	[]
+whatYouWillLearn	[]
+16	
+id	"course-1789559534654"
+title	"IGUUFYYU"
+subtitle	"IGUUFYYU"
+description	""
+instructor	"User"
+instructor_title	""
+instructor_avatar	"https://ui-avatars.com/api/?name=kennedyochieng%40kisiipoly.ac.ke&background=random&size=128"
+instructor_description	""
+created_by	"usr_9b0b0a5b4504d393"
+category	"Development"
+subcategory	""
+primary_taught	""
+level	"Beginner"
+price	49.99000000000000198951966012828052043914794921875JS:49.99
+original_price	"99.99"
+rating	5
+review_count	"0"
+learners_enrolled	"0"
+students_enrolled	"0"
+image	""
+promo_video	""
+duration	""
+language	"English"
+is_published	"1"
+best_seller	"0"
+is_premium	"0"
+is_approved_by_admin	"1"
+is_deleted	"0"
+deleted_at	null
+created_at	"2026-09-16 14:52:13"
+updated_at	"2026-10-04 00:54:04"
+assigned_reviewer_id	"rev-1790925928-577"
+assigned_reviewer_name	"George Nyamweya"
+assigned_reviewer_email	"geonny25@gmail.com"
+modules_count	"0"
+lessons_count	"0"
+createdBy	"usr_9b0b0a5b4504d393"
+isDeleted	false
+deletedAt	null
+isPublished	true
+bestSeller	false
+isPremium	false
+isApprovedByAdmin	true
+modulesCount	0
+lessonsCount	0
+originalPrice	99.9899999999999948840923025272786617279052734375JS:99.99
+reviewCount	0
+learnersEnrolled	0
+primaryTaught	""
+promoVideo	""
+instructorDescription	""
+instructorAvatar	"https://ui-avatars.com/api/?name=kennedyochieng%40kisiipoly.ac.ke&background=random&size=128"
+instructorImage	"https://ui-avatars.com/api/?name=kennedyochieng%40kisiipoly.ac.ke&background=random&size=128"
+learningOutcomes	[]
+whatYouWillLearn	[]
+17	
+id	"course-1789488681769"
+title	"Master in Python"
+subtitle	"Python from zero to hero"
+description	""
+instructor	"User"
+instructor_title	"Principal Software Architect"
+instructor_avatar	"https://ui-avatars.com/api/?name=amazonbrish%40gmail.com&background=random&size=128"
+instructor_description	""
+created_by	"usr_f75aee6713a59d6a"
+category	"Development"
+subcategory	""
+primary_taught	""
+level	"Beginner"
+price	39.99000000000000198951966012828052043914794921875JS:39.99
+original_price	"99.99"
+rating	5
+review_count	"10"
+learners_enrolled	"0"
+students_enrolled	"0"
+image	"https://uqlearn.org/uploads/courses/1788472849_ea81a0e058d3e03199b514937351b73d.png"
+promo_video	""
+duration	"1 hours"
+language	"English"
+is_published	"1"
+best_seller	"1"
+is_premium	"1"
+is_approved_by_admin	"0"
+is_deleted	"0"
+deleted_at	null
+created_at	"2026-09-15 19:11:23"
+updated_at	"2026-10-04 00:30:37"
+assigned_reviewer_id	"rev-002"
+assigned_reviewer_name	"Michael Omare"
+assigned_reviewer_email	"michaelomare045@gmail.com"
+modules_count	"0"
+lessons_count	"0"
+createdBy	"usr_f75aee6713a59d6a"
+isDeleted	false
+deletedAt	null
+isPublished	true
+bestSeller	true
+isPremium	true
+isApprovedByAdmin	false
+modulesCount	0
+lessonsCount	0
+originalPrice	99.9899999999999948840923025272786617279052734375JS:99.99
+reviewCount	10
+learnersEnrolled	0
+primaryTaught	""
+promoVideo	""
+instructorDescription	""
+instructorAvatar	"https://ui-avatars.com/api/?name=amazonbrish%40gmail.com&background=random&size=128"
+instructorImage	"https://ui-avatars.com/api/?name=amazonbrish%40gmail.com&background=random&size=128"
+learningOutcomes	[]
+whatYouWillLearn	[]
+18	
+id	"course-1788473456498"
+title	"Canva Mastery"
+subtitle	"Canva Mastery: Design Like a Pro give me a banner of this"
+description	`Canva Mastery: Design Like a Pro — From Zero to Expert Designer!\n\nGet access to our Best Seller Canva Course (50+ hours of video material included on Canva Design), including Premium Coaching (All your questions answered within 24 hours).\n\nThis is a 100% Practical Course — Get Ready For Real-Time Hands-On Experience from the First Lecture!\n\nTake A Look at These Top Rated Reviews...\n\n"I had zero design experience. After this course, I built my entire brand identity on Canva. Best investment ever!" — Sarah Mitchell\n\n"This is by far the most comprehensive Canva course online. Every tool, every trick, explained perfectly." — David Okafor\n\n"You just helped me start my freelance design business. Can't thank you enough!" — Priya Sharma\n\n"The instructors make everything so simple. I finally feel confident designing anything." — James Whitfield\n\nCourse Goals:\n\n- Master Canva from Beginner to Pro.\n- Design Social Media Graphics with Confidence.\n- Build a Freelance Design Business with Canva.\n- Create Professional Branding & Marketing Materials.\n\nYou'll Learn to:\n\n- Navigate Canva Like a Pro.\n- Design Social Media Posts, Reels & Stories.\n- Create Logos, Brand Kits & Business Cards.\n- Build Presentations, Posters & Flyers.\n- Design YouTube Thumbnails & Channel Art.\n- Master Canva AI Tools & Magic Studio.\n- Use Templates, Grids & Custom Dimensions.\n- Export & Share Designs Professionally.\n\nThe Complete Canva Mastery Guide Includes:\n\n- Canva Interface & Tools Mastery.\n- Typography & Font Pairing.\n- Color Theory & Brand Palettes.\n- Canva AI & Magic Studio Tools.\n- Social Media Graphics (Instagram, Facebook, LinkedIn, Pinterest).\n- YouTube Thumbnails & Banners.\n- Logo & Brand Identity Design.\n- Presentations & Pitch Decks.\n- Posters, Flyers & Brochures.\n- Business Cards & Stationery.\n- Video Editing & Animations in Canva.\n- Canva Website Builder.\n- Client Work & Freelancing with Canva.\n- Portfolio Building & Pricing Your Services.\n\n- Lifetime Access to Future Updates\n- Tools, Articles & Templates\n- Quick & Helpful Support in the Q&A section\n- Downloadable Certificate of Completion\n- 30 Day Money Back Guarantee (No Questions Asked)\n\nThis course will require you to sign up for a free Canva account if you don't already have one.\n\nWho this course is for:\n\n- Beginners with No Design Experience.\n- Social Media Managers.\n- Freelancers & Side Hustlers.\n- Small Business Owners.\n- Content Creators & Influencers.\n- Marketing Professionals.\n- Students & Job Seekers.\n- Anyone Wanting to Design Like a Pro.`
+instructor	"mike kenyanya"
+instructor_title	"Principal Software Architect"
+instructor_avatar	"https://uqlearn.org/uploads/avatars/1788506592_b611f888a0efa23385805324c5f414f5.jpg"
+instructor_description	"I'm a full-stack software engineer with over eight years of experience building web and mobile applications, primarily in JavaScript, TypeScript, Python, and React. I've worked with startups and large teams, shipped production systems used by thousands of people, and mentored more than 150 junior developers along the way. My courses focus on practical, project-based learning, so every lesson ends with something you can actually build and use. I believe anyone can learn to code with the right structure, clear explanations, and enough patience. My goal is to help you move from confused to confident, one small win at a time."
+created_by	"usr_f801a5714e86deb8"
+category	"Design"
+subcategory	""
+primary_taught	""
+level	"Beginner"
+price	0.200000000000000011102230246251565404236316680908203125JS:0.2
+original_price	"99.99"
+rating	5
+review_count	"0"
+learners_enrolled	"0"
+students_enrolled	"0"
+image	"https://uqlearn.org/uploads/courses/1788472849_ea81a0e058d3e03199b514937351b73d.png"
+promo_video	"Microservices with Node JS and React by Stephen Grider (Udemy Course Review) .mp4"
+duration	"1 hours"
+language	"English"
+is_published	"0"
+best_seller	"0"
+is_premium	"0"
+is_approved_by_admin	"0"
+is_deleted	"0"
+deleted_at	null
+created_at	"2026-09-04 01:11:00"
+updated_at	"2026-10-21 22:33:20"
+assigned_reviewer_id	"rev-1790314691-216"
+assigned_reviewer_name	"Wamuu Rajab"
+assigned_reviewer_email	"wamuurajab@gmail.com"
+modules_count	"2"
+lessons_count	"3"
+createdBy	"usr_f801a5714e86deb8"
+isDeleted	false
+deletedAt	null
+isPublished	false
+bestSeller	false
+isPremium	false
+isApprovedByAdmin	false
+modulesCount	2
+lessonsCount	3
+originalPrice	99.9899999999999948840923025272786617279052734375JS:99.99
+reviewCount	0
+learnersEnrolled	0
+primaryTaught	""
+promoVideo	"Microservices with Node JS and React by Stephen Grider (Udemy Course Review) .mp4"
+instructorDescription	"I'm a full-stack software engineer with over eight years of experience building web and mobile applications, primarily in JavaScript, TypeScript, Python, and React. I've worked with startups and large teams, shipped production systems used by thousands of people, and mentored more than 150 junior developers along the way. My courses focus on practical, project-based learning, so every lesson ends with something you can actually build and use. I believe anyone can learn to code with the right structure, clear explanations, and enough patience. My goal is to help you move from confused to confident, one small win at a time."
+instructorAvatar	"https://uqlearn.org/uploads/avatars/1788506592_b611f888a0efa23385805324c5f414f5.jpg"
+instructorImage	"https://uqlearn.org/uploads/avatars/1788506592_b611f888a0efa23385805324c5f414f5.jpg"
+learningOutcomes	[]
+whatYouWillLearn	[]
+count	19

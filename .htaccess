@@ -1,0 +1,99 @@
+DirectoryIndex index.html admin.html instructor.html rev.html
+
+# Fallback error documents so server-level 404s route back into the SPA
+ErrorDocument 404 /index.html
+
+<IfModule mod_mime.c>
+  AddType application/javascript .js .mjs
+  AddType text/css .css
+  AddType image/svg+xml .svg
+  AddType image/webp .webp
+  AddType application/json .json
+  AddType font/woff .woff
+  AddType font/woff2 .woff2
+</IfModule>
+
+<IfModule mod_headers.c>
+  # Apply dynamic CORS headers to static assets and media files
+  <FilesMatch "\.(ttf|ttc|otf|eot|woff|woff2|font|css|js|mjs|json|png|jpg|jpeg|gif|webp|svg|ico|mp4|webm|mov|mkv|avi|ts|pdf)$">
+    SetEnvIfNoCase Origin "(.+)" CORS_ORIGIN=$1
+    Header always set Access-Control-Allow-Origin "%{CORS_ORIGIN}e" env=CORS_ORIGIN
+    Header always set Access-Control-Allow-Credentials "true" env=CORS_ORIGIN
+    Header always set Access-Control-Allow-Origin "*" "expr=-z %{ENV:CORS_ORIGIN}"
+    Header always set Access-Control-Allow-Methods "GET, HEAD, OPTIONS"
+    Header always set Access-Control-Expose-Headers "Content-Length, Content-Range, Range, Accept-Ranges"
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  
+  # --- 1. Subdomain to Subfolder Rewrite (exclude /api/ and /uploads/) ---
+  # instructor.uqlearn.org -> /instructor/
+  RewriteCond %{HTTP_HOST} ^instructor\.uqlearn\.org [NC]
+  RewriteCond %{REQUEST_URI} !^/instructor/
+  RewriteCond %{REQUEST_URI} !^/api/ [NC]
+  RewriteCond %{REQUEST_URI} !^/uploads/ [NC]
+  RewriteRule ^(.*)$ instructor/$1 [L]
+
+  # (en|admin).uqlearn.org -> /admin/
+  RewriteCond %{HTTP_HOST} ^(en|admin)\.uqlearn\.org [NC]
+  RewriteCond %{REQUEST_URI} !^/admin/
+  RewriteCond %{REQUEST_URI} !^/api/ [NC]
+  RewriteCond %{REQUEST_URI} !^/uploads/ [NC]
+  RewriteRule ^(.*)$ admin/$1 [L]
+
+  # (rev|reviewer|... ).uqlearn.org -> /rev/
+  RewriteCond %{HTTP_HOST} ^(rev|reviewer|review|coursereviewer)\.uqlearn\.org [NC]
+  RewriteCond %{REQUEST_URI} !^/rev/
+  RewriteCond %{REQUEST_URI} !^/api/ [NC]
+  RewriteCond %{REQUEST_URI} !^/uploads/ [NC]
+  RewriteRule ^(.*)$ rev/$1 [L]
+
+  # --- 2. Normalize any /api/proxy/v1/* or subdomain /api/* paths to root /api/v1/* ---
+  RewriteRule ^(?:instructor/|admin/|rev/)?api/proxy/v1/(.*)$ api/v1/$1 [QSA,L]
+  RewriteRule ^(?:instructor/|admin/|rev/)?api/v1/(.*)$ api/v1/$1 [QSA]
+
+  # --- 3. Allow direct access to real existing files and directories ---
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # --- 4. API Rewrite & Direct Handling ---
+  RewriteRule ^api/v1/study-plan\.php$ api/v1/study-planner.php [QSA,L]
+  RewriteRule ^api/v1/onboarding\.php$ api/v1/instructor-onboarding.php [QSA,L]
+  RewriteRule ^api/v1/modules\.php$ api/v1/course-modules.php [QSA,L]
+  RewriteRule ^api/v1/messages\.php$ api/v1/instructor-messages.php [QSA,L]
+  RewriteRule ^api/v1/reviewer-assignments\.php$ api/v1/reviewers.php [QSA,L]
+  RewriteCond %{DOCUMENT_ROOT}/api/v1/$1.php -f
+  RewriteRule ^api/v1/(.+?)/?$ api/v1/$1.php [QSA,L]
+  RewriteRule ^api/v1/courses/([a-zA-Z0-9_\-]+)/?$ api/v1/courses.php?id=$1 [QSA,L]
+
+  RewriteCond %{REQUEST_URI} ^/api/ [NC]
+  RewriteRule ^ - [L]
+
+  # --- 4. Never rewrite missing static assets to HTML (prevents MIME mismatch / CORB) ---
+  RewriteCond %{REQUEST_URI} \.(js|mjs|css|png|jpg|jpeg|gif|webp|svg|ico|woff|woff2|ttf|eot|json|map)$ [NC]
+  RewriteRule ^ - [R=404,L]
+
+  # --- 5. SPA Fallback for Subdomains ---
+  # If on instructor subdomain, fallback to instructor.html
+  RewriteCond %{HTTP_HOST} ^instructor\.uqlearn\.org [NC]
+  RewriteRule ^ instructor/instructor.html [L]
+
+  # If on admin subdomain, fallback to admin.html
+  RewriteCond %{HTTP_HOST} ^(en|admin)\.uqlearn\.org [NC]
+  RewriteRule ^ admin/admin.html [L]
+
+  # If on reviewer subdomain, fallback to rev.html
+  RewriteCond %{HTTP_HOST} ^(rev|reviewer|review|coursereviewer)\.uqlearn\.org [NC]
+  RewriteRule ^ rev/rev.html [L]
+
+  # --- 6. Main Domain SPA Fallback (uqlearn.org) ---
+  # Rewrites all SPA client-side routes (e.g. /dashboard, /courses, /learn, etc.) to index.html
+  # while keeping the full URL and query string preserved in the browser
+  RewriteCond %{REQUEST_URI} !^/uploads/ [NC]
+  RewriteCond %{REQUEST_URI} !^/api/ [NC]
+  RewriteRule ^ index.html [L]
+</IfModule>

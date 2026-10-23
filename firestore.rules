@@ -1,0 +1,132 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Master Gate: Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'michaelomare045@gmail.com' ||
+        request.auth.token.email == 'omaremichael8808@gmail.com' ||
+        request.auth.token.email == 'wamuurajab@gmail.com'
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Entity Validations
+    function isValidUser(data) {
+      return data.keys().hasAll(['id', 'email', 'role']) &&
+             data.keys().hasOnly(['id', 'firebaseUid', 'name', 'email', 'role', 'avatar', 'enrolledCourseIds', 'createdAt', 'updatedAt']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.email is string && data.email.size() <= 128 &&
+             data.role in ['learner', 'instructor', 'admin'] &&
+             (!('name' in data) || (data.name is string && data.name.size() <= 100)) &&
+             (!('avatar' in data) || (data.avatar is string && data.avatar.size() <= 512)) &&
+             (!('enrolledCourseIds' in data) || data.enrolledCourseIds is list);
+    }
+
+    function isValidCourse(data) {
+      return data.keys().hasAll(['id', 'title', 'instructor', 'price', 'category']) &&
+             data.keys().hasOnly(['id', 'title', 'subtitle', 'description', 'instructor', 'instructorId', 'price', 'originalPrice', 'category', 'level', 'image', 'isApprovedByAdmin', 'createdAt', 'updatedAt']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.title is string && data.title.size() <= 200 &&
+             data.instructor is string && data.instructor.size() <= 128 &&
+             data.price is number &&
+             data.category is string &&
+             (!('subtitle' in data) || (data.subtitle is string && data.subtitle.size() <= 300)) &&
+             (!('level' in data) || data.level in ['Beginner', 'Intermediate', 'Expert', 'All Levels']);
+    }
+
+    function isValidNote(data) {
+      return data.keys().hasAll(['id', 'userId', 'lessonId', 'timestamp', 'content', 'createdAt']) &&
+             data.keys().hasOnly(['id', 'userId', 'lessonId', 'timestamp', 'content', 'createdAt']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.userId is string && data.userId == request.auth.uid &&
+             data.lessonId is string && data.lessonId.size() <= 128 &&
+             data.timestamp is number &&
+             data.content is string && data.content.size() <= 2000;
+    }
+
+    function isValidErrorLog(data) {
+      return data.keys().hasAll(['endpoint', 'url', 'method', 'status', 'errorMessage', 'domain', 'timestamp', 'createdAt']) &&
+             data.keys().hasOnly(['endpoint', 'url', 'originalUrl', 'method', 'status', 'statusText', 'errorMessage', 'responsePreview', 'domain', 'userId', 'timestamp', 'createdAt']) &&
+             data.endpoint is string && data.endpoint.size() <= 500 &&
+             data.url is string && data.url.size() <= 1000 &&
+             data.method is string && data.method.size() <= 20 &&
+             data.status is number &&
+             data.errorMessage is string && data.errorMessage.size() <= 2000 &&
+             data.domain is string && data.domain.size() <= 100 &&
+             data.timestamp is string && data.timestamp.size() <= 64 &&
+             (!('originalUrl' in data) || (data.originalUrl is string && data.originalUrl.size() <= 1000)) &&
+             (!('statusText' in data) || (data.statusText is string && data.statusText.size() <= 200)) &&
+             (!('responsePreview' in data) || (data.responsePreview is string && data.responsePreview.size() <= 2000)) &&
+             (!('userId' in data) || (data.userId is string && data.userId.size() <= 128));
+    }
+
+    // Collection Rules
+    match /users/{userId} {
+      allow get: if isSignedIn() && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && isOwner(userId) && isValidUser(incoming()) && incoming().createdAt == request.time;
+      allow update: if isSignedIn() && (
+        (isOwner(userId) && isValidUser(incoming()) && incoming().updatedAt == request.time && 
+         incoming().diff(existing()).affectedKeys().hasOnly(['name', 'avatar', 'enrolledCourseIds', 'updatedAt'])) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /courses/{courseId} {
+      allow read: if true; // Public access to courses
+      allow create: if isSignedIn() && (
+        (incoming().role == 'instructor' || isAdmin()) && isValidCourse(incoming()) && incoming().createdAt == request.time
+      );
+      allow update: if isSignedIn() && (
+        (isOwner(existing().instructorId) && isValidCourse(incoming()) && incoming().updatedAt == request.time) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /notes/{noteId} {
+      allow get: if isSignedIn() && (isOwner(resource.data.userId) || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && (incoming().userId == request.auth.uid) && isValidNote(incoming()) && incoming().createdAt == request.time;
+      allow update: if false; 
+      allow delete: if isSignedIn() && (isOwner(resource.data.userId) || isAdmin());
+    }
+
+    match /error_logs/{logId} {
+      allow get, list: if isAdmin();
+      allow create: if isValidErrorLog(incoming()) && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+  }
+}

@@ -1,0 +1,18 @@
+# Apache / LiteSpeed Configuration for UQlearn API v2
+ErrorDocument 404 "{\"success\":false,\"message\":\"API v2 endpoint not found\"}"
+
+<IfModule mod_headers.c>
+  SetEnvIfNoCase Origin "(.+)" CORS_ORIGIN=$1
+  Header always set Access-Control-Allow-Origin "%{CORS_ORIGIN}e" env=CORS_ORIGIN
+  Header always set Access-Control-Allow-Credentials "true" env=CORS_ORIGIN
+  Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH, HEAD"
+  Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, X-User-Id, X-User-Email, Accept, Origin, Content-Range, Range, X-Upload-Id, X-File-Name, X-File-Size, X-Folder, X-Sync-Key, X-Deploy-Key, Cache-Control, Pragma, If-Modified-Since, DNT, Keep-Alive, User-Agent"
+  Header always set Access-Control-Expose-Headers "Content-Range, Range, Location, X-Upload-Id, Content-Length, X-User-Id, Content-Type"
+  Header always set Access-Control-Max-Age "86400"
+</IfModule>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{REQUEST_METHOD} OPTIONS
+  RewriteRule ^(.*)$ - [R=200,L]
+</IfModule>
