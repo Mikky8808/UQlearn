@@ -85,6 +85,7 @@ import { AdminActionAlertsDrawer } from './AdminActionAlertsDrawer';
 import { AdminAssignCoursesTab } from './AdminAssignCoursesTab';
 import { AdminPromotionManagementTab } from './AdminPromotionManagementTab';
 import { AdminPromotionSubscribersTab } from './AdminPromotionSubscribersTab';
+import { AdminFlashSaleManager } from './AdminFlashSaleManager';
 
 interface AdminDashboardProps {
   courses: Course[];
@@ -96,6 +97,7 @@ const normalizeTabFromPath = (path: string): AdminTabKey => {
   if (p.includes('learner-reviews') || p.includes('learner-review') || p.includes('course-reviews')) return 'learner-reviews';
   if (p.includes('promotion-management') || p.includes('promotion-tiers') || p.includes('promotions-management')) return 'promotion-management';
   if (p.includes('promotion-subscribers') || p.includes('promotion-subscriber') || p.includes('subscribers')) return 'promotion-subscribers';
+  if (p.includes('flash-sale') || p.includes('top-selling')) return 'flash-sale';
   if (p.includes('reviewers') || p.includes('reviewer')) return 'reviewers';
   if (p.includes('assign-courses') || p.includes('assign-course')) return 'assign-courses';
   if (p.includes('requests') || p.includes('inbox') || p.includes('communication')) return 'requests';
@@ -1389,6 +1391,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ courses, onRefre
 
             {activeTab === 'promotion-subscribers' && (
               <AdminPromotionSubscribersTab />
+            )}
+
+            {activeTab === 'flash-sale' && (
+              <AdminFlashSaleManager courses={courses} />
             )}
 
             {activeTab === 'payment-integrations' && (

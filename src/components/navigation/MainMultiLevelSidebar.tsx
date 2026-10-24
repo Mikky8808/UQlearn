@@ -144,7 +144,7 @@ export const MainMultiLevelSidebar: React.FC<MainMultiLevelSidebarProps> = ({
                     src={resolveBrandingLogoUrl(logoUrl)} 
                     alt="UQlearn Logo" 
                     onError={(e) => { (e.currentTarget as HTMLImageElement).src = DEFAULT_LOGO_URL; }}
-                    className="w-8 h-8 object-contain rounded-lg bg-slate-100 dark:bg-slate-800 p-1 border border-slate-200 dark:border-slate-700"
+                    className="w-10 h-10 object-contain rounded-full p-0.5 drop-shadow-xs group-hover:scale-105 transition-transform"
                     referrerPolicy="no-referrer"
                   />
                   <div>

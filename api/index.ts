@@ -46,6 +46,146 @@ apiRouter.use(['/ai', '/ai.php', '/v1/ai', '/v1/ai.php'], aiRouter);
 // Local in-memory store for digital signatures
 const devSignaturesStore: Record<string, string> = {};
 
+// Local in-memory store for recently viewed courses in dev environment
+const devRecentlyViewedStore: Record<string, string[]> = {};
+
+apiRouter.all(['/recently-viewed.php', '/recently-viewed', '/v1/recently-viewed.php', '/v1/recently-viewed'], (req: Request, res: Response) => {
+  const method = req.method.toUpperCase();
+  const userId = (req.query.userId || req.query.user_id || req.body?.userId || req.body?.user_id || 'guest').toString().trim() || 'guest';
+  
+  if (!devRecentlyViewedStore[userId]) {
+    devRecentlyViewedStore[userId] = [];
+  }
+
+  if (method === 'GET') {
+    return res.json({
+      success: true,
+      user_id: userId,
+      items: devRecentlyViewedStore[userId] || [],
+      data: (devRecentlyViewedStore[userId] || []).map(cid => ({
+        course_id: cid,
+        viewed_at: new Date().toISOString()
+      }))
+    });
+  }
+
+  if (method === 'POST') {
+    const action = req.body?.action || 'record';
+    const courseId = (req.body?.courseId || req.body?.course_id || '').toString().trim();
+
+    if (action === 'clear') {
+      devRecentlyViewedStore[userId] = [];
+      return res.json({ success: true, message: 'Cleared recently viewed' });
+    }
+
+    if (action === 'remove') {
+      if (courseId) {
+        devRecentlyViewedStore[userId] = devRecentlyViewedStore[userId].filter(id => id !== courseId);
+      }
+      return res.json({ success: true, message: 'Removed' });
+    }
+
+    if (courseId) {
+      devRecentlyViewedStore[userId] = [courseId, ...devRecentlyViewedStore[userId].filter(id => id !== courseId)].slice(0, 20);
+    }
+
+    return res.json({
+      success: true,
+      message: 'Recorded',
+      course_id: courseId,
+      items: devRecentlyViewedStore[userId]
+    });
+  }
+
+  if (method === 'DELETE') {
+    const courseId = (req.query.courseId || req.query.course_id || '').toString().trim();
+    if (courseId) {
+      devRecentlyViewedStore[userId] = devRecentlyViewedStore[userId].filter(id => id !== courseId);
+    }
+    return res.json({ success: true, message: 'Deleted' });
+  }
+
+  return res.json({ success: true });
+});
+
+// Allowed 7 currencies in exact order (NGN, GHS, KES, ZMW, USD, ZAR, XAF)
+const ALLOWED_PLATFORM_CURRENCIES = [
+  { code: 'NGN', symbol: '₦', name: 'Nigerian Naira', exchange_rate: 1400.0, is_default: 0 },
+  { code: 'GHS', symbol: 'GH₵', name: 'Ghanaian Cedi', exchange_rate: 15.5, is_default: 0 },
+  { code: 'KES', symbol: 'KSh', name: 'Kenyan Shilling', exchange_rate: 130.0, is_default: 1 },
+  { code: 'ZMW', symbol: 'ZK', name: 'Zambian Kwacha', exchange_rate: 26.0, is_default: 0 },
+  { code: 'USD', symbol: '$', name: 'US Dollar', exchange_rate: 1.0, is_default: 0 },
+  { code: 'ZAR', symbol: 'R', name: 'South African Rand', exchange_rate: 18.5, is_default: 0 },
+  { code: 'XAF', symbol: 'FCFA', name: 'Central African CFA Franc', exchange_rate: 600.0, is_default: 0 },
+  { code: 'UGX', symbol: 'USh', name: 'Ugandan Shilling', exchange_rate: 3700.0, is_default: 0 },
+];
+
+const devUserCurrencyPreferences: Record<string, string> = {};
+
+apiRouter.all(['/currencies.php', '/currencies', '/v1/currencies.php', '/v1/currencies'], (req: Request, res: Response) => {
+  const method = req.method.toUpperCase();
+  const userId = (req.query.userId || req.query.user_id || req.body?.userId || req.body?.user_id || 'current-user').toString();
+
+  if (method === 'GET') {
+    const preference = devUserCurrencyPreferences[userId] || 'KES';
+    return res.json({
+      success: true,
+      preference,
+      currencies: ALLOWED_PLATFORM_CURRENCIES
+    });
+  }
+
+  if (method === 'POST') {
+    const currencyCode = (req.body?.currency_code || req.body?.currencyCode || 'KES').toString();
+    devUserCurrencyPreferences[userId] = currencyCode;
+    return res.json({
+      success: true,
+      message: `System currency preference updated successfully to ${currencyCode}`,
+      currency_code: currencyCode
+    });
+  }
+
+  return res.json({ success: true, currencies: ALLOWED_PLATFORM_CURRENCIES });
+});
+
+// Flash Sale & Top Selling Shelf Configuration Endpoint
+let devFlashSaleConfig = {
+  enabled: true,
+  title: 'Top selling items',
+  startTime: '2026-10-24T00:00',
+  endTime: '2027-08-23T23:59:59',
+  courseIds: [] as string[]
+};
+
+apiRouter.all(['/flash-sale.php', '/flash-sale', '/v1/flash-sale.php', '/v1/flash-sale'], (req: Request, res: Response) => {
+  if (req.method === 'GET') {
+    return res.json({
+      success: true,
+      config: devFlashSaleConfig,
+      data: devFlashSaleConfig
+    });
+  }
+
+  if (req.method === 'POST') {
+    const body = req.body || {};
+    devFlashSaleConfig = {
+      enabled: body.enabled !== false,
+      title: body.title || devFlashSaleConfig.title,
+      startTime: body.startTime || devFlashSaleConfig.startTime,
+      endTime: body.endTime || devFlashSaleConfig.endTime,
+      courseIds: Array.isArray(body.courseIds) ? body.courseIds : devFlashSaleConfig.courseIds
+    };
+    return res.json({
+      success: true,
+      message: 'Flash sale configuration saved successfully',
+      config: devFlashSaleConfig,
+      data: devFlashSaleConfig
+    });
+  }
+
+  return res.json({ success: true, config: devFlashSaleConfig });
+});
+
 // Digital signatures endpoint (matches /api/v1/signatures.php)
 apiRouter.all(['/signatures.php', '/signatures', '/v1/signatures.php', '/v1/signatures'], (req: Request, res: Response) => {
   if (req.method === 'GET') {

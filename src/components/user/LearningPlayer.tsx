@@ -156,8 +156,9 @@ export const LearningPlayer: React.FC = () => {
         });
       } else {
         try {
-          const allCourses = await fetchCoursesApi();
-          const match = allCourses.find(c => c.id === courseId);
+          const allCoursesRes = await fetchCoursesApi();
+          const allCourses = Array.isArray(allCoursesRes) ? allCoursesRes : [];
+          const match = allCourses.find((c: any) => c.id === courseId);
           if (match) {
             setLocalCourse(prev => {
               const hasValidLessons = match.modules && match.modules.length > 0 && match.modules.some(m => m.lessons && m.lessons.length > 0);

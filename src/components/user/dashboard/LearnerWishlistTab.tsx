@@ -47,11 +47,16 @@ export const LearnerWishlistTab: React.FC<LearnerWishlistTabProps> = ({
 
   useEffect(() => {
     async function loadData() {
-      const uid = currentUser?.id || 'guest';
-      const wIds = await getWishlistApi(uid);
-      setWishlistIds(wIds);
-      const lists = await getCuratedListsApi(uid);
-      setCustomLists(lists);
+      try {
+        const uid = currentUser?.id || 'guest';
+        const wIds = await getWishlistApi(uid);
+        setWishlistIds(Array.isArray(wIds) ? wIds : []);
+        const lists = await getCuratedListsApi(uid);
+        setCustomLists(Array.isArray(lists) ? lists : []);
+      } catch {
+        setWishlistIds([]);
+        setCustomLists([]);
+      }
     }
     loadData();
   }, [currentUser?.id]);

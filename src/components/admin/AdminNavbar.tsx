@@ -49,6 +49,7 @@ export type AdminTabKey =
   | 'sponsored-ads'
   | 'promotion-management'
   | 'promotion-subscribers'
+  | 'flash-sale'
   | 'php-sync'
   | 'htaccess-viewer'
   | 'visitor-tracking';
@@ -165,12 +166,12 @@ export const AdminNavbar: React.FC<AdminNavbarProps> = ({
                 src={resolveBrandingLogoUrl(logoUrl)} 
                 alt="UQlearn Logo" 
                 onError={(e) => { (e.currentTarget as HTMLImageElement).src = DEFAULT_LOGO_URL; }}
-                className="w-9 h-9 object-contain rounded-xl bg-slate-800 p-1 border border-slate-700 group-hover:scale-105 transition-transform"
+                className="w-10 h-10 object-contain rounded-full p-0.5 group-hover:scale-105 transition-transform drop-shadow-xs"
                 referrerPolicy="no-referrer"
               />
               <div className="flex flex-col">
                 <span className="text-xl font-black tracking-tight select-none leading-none">
-                  <span className="text-rose-500 group-hover:text-rose-400 transition-colors">UQ</span>
+                  <span className="text-teal-400 group-hover:text-teal-300 transition-colors">UQ</span>
                   <span className="text-purple-400 group-hover:text-purple-300 transition-colors">learn</span>
                 </span>
                 <span className="text-[10px] font-bold text-rose-400 tracking-wider uppercase leading-tight flex items-center space-x-1">

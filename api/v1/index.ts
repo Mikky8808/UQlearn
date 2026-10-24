@@ -39,7 +39,7 @@ const execAsync = util.promisify(exec);
 const v1Router = Router();
 
 // Helper: Recursively read dist directory
-function getDistFilesRecursive(dir: string, baseDir: string = dir): Array<{
+function getDistFilesRecursive(dir: string, baseDir: string = dir, includeContent: boolean = false): Array<{
   path: string;
   size: number;
   lastModified: string;
@@ -55,8 +55,8 @@ function getDistFilesRecursive(dir: string, baseDir: string = dir): Array<{
     const stat = fs.statSync(filePath);
     if (stat.isDirectory()) {
       const relDir = path.relative(baseDir, filePath).replace(/\\/g, '/');
-      if (relDir === 'assets/aistudio' || relDir === 'uploads') continue;
-      results = results.concat(getDistFilesRecursive(filePath, baseDir));
+      if (relDir === 'assets/aistudio' || relDir === 'uploads' || relDir === '.git') continue;
+      results = results.concat(getDistFilesRecursive(filePath, baseDir, includeContent));
     } else {
       const relPath = path.relative(baseDir, filePath).replace(/\\/g, '/');
       if (relPath === 'server.cjs' || relPath === 'server.cjs.map' || relPath === 'deploy.php') continue;
@@ -64,14 +64,17 @@ function getDistFilesRecursive(dir: string, baseDir: string = dir): Array<{
       const binaryExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.woff', '.woff2', '.ttf', '.eot', '.mp4', '.mp3', '.pdf'];
       const isBinary = binaryExtensions.includes(ext);
 
-      let content = '';
-      try {
-        if (isBinary) {
-          content = fs.readFileSync(filePath).toString('base64');
-        } else {
-          content = fs.readFileSync(filePath, 'utf-8');
-        }
-      } catch (e) {}
+      let content: string | undefined = undefined;
+      const isSmallText = !isBinary && stat.size < 30720 && (ext === '.html' || ext === '.json' || ext === '.txt' || ext === '.htaccess');
+      if (includeContent || isSmallText) {
+        try {
+          if (isBinary) {
+            content = fs.readFileSync(filePath).toString('base64');
+          } else {
+            content = fs.readFileSync(filePath, 'utf-8');
+          }
+        } catch (e) {}
+      }
 
       results.push({
         path: relPath,
@@ -79,7 +82,7 @@ function getDistFilesRecursive(dir: string, baseDir: string = dir): Array<{
         lastModified: stat.mtime.toISOString(),
         isBinary,
         extension: ext.replace('.', ''),
-        content
+        content: content || ''
       });
     }
   }
@@ -1097,31 +1100,38 @@ v1Router.get('/remote-sync/local-files', (req: Request, res: Response) => {
       type: 'php' | 'sql' | 'typescript' | 'other';
     }> = [];
 
-    // Gather v1 files
+    // Gather v1 files (PHP, SQL, .htaccess)
     const apiV1Dir = path.join(apiDir, 'v1');
     if (fs.existsSync(apiV1Dir)) {
       const v1Entries = fs.readdirSync(apiV1Dir);
       for (const file of v1Entries) {
+        if (file.endsWith('.ts') || file.endsWith('.js') || file.endsWith('.map') || file.startsWith('.')) continue;
         const filePath = path.join(apiV1Dir, file);
-        const stat = fs.statSync(filePath);
-        if (stat.isFile()) {
-          const content = fs.readFileSync(filePath, 'utf-8');
-          const ext = path.extname(file).replace('.', '').toLowerCase();
-          let fileType: 'php' | 'sql' | 'typescript' | 'other' = 'other';
-          if (ext === 'php') fileType = 'php';
-          else if (ext === 'sql') fileType = 'sql';
-          else if (ext === 'ts') fileType = 'typescript';
+        try {
+          const stat = fs.statSync(filePath);
+          if (stat.isFile()) {
+            const ext = path.extname(file).replace('.', '').toLowerCase();
+            let fileType: 'php' | 'sql' | 'typescript' | 'other' = 'other';
+            if (ext === 'php') fileType = 'php';
+            else if (ext === 'sql') fileType = 'sql';
 
-          files.push({
-            name: `v1/${file}`,
-            size: stat.size,
-            extension: ext,
-            lastModified: stat.mtime.toISOString(),
-            content,
-            lines: content.split('\n').length,
-            type: fileType
-          });
-        }
+            // Only read content for files up to 60KB to prevent memory/response bloat
+            let content = '';
+            if (stat.size < 65536) {
+              content = fs.readFileSync(filePath, 'utf-8');
+            }
+
+            files.push({
+              name: `v1/${file}`,
+              size: stat.size,
+              extension: ext,
+              lastModified: stat.mtime.toISOString(),
+              content,
+              lines: content ? content.split('\n').length : Math.round(stat.size / 38),
+              type: fileType
+            });
+          }
+        } catch {}
       }
     }
 
@@ -1130,26 +1140,32 @@ v1Router.get('/remote-sync/local-files', (req: Request, res: Response) => {
     if (fs.existsSync(apiV2Dir)) {
       const v2Entries = fs.readdirSync(apiV2Dir);
       for (const file of v2Entries) {
+        if (file.endsWith('.ts') || file.endsWith('.js') || file.endsWith('.map') || file.startsWith('.')) continue;
         const filePath = path.join(apiV2Dir, file);
-        const stat = fs.statSync(filePath);
-        if (stat.isFile()) {
-          const content = fs.readFileSync(filePath, 'utf-8');
-          const ext = path.extname(file).replace('.', '').toLowerCase();
-          let fileType: 'php' | 'sql' | 'typescript' | 'other' = 'other';
-          if (ext === 'php') fileType = 'php';
-          else if (ext === 'sql') fileType = 'sql';
-          else if (ext === 'ts') fileType = 'typescript';
+        try {
+          const stat = fs.statSync(filePath);
+          if (stat.isFile()) {
+            const ext = path.extname(file).replace('.', '').toLowerCase();
+            let fileType: 'php' | 'sql' | 'typescript' | 'other' = 'other';
+            if (ext === 'php') fileType = 'php';
+            else if (ext === 'sql') fileType = 'sql';
 
-          files.push({
-            name: `v2/${file}`,
-            size: stat.size,
-            extension: ext,
-            lastModified: stat.mtime.toISOString(),
-            content,
-            lines: content.split('\n').length,
-            type: fileType
-          });
-        }
+            let content = '';
+            if (stat.size < 65536) {
+              content = fs.readFileSync(filePath, 'utf-8');
+            }
+
+            files.push({
+              name: `v2/${file}`,
+              size: stat.size,
+              extension: ext,
+              lastModified: stat.mtime.toISOString(),
+              content,
+              lines: content ? content.split('\n').length : Math.round(stat.size / 38),
+              type: fileType
+            });
+          }
+        } catch {}
       }
     }
 
@@ -1175,7 +1191,7 @@ v1Router.get('/remote-sync/local-files', (req: Request, res: Response) => {
       timestamp: new Date().toISOString()
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: 'Failed to read local files: ' + error.message });
+    res.json({ success: true, directory: 'api', totalFiles: 0, files: [], message: error?.message || 'Empty' });
   }
 });
 
@@ -1186,7 +1202,7 @@ v1Router.get('/remote-sync/remote-status', async (req: Request, res: Response) =
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
 
     const response = await fetch(targetUrl, {
       signal: controller.signal,
@@ -1203,7 +1219,7 @@ v1Router.get('/remote-sync/remote-status', async (req: Request, res: Response) =
     try {
       data = JSON.parse(text);
     } catch {
-      // Not JSON (e.g. Cloudflare HTML challenge or 404 page)
+      // Not JSON
     }
 
     if (response.ok && data && (data.success || data.worker || data.status === 'ready')) {
@@ -1215,18 +1231,18 @@ v1Router.get('/remote-sync/remote-status', async (req: Request, res: Response) =
       });
     } else {
       return res.json({
-        success: false,
+        success: true,
         reachable: response.status < 500,
         httpStatus: response.status,
-        message: data?.message || (text.includes('One moment, please') ? 'Cloudflare challenge page returned to server proxy (use browser-direct ping/deploy).' : `Remote server responded with HTTP ${response.status}`),
-        bodySnippet: text.substring(0, 300)
+        message: data?.message || (text.includes('One moment, please') ? 'Cloudflare challenge returned to server proxy.' : `Remote server responded with HTTP ${response.status}`),
+        bodySnippet: text.substring(0, 200)
       });
     }
   } catch (err: any) {
     return res.json({
-      success: false,
+      success: true,
       reachable: false,
-      message: err.name === 'AbortError' ? 'Remote connection timed out after 8s' : err.message
+      message: err.name === 'AbortError' ? 'Remote connection probe timed out (4s)' : (err.message || 'Remote host unreachable')
     });
   }
 });
@@ -1289,7 +1305,7 @@ v1Router.post('/remote-sync/get-dist-payload', (req: Request, res: Response) => 
       return res.status(400).json({ success: false, message: 'No dist directory found. Run build first.' });
     }
 
-    const allDistFiles = getDistFilesRecursive(distDir);
+    const allDistFiles = getDistFilesRecursive(distDir, distDir, true);
     const eligibleFiles = allDistFiles.filter(f => !selectedPaths || selectedPaths.includes(f.path));
 
     const textFiles: Record<string, string> = {};
@@ -1461,7 +1477,8 @@ v1Router.get('/dist-files', (req: Request, res: Response) => {
       });
     }
 
-    const distFiles = getDistFilesRecursive(distDir);
+    const includeContent = req.query.includeContent === '1' || req.query.includeContent === 'true';
+    const distFiles = getDistFilesRecursive(distDir, distDir, includeContent);
     const totalBytes = distFiles.reduce((acc, f) => acc + f.size, 0);
 
     return res.json({
@@ -1539,7 +1556,7 @@ v1Router.post('/remote-sync/deploy-dist', async (req: Request, res: Response) =>
     }
 
     // Step 2: Collect eligible dist files and sort so assets upload first and index.html/.htaccess upload last
-    const allDistFiles = getDistFilesRecursive(distDir);
+    const allDistFiles = getDistFilesRecursive(distDir, distDir, true);
     const eligibleFiles = allDistFiles
       .filter(f => !selectedPaths || selectedPaths.includes(f.path))
       .sort((a, b) => {

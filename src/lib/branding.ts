@@ -4,7 +4,8 @@
  */
 import { ROOT_URL } from './apiConfig';
 
-export const DEFAULT_LOGO_URL = `${ROOT_URL}/logo/logo.png`;
+export const DEFAULT_LOGO_URL = `${ROOT_URL}/logo/logo.svg`;
+export const DEFAULT_LOGO_SVG_URL = `${ROOT_URL}/logo/logo.svg`;
 
 /**
  * Resolves a database or uploaded logo path to an absolute/loadable image URL.
@@ -13,22 +14,37 @@ export function resolveBrandingLogoUrl(url?: string | null): string {
   if (!url || typeof url !== 'string' || !url.trim()) {
     return DEFAULT_LOGO_URL;
   }
-  
+
   const trimmed = url.trim();
-  
-  // Data URLs or Full HTTP/HTTPS URLs
+
+  if (
+    trimmed === '/logo/logo.png' ||
+    trimmed === '/logo/logo.svg' ||
+    trimmed.endsWith('/logo/logo.png') ||
+    trimmed.endsWith('/logo/logo.svg') ||
+    trimmed.includes('kalani_logo')
+  ) {
+    return DEFAULT_LOGO_URL;
+  }
+
+  // Data URLs or custom external URLs
   if (trimmed.startsWith('data:') || trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
     return trimmed;
   }
 
-  // Relative paths
   const cleanPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-  console.log('Resolving branding logo for path:', cleanPath);
 
-  // Always prepend ROOT_URL for remote backend images to ensure cross-origin access works with CORS
-  const fullUrl = `${ROOT_URL}${cleanPath}`;
-  console.log('Returning absolute URL:', fullUrl);
-  return fullUrl;
+  if (typeof window !== 'undefined' && window.location) {
+    const hostname = window.location.hostname;
+    const cleanRoot = ROOT_URL.replace('https://', '').replace('http://', '');
+    if (hostname.includes(cleanRoot) || hostname.includes('uqlearn.org') || hostname.includes('ais-dev') || hostname.includes('ais-pre')) {
+      if (cleanPath.startsWith('/logo/') || cleanPath.startsWith('/uploads/') || cleanPath.startsWith('/images/')) {
+        return `${ROOT_URL}${cleanPath}`;
+      }
+    }
+  }
+
+  return cleanPath;
 }
 
 /**
@@ -39,6 +55,10 @@ export function resolveImageUrl(url?: string | null, fallbackType: 'logo' | 'cou
     if (fallbackType === 'logo') return DEFAULT_LOGO_URL;
     if (fallbackType === 'avatar') return 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80';
     return 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80';
+  }
+
+  if (fallbackType === 'logo') {
+    return resolveBrandingLogoUrl(url);
   }
 
   const trimmed = url.trim();
@@ -52,7 +72,7 @@ export function resolveImageUrl(url?: string | null, fallbackType: 'logo' | 'cou
     const hostname = window.location.hostname;
     const cleanRoot = ROOT_URL.replace('https://', '').replace('http://', '');
     if (hostname.includes(cleanRoot) || hostname.includes('ais-dev') || hostname.includes('ais-pre')) {
-      if (cleanPath.startsWith('/uploads/') || cleanPath.startsWith('/logo/') || cleanPath.startsWith('/images/')) {
+      if (cleanPath.startsWith('/uploads/') || cleanPath.startsWith('/images/')) {
         return `${ROOT_URL}${cleanPath}`;
       }
     }

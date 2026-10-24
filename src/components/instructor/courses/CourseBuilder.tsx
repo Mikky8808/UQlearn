@@ -103,6 +103,7 @@ import { Course } from '../../../types';
 import { useSearchParams } from 'react-router-dom';
 import { CourseImageUploader } from '../../common/CourseImageUploader';
 import { CourseImageStandardsPage } from '../../pages/CourseImageStandardsPage';
+import { UqlearnCertificateSvg } from '../../common/UqlearnCertificateSvg';
 import { useApp, supportedCurrencies, Currency } from '../../../context/AppContext';
 import { ALL_CURRENCIES } from '../../../lib/currencies';
 import { currencyService } from '../../../services/currency-service';
@@ -398,7 +399,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
   onManageLesson,
   onCancel,
 }) => {
-  const { refreshCourses, isLoadingCourses, categories, courseDefaultThumbnail, currentUser, setCurrentUser, selectedCurrency } = useApp();
+  const { refreshCourses, isLoadingCourses, categories, courseDefaultThumbnail, currentUser, setCurrentUser, selectedCurrency, logoUrl, courseConfig } = useApp();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type?: 'success' | 'error' | 'info' } | null>(null);
   
@@ -1868,7 +1869,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
       const currentSize = videoMetadataMap[v.url]?.fileSize || v.fileSize;
       const isInvalid = !currentSize || currentSize === '0 B' || currentSize === '0.0 MB' || currentSize.includes('Uploaded File') || currentSize === '—';
       if (!videoMetadataMap[v.url]?.fileSize && isInvalid) {
-        const videoProbeUrl = v.url.startsWith('http') ? v.url : `${ROOT_URL}${v.url.startsWith('/') ? '' : '/'}${v.url}`;
+        const videoProbeUrl = v.url.startsWith('http') ? v.url : `${ROOT_URL.replace(/\/$/, '')}/${v.url.replace(/^\//, '')}`;
         fetch(videoProbeUrl, { method: 'HEAD' })
           .then(res => {
             const cl = res.headers.get('content-length');
@@ -8675,18 +8676,22 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
                   <p className="text-xs text-slate-500 mt-0.5">Customize verified digital certificates issued upon 100% course and quiz completion.</p>
                 </div>
 
-                {/* Certificate Live Preview Card */}
-                <div className="p-8 sm:p-12 rounded-3xl border-4 border-indigo-500/30 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-950 text-white text-center space-y-5 max-w-2xl mx-auto shadow-2xl">
-                  <Award className="w-14 h-14 text-amber-400 mx-auto" />
-                  <div className="space-y-2">
-                    <span className="text-[11px] tracking-widest uppercase font-black text-indigo-300">Certificate of Specialization & Mastery</span>
-                    <h3 className="text-xl sm:text-2xl font-black">{title}</h3>
-                    <p className="text-xs text-slate-300 max-w-md mx-auto">Awarded to learner upon passing all required modules, code labs, and cumulative assessments.</p>
-                  </div>
-                  <div className="pt-6 flex items-center justify-between text-[11px] border-t border-white/10 text-slate-400">
-                    <span>Authorized Instructor: {coInstructors[0]?.name || 'Lead Author'}</span>
-                    <span>UQlearn Verified ID: #UQL-8829-CERT</span>
-                  </div>
+                {/* Certificate Live Vector Preview */}
+                <div className="max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 bg-white">
+                  <UqlearnCertificateSvg
+                    data={{
+                      studentName: 'ALBRIGHT JUMA',
+                      courseTitle: title || 'Virtual Assistant',
+                      completionDate: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+                      instructorName: coInstructors[0]?.name || 'Michael Kenyanya',
+                      credentialId: 'UQL-CERT-2026',
+                      logoUrl: logoUrl,
+                      ceoName: courseConfig?.ceoName || 'SIR, RAJAB WAMUU',
+                      ceoTitle: courseConfig?.ceoTitle || 'CEO UQLEARN',
+                      ceoSignature: courseConfig?.ceoSignature || '',
+                      instructorSignature: ''
+                    }}
+                  />
                 </div>
               </div>
             )}

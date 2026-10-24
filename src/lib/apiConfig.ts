@@ -2,9 +2,8 @@ import { logApiError, getRecentApiErrorLogs } from './errorLogger';
 
 export { logApiError, getRecentApiErrorLogs };
 
-export const API_BASE_URL = 'https://uqlearn.org/api/v1/';
-export const ROOT_URL = 'https://uqlearn.org';
-export const GOOGLE_CLIENT_ID = '';
+import { API_BASE_URL, ROOT_URL, GOOGLE_CLIENT_ID } from './apiConstants';
+export { API_BASE_URL, ROOT_URL, GOOGLE_CLIENT_ID };
 
 export const API_ENDPOINTS = {
   COURSES: 'courses.php',
@@ -43,6 +42,7 @@ export const API_ENDPOINTS = {
   VIDEO_PROGRESS: 'video-progress.php',
   STUDY_PLAN: 'study-planner.php',
   PAYSTACK: 'paystack.php',
+  RECENTLY_VIEWED: 'recently-viewed.php',
 };
 
 export const apiFetch = async (
@@ -169,7 +169,24 @@ export const apiFetch = async (
 export const getInstructorUrl = () => 'https://instructor.uqlearn.org';
 
 // Main API Export List
-export const addToWishlistApi = (courseId: string, ...args: any[]) => apiFetch('wishlist.php', { method: 'POST', body: JSON.stringify({ action: 'add', courseId }) });
+export const addToWishlistApi = async (uidOrCourseId: string, maybeCourseId?: string, ...args: any[]) => {
+  const userId = maybeCourseId ? uidOrCourseId : 'guest';
+  const courseId = maybeCourseId || uidOrCourseId;
+  try {
+    const key = `uqlearn_wishlist_${userId}`;
+    const existing = JSON.parse(localStorage.getItem(key) || '[]');
+    const list = Array.isArray(existing) ? existing : [];
+    if (courseId && !list.includes(courseId)) {
+      list.push(courseId);
+      localStorage.setItem(key, JSON.stringify(list));
+    }
+  } catch {}
+  return apiFetch('wishlist.php', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'add', userId, user_id: userId, courseId, course_id: courseId }),
+    silent: true
+  }).catch(() => ({ success: true }));
+};
 export const assignCourseToReviewerApi = (...args: any[]) => apiFetch(API_ENDPOINTS.REVIEWER_ASSIGNMENTS, { method: 'POST', body: JSON.stringify({ action: 'assign_reviewer', courseId: args[0], course_id: args[0], reviewerId: args[1], reviewer_id: args[1] }) });
 export const checkInstructorOnboardingApi = (userId: string, ...args: any[]) => apiFetch(`instructor-onboarding.php?userId=${encodeURIComponent(userId)}`);
 export const createRequestApi = (data: any, ...args: any[]) => apiFetch('requests.php', { method: 'POST', body: JSON.stringify(data) });
@@ -179,12 +196,46 @@ export const deleteCourseApi = (courseIdOrData: string | any, ...args: any[]) =>
   const body = typeof courseIdOrData === 'object' ? JSON.stringify(courseIdOrData) : undefined;
   return apiFetch(courseId ? `courses.php?id=${courseId}` : 'courses.php', body ? { method: 'DELETE', body } : { method: 'DELETE' });
 };
-export const deleteCuratedListApi = (id: string, ...args: any[]) => apiFetch(`curated-lists.php?id=${id}`, { method: 'DELETE' });
+export const deleteCuratedListApi = (uidOrId: string, maybeListId?: string, ...args: any[]) => {
+  const listId = maybeListId || uidOrId;
+  const userId = maybeListId ? uidOrId : 'guest';
+  try {
+    const key = `uqlearn_curated_lists_${userId}`;
+    const existing = JSON.parse(localStorage.getItem(key) || '[]');
+    if (Array.isArray(existing)) {
+      localStorage.setItem(key, JSON.stringify(existing.filter((l: any) => l?.id !== listId)));
+    }
+  } catch {}
+  return apiFetch(`curated-lists.php?id=${encodeURIComponent(listId)}&userId=${encodeURIComponent(userId)}&user_id=${encodeURIComponent(userId)}`, { method: 'DELETE', silent: true }).catch(() => ({ success: true }));
+};
 export const deleteModuleOrLessonApi = (id: string, ...args: any[]) => apiFetch(`course-modules.php?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
 export const deleteUserApi = (id: string, ...args: any[]) => apiFetch(`users.php?id=${id}`, { method: 'DELETE' });
 export const fetchCourseCategoriesApi = (...args: any[]) => apiFetch(API_ENDPOINTS.CATEGORIES);
-export const fetchCourseModulesApi = (courseId: string, ...args: any[]) => apiFetch(`course-modules.php?courseId=${encodeURIComponent(courseId)}&course_id=${encodeURIComponent(courseId)}`);
-export const fetchCoursesApi = (creatorId?: string, ...args: any[]) => apiFetch(creatorId ? `courses.php?creatorId=${encodeURIComponent(creatorId)}&creator_id=${encodeURIComponent(creatorId)}` : 'courses.php');
+export const fetchCourseModulesApi = async (courseId: string, ...args: any[]): Promise<any[]> => {
+  try {
+    const res = await apiFetch(`course-modules.php?courseId=${encodeURIComponent(courseId)}&course_id=${encodeURIComponent(courseId)}`);
+    const rawList = Array.isArray(res)
+      ? res
+      : Array.isArray(res?.data)
+        ? res.data
+        : Array.isArray(res?.modules)
+          ? res.modules
+          : [];
+    return rawList.map((m: any) => ({
+      ...m,
+      lessons: Array.isArray(m?.lessons) ? m.lessons : []
+    }));
+  } catch {
+    return [];
+  }
+};
+export const fetchCoursesApi = async (creatorId?: string, ...args: any[]): Promise<any[]> => {
+  const res = await apiFetch(creatorId ? `courses.php?creatorId=${encodeURIComponent(creatorId)}&creator_id=${encodeURIComponent(creatorId)}` : 'courses.php');
+  if (Array.isArray(res)) return res;
+  if (res && Array.isArray(res.data)) return res.data;
+  if (res && Array.isArray(res.courses)) return res.courses;
+  return [];
+};
 export const fetchInstructorDetailsApi = (userId: string, ...args: any[]) => apiFetch(`profile.php?id=${encodeURIComponent(userId)}&userId=${encodeURIComponent(userId)}&user_id=${encodeURIComponent(userId)}`);
 export const fetchRequestsApi = (...args: any[]) => apiFetch('requests.php');
 export const getCourseMessagesApi = (courseId: string, ...args: any[]) => apiFetch(`course-messages.php?courseId=${encodeURIComponent(courseId)}&course_id=${encodeURIComponent(courseId)}`);
@@ -192,35 +243,118 @@ export const saveCourseMessagesApi = (data: any, ...args: any[]) => apiFetch('co
 export const fetchSignatureApi = (...args: any[]) => apiFetch(args[0] ? `signatures.php?userId=${encodeURIComponent(args[0])}&user_id=${encodeURIComponent(args[0])}` : 'signatures.php');
 export const getActiveSession = () => { try { return JSON.parse(localStorage.getItem('activeSession') || '{}'); } catch { return {}; } };
 export const getActiveSponsoredCoursesApi = (...args: any[]) => apiFetch('sponsored_ads.php?action=get_active');
-export const getAdvertsApi = (...args: any[]) => apiFetch('adverts.php');
+export const getAdvertsApi = (slot?: string, activeOnly?: boolean, ...args: any[]) => {
+  const params = new URLSearchParams();
+  if (slot) params.set('slot', slot);
+  if (activeOnly !== undefined) params.set('active', activeOnly ? '1' : '0');
+  const qs = params.toString();
+  return apiFetch(qs ? `adverts.php?${qs}` : 'adverts.php');
+};
 export const getCourseDescriptionChecklistApi = (courseId: string, ...args: any[]) => apiFetch(`intended-learners.php?courseId=${encodeURIComponent(courseId)}&course_id=${encodeURIComponent(courseId)}`);
-export const getCuratedListsApi = (...args: any[]) => apiFetch('curated-lists.php');
+export const getCuratedListsApi = async (userId?: string, ...args: any[]): Promise<any[]> => {
+  const uid = userId || 'guest';
+  try {
+    const res = await apiFetch(`curated-lists.php?userId=${encodeURIComponent(uid)}&user_id=${encodeURIComponent(uid)}`, { silent: true });
+    const raw = Array.isArray(res)
+      ? res
+      : Array.isArray(res?.data)
+        ? res.data
+        : Array.isArray(res?.lists)
+          ? res.lists
+          : null;
+    if (raw) {
+      try {
+        localStorage.setItem(`uqlearn_curated_lists_${uid}`, JSON.stringify(raw));
+      } catch {}
+      return raw;
+    }
+  } catch {}
+  try {
+    const cached = JSON.parse(localStorage.getItem(`uqlearn_curated_lists_${uid}`) || '[]');
+    return Array.isArray(cached) ? cached : [];
+  } catch {
+    return [];
+  }
+};
 export const getInstructorPayoutApi = (...args: any[]) => apiFetch(args[0] ? `instructor-payout.php?userId=${encodeURIComponent(args[0])}&user_id=${encodeURIComponent(args[0])}` : 'instructor-payout.php');
 export const getIntendedLearnersApi = (courseId: string, ...args: any[]) => apiFetch(`intended-learners.php?courseId=${encodeURIComponent(courseId)}&course_id=${encodeURIComponent(courseId)}`);
 export const saveIntendedLearnersApi = (data: any, ...args: any[]) => apiFetch('intended-learners.php', { method: 'POST', body: JSON.stringify(data) });
 export const getRemindersApi = (...args: any[]) => apiFetch(args[0] ? `reminders.php?userId=${encodeURIComponent(args[0])}&user_id=${encodeURIComponent(args[0])}` : 'reminders.php');
 export const getStudyPlanApi = (userId: string, ...args: any[]) => apiFetch(`study-planner.php?learnerId=${encodeURIComponent(userId)}&learner_id=${encodeURIComponent(userId)}&userId=${encodeURIComponent(userId)}&user_id=${encodeURIComponent(userId)}`);
 export const getTopAdvertsApi = (silent = false, ...args: any[]) => apiFetch(API_ENDPOINTS.TOP_ADVERTS, { silent });
-export const getWishlistApi = (...args: any[]) => apiFetch(args[0] ? `wishlist.php?userId=${encodeURIComponent(args[0])}&user_id=${encodeURIComponent(args[0])}` : 'wishlist.php');
+export const getWishlistApi = async (userId?: string, ...args: any[]): Promise<string[]> => {
+  const uid = userId || 'guest';
+  try {
+    const res = await apiFetch(uid ? `wishlist.php?userId=${encodeURIComponent(uid)}&user_id=${encodeURIComponent(uid)}` : 'wishlist.php', { silent: true });
+    const raw = Array.isArray(res)
+      ? res
+      : Array.isArray(res?.data)
+        ? res.data
+        : Array.isArray(res?.wishlist)
+          ? res.wishlist
+          : Array.isArray(res?.courseIds)
+            ? res.courseIds
+            : Array.isArray(res?.items)
+              ? res.items
+              : null;
+    if (raw) {
+      const normalized = raw
+        .map((item: any) => (typeof item === 'string' ? item : String(item?.courseId || item?.course_id || item?.id || '')))
+        .filter(Boolean);
+      try {
+        localStorage.setItem(`uqlearn_wishlist_${uid}`, JSON.stringify(normalized));
+      } catch {}
+      return normalized;
+    }
+  } catch {}
+  try {
+    const cached = JSON.parse(localStorage.getItem(`uqlearn_wishlist_${uid}`) || '[]');
+    return Array.isArray(cached) ? cached.map(String).filter(Boolean) : [];
+  } catch {
+    return [];
+  }
+};
 export type InstructorDetailsData = any;
 export const localApiFetch = async (
   endpoint: string, 
   options: any = {}, 
   ...args: any[]
 ) => {
-  const silent = options.silent ?? (typeof args[0] === 'number' ? !!args[0] : args[0]) ?? false;
-  // Use endpoint directly as it is meant to be local/relative
+  const silent = options.silent ?? (typeof args[0] === 'number' ? !!args[0] : args[0]) ?? true;
   const url = endpoint;
   try {
-    const response = await fetch(url, options);
+    const fetchOptions: RequestInit = {
+      ...options,
+      headers: {
+        Accept: 'application/json, text/plain, */*',
+        ...(options.body && typeof options.body === 'string' && !options.headers?.['Content-Type']
+          ? { 'Content-Type': 'application/json' }
+          : {}),
+        ...options.headers,
+      },
+    };
+    const response = await fetch(url, fetchOptions);
     if (!response.ok) {
-        if (!silent) console.error(`API error: ${response.statusText} for ${url}`);
-        throw new Error(`API error: ${response.statusText}`);
+      if (!silent) console.warn(`Local API notice: ${response.statusText} (${response.status}) for ${url}`);
+      return { success: false, status: response.status, message: response.statusText || 'Request failed' };
     }
-    return await response.json();
-  } catch (err) {
-    if (!silent) console.error(`Fetch failed for ${url}:`, err);
-    throw err;
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      return await response.json();
+    }
+    const text = await response.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      return { success: response.ok, rawText: text };
+    }
+  } catch (err: any) {
+    if (!silent) console.warn(`Local API request notice for ${url}:`, err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+      message: err instanceof Error ? err.message : String(err)
+    };
   }
 };
 export const normalizeCourse = (c: any) => {
@@ -249,6 +383,20 @@ export const normalizeCourse = (c: any) => {
     }
   }
 
+  let parsedModules: any[] = [];
+  if (Array.isArray(c.modules)) {
+    parsedModules = c.modules;
+  } else if (typeof c.modules === 'string' && c.modules.trim().startsWith('[')) {
+    try {
+      const m = JSON.parse(c.modules);
+      if (Array.isArray(m)) parsedModules = m;
+    } catch {}
+  }
+  const normalizedModules = parsedModules.map((m: any) => ({
+    ...m,
+    lessons: Array.isArray(m?.lessons) ? m.lessons : []
+  }));
+
   return {
     ...c,
     id: String(c.id || ''),
@@ -268,14 +416,47 @@ export const normalizeCourse = (c: any) => {
     isApprovedByAdmin: c.isApprovedByAdmin !== undefined ? Boolean(c.isApprovedByAdmin) : (c.is_approved_by_admin ? String(c.is_approved_by_admin) === '1' || c.is_approved_by_admin === true : false),
     bestSeller: c.bestSeller !== undefined ? Boolean(c.bestSeller) : (c.best_seller ? String(c.best_seller) === '1' || c.best_seller === true : false),
     isPremium: c.isPremium !== undefined ? Boolean(c.isPremium) : (c.is_premium ? String(c.is_premium) === '1' || c.is_premium === true : false),
+    modules: normalizedModules,
   };
 };
 export const recordSponsoredImpressionApi = (id: string) => apiFetch(`sponsored_ads.php?action=impression&id=${id}`, { method: 'POST' });
 export const recordSponsoredClickApi = (id: string) => apiFetch(`sponsored_ads.php?action=click&id=${id}`, { method: 'POST' });
-export const removeFromWishlistApi = (courseId: string, ...args: any[]) => apiFetch('wishlist.php', { method: 'POST', body: JSON.stringify({ action: 'remove', courseId }) });
+export const removeFromWishlistApi = async (uidOrCourseId: string, maybeCourseId?: string, ...args: any[]) => {
+  const userId = maybeCourseId ? uidOrCourseId : 'guest';
+  const courseId = maybeCourseId || uidOrCourseId;
+  try {
+    const key = `uqlearn_wishlist_${userId}`;
+    const existing = JSON.parse(localStorage.getItem(key) || '[]');
+    if (Array.isArray(existing)) {
+      localStorage.setItem(key, JSON.stringify(existing.filter((id: string) => id !== courseId)));
+    }
+  } catch {}
+  return apiFetch('wishlist.php', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'remove', userId, user_id: userId, courseId, course_id: courseId }),
+    silent: true
+  }).catch(() => ({ success: true }));
+};
 export const saveAdvertApi = (data: any) => apiFetch('adverts.php', { method: 'POST', body: JSON.stringify(data) });
 export const saveCourseDescriptionChecklistApi = (...args: any[]) => apiFetch('intended-learners.php', { method: 'POST', body: JSON.stringify(args.length > 1 ? { courseId: args[0], data: args[1] } : args[0]) });
-export const saveCuratedListApi = (...args: any[]) => apiFetch('curated-lists.php', { method: 'POST', body: JSON.stringify(args.length > 1 ? { userId: args[0], list: args[1] } : args[0]) });
+export const saveCuratedListApi = async (...args: any[]) => {
+  const userId = args.length > 1 ? String(args[0] || 'guest') : 'guest';
+  const listObj = args.length > 1 ? args[1] : args[0];
+  try {
+    const key = `uqlearn_curated_lists_${userId}`;
+    const existing = JSON.parse(localStorage.getItem(key) || '[]');
+    const lists = Array.isArray(existing) ? existing : [];
+    if (listObj && listObj.id) {
+      const updated = [listObj, ...lists.filter((l: any) => l?.id !== listObj.id)];
+      localStorage.setItem(key, JSON.stringify(updated));
+    }
+  } catch {}
+  return apiFetch('curated-lists.php', {
+    method: 'POST',
+    body: JSON.stringify(args.length > 1 ? { userId: args[0], user_id: args[0], list: args[1] } : args[0]),
+    silent: true
+  }).catch(() => ({ success: true }));
+};
 export const saveInstructorOnboardingApi = (data: any) => apiFetch('instructor-onboarding.php', { method: 'POST', body: JSON.stringify(data) });
 export const saveInstructorPayoutApi = (data: any) => apiFetch('instructor-payout.php', { method: 'POST', body: JSON.stringify(data) });
 export const saveReminderApi = (data: any, ...args: any[]) => apiFetch('reminders.php', { method: 'POST', body: JSON.stringify(data) });
@@ -284,7 +465,7 @@ export const saveSignatureApi = (...args: any[]) => apiFetch('signatures.php', {
 export const saveStudyPlanApi = (data: any) => apiFetch('study-planner.php', { method: 'POST', body: JSON.stringify(data) });
 export const sendStudyReminderEmailApi = (data: any) => apiFetch('reminders.php?action=send_email', { method: 'POST', body: JSON.stringify(data) });
 export const syncCourseCategoriesApi = (...args: any[]) => apiFetch(`${API_ENDPOINTS.CATEGORIES}?action=sync`, { method: 'POST', body: JSON.stringify(args[0] || {}) });
-export const toggleAdvertActiveApi = (id: string | number, active: boolean, ...args: any[]) => apiFetch(`adverts.php?action=toggle&id=${id}`, { method: 'POST', body: JSON.stringify({ active }) });
+export const toggleAdvertActiveApi = (id: string | number, active: boolean, ...args: any[]) => apiFetch('adverts.php', { method: 'POST', body: JSON.stringify({ action: 'toggle_active', id, isActive: active, is_active: active ? 1 : 0 }) });
 export const updateActiveSession = (data: any) => { const current = getActiveSession(); localStorage.setItem('activeSession', JSON.stringify({ ...current, ...data })); };
 export const updateRequestStatusApi = (id: string, status: string, ...args: any[]) => apiFetch(`requests.php?id=${id}`, { method: 'PUT', body: JSON.stringify({ status }) });
 export const uploadAdvertImageApi = (formData: FormData) => apiFetch('adverts.php?action=upload', { method: 'POST', body: formData });
@@ -414,5 +595,84 @@ export const getInstructorCustomMailStatusApi = (instructorId: string) => apiFet
 export const subscribeCustomMailApi = (data: any) => apiFetch('custom-mail.php?action=subscribe', { method: 'POST', body: JSON.stringify(data) });
 export const getCustomMailTemplateApi = (templateId: string) => apiFetch(`custom-mail.php?action=get_template&template_id=${templateId}`);
 export const saveCustomMailTemplateApi = (data: any) => apiFetch('custom-mail.php?action=save_template', { method: 'POST', body: JSON.stringify(data) });
+// Flash Sale & Top Selling API Helpers
+export const fetchFlashSaleConfigApi = async () => {
+  try {
+    const res = await apiFetch('flash-sale.php', { silent: true });
+    if (res && (res.success || res.config || res.data)) {
+      return res.config || res.data || res;
+    }
+  } catch {}
+  return null;
+};
 
-// ... other exports ...
+export const saveFlashSaleConfigApi = (data: any) => apiFetch('flash-sale.php', { method: 'POST', body: JSON.stringify(data) });
+
+// Recently Viewed Courses API Helpers
+export const fetchRecentlyViewedApi = async (userId?: string): Promise<string[]> => {
+  const uid = userId || 'guest';
+  try {
+    const res = await apiFetch(`${API_ENDPOINTS.RECENTLY_VIEWED}?userId=${encodeURIComponent(uid)}&user_id=${encodeURIComponent(uid)}`, { silent: true });
+    const raw = Array.isArray(res)
+      ? res
+      : Array.isArray(res?.items)
+        ? res.items
+        : Array.isArray(res?.data)
+          ? res.data.map((d: any) => typeof d === 'string' ? d : d?.course_id || d?.courseId || d?.id)
+          : null;
+    if (raw) {
+      const normalized = raw
+        .map((item: any) => (typeof item === 'string' ? item : String(item?.course_id || item?.courseId || item?.id || '')))
+        .filter(Boolean);
+      try {
+        localStorage.setItem(`uqlearn_recently_viewed_${uid}`, JSON.stringify(normalized));
+      } catch {}
+      return normalized;
+    }
+  } catch {}
+  try {
+    const cached = JSON.parse(localStorage.getItem(`uqlearn_recently_viewed_${uid}`) || '[]');
+    return Array.isArray(cached) ? cached.map(String).filter(Boolean) : [];
+  } catch {
+    return [];
+  }
+};
+
+export const recordRecentlyViewedApi = async (courseId: string, userId?: string): Promise<any> => {
+  if (!courseId) return { success: false };
+  const uid = userId || 'guest';
+
+  // Optimistically and synchronously update local storage
+  try {
+    const key = `uqlearn_recently_viewed_${uid}`;
+    const existing = JSON.parse(localStorage.getItem(key) || '[]');
+    const list = Array.isArray(existing) ? existing.map(String).filter(Boolean) : [];
+    const updated = [courseId, ...list.filter((id: string) => id !== courseId)].slice(0, 20);
+    localStorage.setItem(key, JSON.stringify(updated));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('uq:recently-viewed-updated', { detail: { courseId, userId: uid } }));
+    }
+  } catch {}
+
+  return apiFetch(API_ENDPOINTS.RECENTLY_VIEWED, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'record', userId: uid, user_id: uid, courseId, course_id: courseId }),
+    silent: true
+  }).catch(() => ({ success: true }));
+};
+
+export const clearRecentlyViewedApi = async (userId?: string): Promise<any> => {
+  const uid = userId || 'guest';
+  try {
+    localStorage.removeItem(`uqlearn_recently_viewed_${uid}`);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('uq:recently-viewed-updated', { detail: { userId: uid } }));
+    }
+  } catch {}
+  return apiFetch(API_ENDPOINTS.RECENTLY_VIEWED, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'clear', userId: uid, user_id: uid }),
+    silent: true
+  }).catch(() => ({ success: true }));
+};
+

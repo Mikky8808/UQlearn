@@ -80,7 +80,8 @@ export const CourseEnrollmentPage: React.FC = () => {
 
     const loadCourse = async () => {
       try {
-        const list = await fetchCoursesApi();
+        const listRes = await fetchCoursesApi();
+        const list = Array.isArray(listRes) ? listRes : [];
         const found = list.find((c: any) => c.id === courseId || c.course_id === courseId);
         if (found) {
           setCourse(normalizeCourse(found) as Course);
@@ -448,7 +449,7 @@ export const CourseEnrollmentPage: React.FC = () => {
     );
   }
 
-  const isFree = course.price === 0;
+  const isFree = !course.price || Number(course.price) === 0;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-12 px-4 sm:px-6 lg:px-8">
@@ -469,7 +470,7 @@ export const CourseEnrollmentPage: React.FC = () => {
               <div className="space-y-6">
                 <div className="inline-flex items-center space-x-1.5 text-[10px] font-black uppercase tracking-wider text-teal-600 bg-teal-50 dark:bg-teal-950/60 px-2.5 py-1 rounded-full border border-teal-200 dark:border-teal-900">
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>Secure Checkout</span>
+                  <span>{isFree ? 'Free Enrollment' : 'Secure Checkout'}</span>
                 </div>
                 
                 <img 
@@ -491,7 +492,7 @@ export const CourseEnrollmentPage: React.FC = () => {
               <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700">
                 <div className="flex items-end justify-between">
                   <span className="text-sm font-bold text-slate-500 dark:text-slate-400">Total Due</span>
-                  <span className="text-3xl font-black text-slate-900 dark:text-white">
+                  <span className={`text-3xl font-black ${isFree ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>
                     {isFree ? 'FREE' : formatPrice(course.price)}
                   </span>
                 </div>
@@ -501,7 +502,32 @@ export const CourseEnrollmentPage: React.FC = () => {
             {/* Right Col: Payment Action */}
             <div className="p-8 flex flex-col justify-center">
               
-              {checkoutStep === 'select-method' ? (
+              {isFree ? (
+                <div className="space-y-6 text-center py-4">
+                  <div className="w-16 h-16 mx-auto rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-inner">
+                    <CheckCircle2 className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-slate-900 dark:text-white">Free Course Enrollment</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
+                      This course is 100% free. No payment details, credit card, or M-Pesa PIN required!
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      enrollCourse(course);
+                      navigate(`/learn/${course.id}`);
+                    }}
+                    className="w-full py-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm rounded-xl shadow-lg shadow-emerald-600/25 transition-all flex items-center justify-center space-x-2 cursor-pointer active:scale-[0.99]"
+                  >
+                    <Play className="w-4 h-4 fill-white" />
+                    <span>Start Learning Now (Free)</span>
+                  </button>
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                    Instant lifetime access • Certificate of completion included
+                  </p>
+                </div>
+              ) : checkoutStep === 'select-method' ? (
                 <div className="space-y-6 text-center">
                   <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Select Payment Method</h3>
                   <div className="grid grid-cols-1 gap-3">

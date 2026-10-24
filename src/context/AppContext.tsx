@@ -30,9 +30,10 @@ import {
   updatePayoutBankApi,
   deletePayoutBankApi,
   togglePayoutBankActiveApi,
-  ROOT_URL
+  ROOT_URL,
+  API_BASE_URL
 } from '../lib/apiConfig';
-import { updateDocumentFavicon } from '../lib/branding';
+import { updateDocumentFavicon, DEFAULT_LOGO_URL, resolveBrandingLogoUrl } from '../lib/branding';
 import { subscriptionService } from '../services/subscription-service';
 import { apiClient as api } from '../lib/api';
 import { AutoLogoutModal } from '../components/common/AutoLogoutModal';
@@ -156,7 +157,6 @@ export const supportedCurrencies: Currency[] = [
   { code: 'ZAR', symbol: 'R', name: 'South African Rand', rate: 18.5, flag: '🇿🇦' },
   { code: 'XAF', symbol: 'FCFA', name: 'Central African CFA Franc', rate: 600, flag: '🇨🇲' },
   { code: 'UGX', symbol: 'USh', name: 'Ugandan Shilling', rate: 3700, flag: '🇺🇬' },
-  { code: 'RWF', symbol: 'FRw', name: 'Rwandan Franc', rate: 1300, flag: '🇷🇼' },
 ];
 
 export interface InstructorNotification {
@@ -661,9 +661,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [selectedModalCourse, setSelectedModalCourse] = useState<Course | null>(null);
   const [logoUrl, setLogoUrlState] = useState<string>(() => {
     try {
-      return localStorage.getItem('uqlearn_logo_url') || `${ROOT_URL}/logo/logo.png`;
+      const saved = localStorage.getItem('uqlearn_logo_url');
+      return resolveBrandingLogoUrl(saved);
     } catch {
-      return `${ROOT_URL}/logo/logo.png`;
+      return DEFAULT_LOGO_URL;
     }
   });
 
@@ -684,10 +685,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Fetch logo from backend API (with live PHP /api/v1/logo.php & local support)
     fetchLogoApi().then(res => {
       if (res && res.success && res.logoUrl) {
-        setLogoUrlState(res.logoUrl);
-        updateDocumentFavicon(res.logoUrl);
+        const resolved = resolveBrandingLogoUrl(res.logoUrl);
+        setLogoUrlState(resolved);
+        updateDocumentFavicon(resolved);
         try {
-          localStorage.setItem('uqlearn_logo_url', res.logoUrl);
+          localStorage.setItem('uqlearn_logo_url', resolved);
         } catch {
           // ignore
         }
@@ -737,7 +739,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       // Fetch live courses from API endpoints with optional creator_id parameter
       const rawRes = await fetchCoursesApi(effectiveCreatorId);
-      const apiCourses = Array.isArray(rawRes) ? rawRes : (Array.isArray(rawRes?.data) ? rawRes.data : []);
+      const apiCourses = Array.isArray(rawRes) ? rawRes : (Array.isArray((rawRes as any)?.data) ? (rawRes as any).data : []);
       const normalized = apiCourses.map(normalizeCourse);
       
       if (normalized.length > 0) {
@@ -747,13 +749,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         void logApiError({
           endpoint: endpointUsed,
           url: `/api/proxy/v1/${endpointUsed}`,
-          originalUrl: `https://uqlearn.org/api/v1/${endpointUsed}`,
+          originalUrl: `${API_BASE_URL.replace(/\/$/, '')}/${endpointUsed}`,
           method: 'GET',
           status: 200,
           statusText: 'Empty Courses Payload',
           errorMessage: `Courses API returned 0 courses after normalization (raw type: ${Array.isArray(rawRes) ? 'array' : typeof rawRes})`,
           responsePreview: JSON.stringify(rawRes ?? null).slice(0, 2000),
-          domain: 'uqlearn.org/api/v1/',
+          domain: API_BASE_URL.replace('https://', ''),
         });
       }
     } catch (err) {
@@ -859,6 +861,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const enrollCourse = (course: Course) => {
     if (!enrolledCourses.some(e => e.id === course.id)) {
       setEnrolledCourses(prev => [...prev, course]);
+    }
+    if (currentUser) {
+      const updatedIds = Array.from(new Set([...(currentUser.enrolledCourseIds || []), course.id]));
+      const updatedUser = { ...currentUser, enrolledCourseIds: updatedIds };
+      setCurrentUser(updatedUser);
+      try {
+        const storageKey = updatedUser.role === 'admin' 
+          ? 'uqlearn_admin' 
+          : (updatedUser.role === 'instructor' ? 'uqlearn_instructor' : 'uqlearn_user');
+        localStorage.setItem(storageKey, JSON.stringify(updatedUser));
+      } catch (e) {}
     }
   };
 

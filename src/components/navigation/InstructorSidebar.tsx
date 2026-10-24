@@ -211,17 +211,11 @@ export const InstructorSidebar: React.FC<InstructorSidebarProps> = ({
           <div className="flex items-center space-x-2.5 min-w-0">
             <img 
               src={resolveBrandingLogoUrl(logoUrl)} 
-              alt="UQlearn Logo" 
+              alt="Logo" 
               onError={(e) => { (e.currentTarget as HTMLImageElement).src = DEFAULT_LOGO_URL; }}
-              className="w-8 h-8 object-contain rounded-xl bg-white dark:bg-slate-800 p-1 border border-slate-200 dark:border-slate-700 shrink-0"
+              className="w-10 h-10 object-contain rounded-full p-0.5 shrink-0 drop-shadow-xs hover:scale-105 transition-transform"
               referrerPolicy="no-referrer"
             />
-            {isExpanded && (
-              <span className="text-base font-black tracking-tight shrink-0">
-                <span className="text-indigo-600 dark:text-indigo-400">UQ</span>
-                <span className="text-purple-600 dark:text-purple-400">learn</span>
-              </span>
-            )}
           </div>
 
           {/* Collapse Button - Desktop only */}

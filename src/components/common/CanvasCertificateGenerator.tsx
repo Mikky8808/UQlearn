@@ -1,10 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Download, Printer, Award, X, FileText } from 'lucide-react';
-import { resolveBrandingLogoUrl } from '../../lib/branding';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { Download, Printer, Award, X, FileText, Code2, CheckCircle2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { fetchSignatureApi } from '../../lib/apiConfig';
+import { fetchSignatureApi, ROOT_URL } from '../../lib/apiConfig';
+import { resolveCertificateLogo, convertImageUrlToDataUri } from '../../lib/certificateLogo';
 import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
+import { UqlearnCertificateSvg, CertificateData } from './UqlearnCertificateSvg';
 
 interface CanvasCertificateGeneratorProps {
   isOpen: boolean;
@@ -20,53 +21,59 @@ interface CanvasCertificateGeneratorProps {
   };
 }
 
-/**
- * UQlearn Certificate
- *
- * The certificate is rendered at 1600 x 1125 so the exported PNG/PDF
- * stays sharp while preserving the landscape proportions of the reference.
- *
- * Fixed:
- * - UQlearn logo position
- * - Certificate wording/layout
- * - CEO name/title/signature
- * - Gold wave decoration
- *
- * Dynamic:
- * - Student name
- * - Course title
- * - Completion date
- * - Instructor name
- * - Instructor signature
- * - Credential/verification QR
- */
 export const CanvasCertificateGenerator: React.FC<CanvasCertificateGeneratorProps> = ({
   isOpen,
   onClose,
   certificateData
 }) => {
-  const { logoUrl, courseConfig } = useApp();
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [downloading, setDownloading] = useState(false);
+  const { courseConfig, logoUrl } = useApp();
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string>('');
+  const [certLogo, setCertLogo] = useState<string>(() => resolveCertificateLogo(logoUrl));
+  const [downloadingPng, setDownloadingPng] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [downloadingSvg, setDownloadingSvg] = useState(false);
+  const [copiedId, setCopiedId] = useState(false);
 
-  // CEO & Instructor signature states loaded dynamically from /api/v1/signatures.php
+  // Signatures loaded dynamically from /api/v1/signatures.php
   const cachedCeoSig = typeof localStorage !== 'undefined' ? localStorage.getItem('uq_sig_ceo') || '' : '';
   const [liveCeoSignature, setLiveCeoSignature] = useState<string>(courseConfig.ceoSignature || cachedCeoSig || '');
   const [liveInstructorSignature, setLiveInstructorSignature] = useState<string>(certificateData.instructorSignature || '');
 
-  // Dynamically fetch latest signatures from /api/v1/signatures.php on certificate modal open
+  const CEO_NAME = courseConfig.ceoName || 'SIR, RAJAB WAMUU';
+  const CEO_TITLE = courseConfig.ceoTitle || 'CEO UQLEARN';
+  const CEO_SIGNATURE_URL = liveCeoSignature || courseConfig.ceoSignature || cachedCeoSig || '';
+  const INSTRUCTOR_SIGNATURE_URL = liveInstructorSignature || certificateData.instructorSignature || '';
+  const credentialId = certificateData.credentialId || `UQL-CERT-${Math.floor(1000 + Math.random() * 9000)}`;
+
+  // Generate dynamic QR Code and fetch signatures on modal open
   useEffect(() => {
     if (!isOpen) return;
 
-    // 1. Fetch CEO signature dynamically
+    // 1. Generate stylized QR Code
+    const verificationUrl = `${ROOT_URL}/verify-certificate/${encodeURIComponent(credentialId)}`;
+    QRCode.toDataURL(verificationUrl, {
+      width: 240,
+      margin: 1,
+      errorCorrectionLevel: 'H',
+      color: {
+        dark: '#0f172a',
+        light: '#ffffff'
+      }
+    }).then((dataUrl) => {
+      setQrDataUrl(dataUrl);
+    }).catch((err) => {
+      console.warn('QR Code generation fallback:', err);
+    });
+
+    // 2. Fetch CEO signature dynamically
     fetchSignatureApi('ceo').then((res) => {
       if (res && res.signatureData) {
         setLiveCeoSignature(res.signatureData);
       }
     }).catch((e) => console.warn('Could not dynamically fetch CEO signature:', e));
 
-    // 2. Fetch Instructor signature dynamically if instructorId provided
+    // 3. Fetch Instructor signature dynamically if instructorId provided
     if (certificateData.instructorId) {
       fetchSignatureApi(certificateData.instructorId).then((res) => {
         if (res && res.signatureData) {
@@ -74,529 +81,145 @@ export const CanvasCertificateGenerator: React.FC<CanvasCertificateGeneratorProp
         }
       }).catch((e) => console.warn('Could not dynamically fetch instructor signature:', e));
     }
-  }, [isOpen, certificateData.instructorId]);
 
-  const CEO_NAME = courseConfig.ceoName || 'SIR, RAJAB WAMUU';
-  const CEO_TITLE = courseConfig.ceoTitle || 'CEO UQLEARN';
-  const CEO_SIGNATURE_URL = liveCeoSignature || courseConfig.ceoSignature || cachedCeoSig || '';
-  const INSTRUCTOR_SIGNATURE_URL = liveInstructorSignature || certificateData.instructorSignature || '';
+    // 4. Resolve and convert site logo to Data URI for seamless SVG & Canvas rendering
+    convertImageUrlToDataUri(resolveCertificateLogo(logoUrl)).then((dataUri) => {
+      setCertLogo(dataUri);
+    }).catch(() => {});
+  }, [isOpen, credentialId, certificateData.instructorId, logoUrl]);
 
-  const WIDTH = 1600;
-  const HEIGHT = 1125;
+  const certData: CertificateData = {
+    studentName: certificateData.studentName,
+    courseTitle: certificateData.courseTitle,
+    completionDate: certificateData.completionDate,
+    instructorName: certificateData.instructorName,
+    instructorSignature: INSTRUCTOR_SIGNATURE_URL,
+    ceoName: CEO_NAME,
+    ceoTitle: CEO_TITLE,
+    ceoSignature: CEO_SIGNATURE_URL,
+    credentialId: credentialId,
+    verificationUrl: `${ROOT_URL}/verify-certificate/${encodeURIComponent(credentialId)}`,
+    qrDataUrl: qrDataUrl,
+    logoUrl: certLogo || resolveCertificateLogo(logoUrl)
+  };
 
-  useEffect(() => {
-    if (!isOpen) return;
+  // Helper to serialize the SVG element to a standalone XML string
+  const getSvgString = useCallback((): string | null => {
+    const svg = svgRef.current;
+    if (!svg) return null;
+    const serializer = new XMLSerializer();
+    let source = serializer.serializeToString(svg);
+    // Add namespace if missing
+    if (!source.match(/^<svg[^>]+xmlns="http:\/\/www\.w3\.org\/2000\/svg"/)) {
+      source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+    }
+    return source;
+  }, []);
 
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  // Helper to convert SVG into a high-DPI canvas
+  const renderSvgToCanvas = useCallback(async (scale = 2): Promise<HTMLCanvasElement | null> => {
+    const svgString = getSvgString();
+    if (!svgString) return null;
 
-    canvas.width = WIDTH;
-    canvas.height = HEIGHT;
+    return new Promise((resolve) => {
+      const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // -----------------------------
-    // Palette from the reference
-    // -----------------------------
-    const PAPER = '#FFFCF5';
-    const INK = '#111111';
-    const GOLD = '#E8C95D';
-    const GOLD_LIGHT = '#F4E7A9';
-
-    // Reset
-    ctx.clearRect(0, 0, WIDTH, HEIGHT);
-    ctx.fillStyle = PAPER;
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
-
-    // -----------------------------
-    // Helpers
-    // -----------------------------
-    const centerText = (
-      text: string,
-      y: number,
-      font: string,
-      fill = INK
-    ) => {
-      ctx.save();
-      ctx.font = font;
-      ctx.fillStyle = fill;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'alphabetic';
-      ctx.fillText(text, WIDTH / 2, y);
-      ctx.restore();
-    };
-
-    const fitText = (
-      text: string,
-      maxWidth: number,
-      startSize: number,
-      family = 'Arial'
-    ) => {
-      let size = startSize;
-      while (size > 22) {
-        ctx.font = `500 ${size}px ${family}`;
-        if (ctx.measureText(text).width <= maxWidth) return size;
-        size -= 1;
-      }
-      return size;
-    };
-
-    const drawWave = (
-      side: 'left' | 'right',
-      yOffset: number,
-      opacity: number,
-      amplitude: number,
-      spacing: number
-    ) => {
-      ctx.save();
-      ctx.globalAlpha = opacity;
-      ctx.strokeStyle = GOLD;
-      ctx.lineWidth = 1.35;
-
-      for (let i = 0; i < 13; i++) {
-        ctx.beginPath();
-
-        const startX = side === 'left' ? -80 : WIDTH + 80;
-        const endX = side === 'left' ? 850 : WIDTH - 850;
-        const baseY = yOffset + i * spacing;
-
-        if (side === 'left') {
-          ctx.moveTo(startX, baseY);
-          ctx.bezierCurveTo(
-            100, baseY + amplitude,
-            90, baseY - amplitude * 1.4,
-            330, baseY - amplitude * 0.5
-          );
-          ctx.bezierCurveTo(
-            570, baseY + amplitude * 0.7,
-            590, baseY - amplitude * 0.8,
-            endX,
-            baseY
-          );
-        } else {
-          ctx.moveTo(startX, baseY);
-          ctx.bezierCurveTo(
-            WIDTH - 100, baseY + amplitude,
-            WIDTH - 90, baseY - amplitude * 1.4,
-            WIDTH - 330, baseY - amplitude * 0.5
-          );
-          ctx.bezierCurveTo(
-            WIDTH - 570, baseY + amplitude * 0.7,
-            WIDTH - 590, baseY - amplitude * 0.8,
-            endX,
-            baseY
-          );
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1600 * scale;
+        canvas.height = 1131 * scale;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         }
-
-        ctx.stroke();
-      }
-
-      ctx.restore();
-    };
-
-    const drawSignatureText = (name: string, x: number, y: number) => {
-      ctx.save();
-      ctx.font = 'italic 31px "Brush Script MT", "Segoe Script", cursive';
-      ctx.fillStyle = '#161616';
-      ctx.textAlign = 'center';
-      ctx.fillText(name, x, y);
-      ctx.restore();
-    };
-
-    const drawImageCover = (
-      img: HTMLImageElement,
-      x: number,
-      y: number,
-      w: number,
-      h: number
-    ) => {
-      const ratio = Math.max(w / img.width, h / img.height);
-      const sw = w / ratio;
-      const sh = h / ratio;
-      const sx = (img.width - sw) / 2;
-      const sy = (img.height - sh) / 2;
-      ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
-    };
-
-    const drawImageContain = (
-      img: HTMLImageElement,
-      x: number,
-      y: number,
-      w: number,
-      h: number
-    ) => {
-      const ratio = Math.min(w / img.width, h / img.height);
-      const dw = img.width * ratio;
-      const dh = img.height * ratio;
-      ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
-    };
-
-    // -----------------------------
-    // Background
-    // -----------------------------
-    drawWave('left', 455, 0.48, 115, 9);
-    drawWave('right', 380, 0.40, 125, 9);
-
-    // Very soft central decorative wave.
-    ctx.save();
-    ctx.globalAlpha = 0.18;
-    ctx.strokeStyle = GOLD_LIGHT;
-    ctx.lineWidth = 1.2;
-
-    for (let i = 0; i < 9; i++) {
-      ctx.beginPath();
-      ctx.moveTo(480, 590 + i * 9);
-      ctx.bezierCurveTo(
-        620, 510 + i * 8,
-        690, 700 + i * 8,
-        820, 600 + i * 8
-      );
-      ctx.bezierCurveTo(
-        950, 500 + i * 8,
-        1060, 680 + i * 8,
-        1220, 590 + i * 8
-      );
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    // -----------------------------
-    // Logo on top of CERTIFICATE OF COMPLETION
-    // -----------------------------
-    const logoImg = new Image();
-    logoImg.crossOrigin = 'anonymous'; // Necessary for canvas security (taint-free)
-    const fullLogoUrl = resolveBrandingLogoUrl(logoUrl);
-    // Add cache buster to force fresh fetch
-    const timestamp = new Date().getTime();
-    const separator = fullLogoUrl.includes('?') ? '&' : '?';
-    logoImg.src = `${fullLogoUrl}${separator}_=${timestamp}`;
-
-    logoImg.onload = () => {
-      console.log('Logo loaded successfully');
-      ctx.save();
-      const logoW = 150;
-      const logoH = 55;
-      drawImageContain(
-        logoImg,
-        WIDTH / 2 - logoW / 2,
-        80,
-        logoW,
-        logoH
-      );
-      ctx.restore();
-
-      drawCertificateContent();
-    };
-
-    logoImg.onerror = (e) => {
-      console.error('Logo failed to load', e);
-      drawCertificateContent();
-    };
-
-    // -----------------------------
-    // Main certificate content
-    // -----------------------------
-    function drawCertificateContent() {
-      // Certificate heading
-      centerText(
-        'CERTIFICATE',
-        170,
-        '400 82px Georgia, "Times New Roman", serif'
-      );
-
-      centerText(
-        'OF COMPLETION',
-        230,
-        '400 34px Georgia, "Times New Roman", serif'
-      );
-
-      // Recipient label
-      centerText(
-        'PROUDLY PRESENTED TO:',
-        390,
-        '400 32px Georgia, "Times New Roman", serif'
-      );
-
-      // Student name
-      const studentSize = fitText(
-        certificateData.studentName || 'Student Name',
-        950,
-        78,
-        'Arial'
-      );
-
-      centerText(
-        certificateData.studentName || 'Student Name',
-        485,
-        `400 ${studentSize}px Arial, Helvetica, sans-serif`
-      );
-
-      // Divider below name
-      ctx.save();
-      ctx.strokeStyle = '#1A1A1A';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(210, 515);
-      ctx.lineTo(1390, 515);
-      ctx.stroke();
-      ctx.restore();
-
-      // Completion wording
-      centerText(
-        'In Recognition of Successfully Completing',
-        575,
-        '400 28px Arial, Helvetica, sans-serif'
-      );
-
-      // Course title — dynamic and fitted
-      const courseSize = fitText(
-        certificateData.courseTitle || 'Course Title',
-        1050,
-        34,
-        'Arial'
-      );
-
-      centerText(
-        certificateData.courseTitle || 'Course Title',
-        635,
-        `700 ${courseSize}px Arial, Helvetica, sans-serif`
-      );
-
-      // Dynamic completion date
-      centerText(
-        `on ${certificateData.completionDate || 'Completion Date'}.`,
-        675,
-        '700 27px Arial, Helvetica, sans-serif'
-      );
-
-      // -----------------------------
-      // Bottom signatures
-      // -----------------------------
-      const signatureY = 880;
-      const signatureLineY = 920;
-      const labelY = 945;
-      const titleY = 970;
-
-      const leftX = 400; // Instructor position
-      const rightX = 1200; // CEO position
-
-      ctx.save();
-      ctx.strokeStyle = '#222222';
-      ctx.lineWidth = 1.2;
-
-      // Instructor signature line
-      ctx.beginPath();
-      ctx.moveTo(leftX - 150, signatureLineY);
-      ctx.lineTo(leftX + 150, signatureLineY);
-      ctx.stroke();
-
-      // CEO signature line
-      ctx.beginPath();
-      ctx.moveTo(rightX - 150, signatureLineY);
-      ctx.lineTo(rightX + 150, signatureLineY);
-      ctx.stroke();
-
-      ctx.restore();
-
-      // Helper to draw signature text
-      const drawSignatureText = (text: string, x: number, y: number) => {
-        ctx.save();
-        ctx.font = 'italic 30px "Dancing Script", cursive, Arial'; // Stylish signature font
-        ctx.fillStyle = INK;
-        ctx.textAlign = 'center';
-        ctx.fillText(text, x, y);
-        ctx.restore();
+        URL.revokeObjectURL(url);
+        resolve(canvas);
       };
 
-      // Helper to draw signature labels
-      const drawSignatureLabel = (text: string, x: number, y: number, isTitle: boolean = false) => {
-        ctx.save();
-        ctx.font = isTitle ? '400 15px Arial, Helvetica, sans-serif' : '700 18px Arial, Helvetica, sans-serif';
-        ctx.fillStyle = isTitle ? '#555555' : INK;
-        ctx.textAlign = 'center';
-        ctx.fillText(text, x, y);
-        ctx.restore();
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(null);
       };
 
-      // 1. Instructor Signature/Name
-      if (INSTRUCTOR_SIGNATURE_URL) {
-        const instructorSignatureImg = new Image();
-        instructorSignatureImg.crossOrigin = 'anonymous'; // Required for canvas
-        const timestamp = new Date().getTime();
-        const separator = INSTRUCTOR_SIGNATURE_URL.includes('?') ? '&' : '?';
-        instructorSignatureImg.src = `${INSTRUCTOR_SIGNATURE_URL}${separator}_=${timestamp}`;
+      img.src = url;
+    });
+  }, [getSvgString]);
 
-        instructorSignatureImg.onload = () => {
-          console.log('Instructor signature loaded');
-          ctx.save();
-          drawImageCover(
-            instructorSignatureImg,
-            leftX - 135,
-            signatureY - 80,
-            270,
-            80
-          );
-          ctx.restore();
-          
-          drawSignatureLabel(certificateData.instructorName || 'Instructor', leftX, labelY);
-          drawSignatureLabel('COURSE INSTRUCTOR', leftX, titleY, true);
-        };
+  // 1. Download SVG vector directly
+  const handleDownloadSVG = () => {
+    const svgString = getSvgString();
+    if (!svgString) return;
 
-        instructorSignatureImg.onerror = (e) => {
-          console.error('Instructor signature failed to load', e);
-          drawSignatureLabel(certificateData.instructorName || 'Instructor', leftX, labelY);
-          drawSignatureLabel('COURSE INSTRUCTOR', leftX, titleY, true);
-        };
-      } else {
-        drawSignatureLabel(certificateData.instructorName || 'Instructor', leftX, labelY);
-        drawSignatureLabel('COURSE INSTRUCTOR', leftX, titleY, true);
-      }
-
-      // 2. CEO Signature/Name
-      if (CEO_SIGNATURE_URL) {
-        const ceoSignatureImg = new Image();
-        ceoSignatureImg.crossOrigin = 'anonymous'; // Required for canvas
-        const timestamp = new Date().getTime();
-        const separator = CEO_SIGNATURE_URL.includes('?') ? '&' : '?';
-        ceoSignatureImg.src = `${CEO_SIGNATURE_URL}${separator}_=${timestamp}`;
-
-        ceoSignatureImg.onload = () => {
-          console.log('CEO signature loaded');
-          ctx.save();
-          drawImageCover(
-            ceoSignatureImg,
-            rightX - 135,
-            signatureY - 80,
-            270,
-            80
-          );
-          ctx.restore();
-          drawSignatureLabel(CEO_NAME, rightX, labelY);
-          drawSignatureLabel(CEO_TITLE, rightX, titleY, true);
-        };
-        ceoSignatureImg.onerror = (e) => {
-          console.error('CEO signature failed to load', e);
-          drawSignatureLabel(CEO_NAME, rightX, labelY);
-          drawSignatureLabel(CEO_TITLE, rightX, titleY, true);
-        };
-      } else {
-        drawSignatureLabel(CEO_NAME, rightX, labelY);
-        drawSignatureLabel(CEO_TITLE, rightX, titleY, true);
-      }
-
-      // 3. QR Code always drawn at bottom center
-      drawQR();
-    }
-
-    // -----------------------------
-    // Real dynamic QR code
-    // -----------------------------
-    async function drawQR() {
-      const qrSize = 120;
-      const qrX = WIDTH / 2 - qrSize / 2;
-      const qrY = 815;
-
-      const verificationUrl =
-        `https://uqlearn.co.ke/verify/${encodeURIComponent(
-          certificateData.credentialId || 'certificate'
-        )}`;
-
-      try {
-        const qrDataUrl = await QRCode.toDataURL(verificationUrl, {
-          width: qrSize,
-          margin: 0,
-          errorCorrectionLevel: 'H',
-          color: {
-            dark: '#111111',
-            light: '#FFFCF5'
-          }
-        });
-
-        const qrImg = new Image();
-        qrImg.onload = () => {
-          ctx.save();
-
-          ctx.fillStyle = PAPER;
-          ctx.fillRect(qrX - 10, qrY - 10, qrSize + 20, qrSize + 20);
-
-          ctx.strokeStyle = '#111111';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(
-            qrX - 8,
-            qrY - 8,
-            qrSize + 16,
-            qrSize + 16
-          );
-
-          ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
-          ctx.restore();
-        };
-
-        qrImg.src = qrDataUrl;
-      } catch (error) {
-        console.error('QR code generation error:', error);
-      }
-    }
-  }, [isOpen, certificateData, logoUrl, courseConfig, liveCeoSignature, liveInstructorSignature]);
-
-  const handleDownloadPNG = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    setDownloading(true);
-
-    const link = document.createElement('a');
-    link.download = `UQlearn-Certificate-${certificateData.credentialId || 'certificate'}.png`;
-    link.href = canvas.toDataURL('image/png', 1);
-    link.click();
-
-    setTimeout(() => setDownloading(false), 800);
+    setDownloadingSvg(true);
+    const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `UQlearn-Certificate-${credentialId}.svg`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setTimeout(() => setDownloadingSvg(false), 600);
   };
 
-  const handleDownloadPDF = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    setDownloadingPdf(true);
-
+  // 2. Download High-Res PNG (3200 x 2262 for 300 DPI print quality)
+  const handleDownloadPNG = async () => {
+    setDownloadingPng(true);
     try {
-      const imgData = canvas.toDataURL('image/png', 1);
-
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'px',
-        format: [canvas.width, canvas.height]
-      });
-
-      pdf.addImage(
-        imgData,
-        'PNG',
-        0,
-        0,
-        canvas.width,
-        canvas.height
-      );
-
-      pdf.save(
-        `UQlearn-Certificate-${certificateData.credentialId || 'certificate'}.pdf`
-      );
+      const canvas = await renderSvgToCanvas(2);
+      if (canvas) {
+        const pngUrl = canvas.toDataURL('image/png', 1.0);
+        const a = document.createElement('a');
+        a.href = pngUrl;
+        a.download = `UQlearn-Certificate-${credentialId}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
     } catch (err) {
-      console.error('PDF generation error:', err);
+      console.error('PNG export failed:', err);
     } finally {
-      setTimeout(() => setDownloadingPdf(false), 800);
+      setTimeout(() => setDownloadingPng(false), 600);
     }
   };
 
-  const handlePrint = () => {
-    const canvas = canvasRef.current;
+  // 3. Download Print-Ready PDF
+  const handleDownloadPDF = async () => {
+    setDownloadingPdf(true);
+    try {
+      const canvas = await renderSvgToCanvas(2);
+      if (canvas) {
+        const imgData = canvas.toDataURL('image/png', 1.0);
+        // A4 Landscape is 297mm x 210mm
+        const pdf = new jsPDF({
+          orientation: 'landscape',
+          unit: 'mm',
+          format: 'a4'
+        });
+        pdf.addImage(imgData, 'PNG', 0, 0, 297, 210, undefined, 'FAST');
+        pdf.save(`UQlearn-Certificate-${credentialId}.pdf`);
+      }
+    } catch (err) {
+      console.error('PDF export failed:', err);
+    } finally {
+      setTimeout(() => setDownloadingPdf(false), 600);
+    }
+  };
+
+  // 4. Print Certificate directly
+  const handlePrint = async () => {
+    const canvas = await renderSvgToCanvas(2);
     if (!canvas) return;
-
-    const dataUrl = canvas.toDataURL('image/png', 1);
+    const dataUrl = canvas.toDataURL('image/png', 1.0);
     const win = window.open('', '_blank');
-
     if (win) {
       win.document.write(`
+        <!DOCTYPE html>
         <html>
           <head>
             <title>UQlearn Certificate - ${certificateData.courseTitle}</title>
@@ -605,21 +228,16 @@ export const CanvasCertificateGenerator: React.FC<CanvasCertificateGeneratorProp
                 size: landscape;
                 margin: 0;
               }
-
               html, body {
                 margin: 0;
                 padding: 0;
                 width: 100%;
                 height: 100%;
                 background: white;
-              }
-
-              body {
                 display: flex;
                 align-items: center;
                 justify-content: center;
               }
-
               img {
                 width: 100vw;
                 height: auto;
@@ -629,83 +247,111 @@ export const CanvasCertificateGenerator: React.FC<CanvasCertificateGeneratorProp
             </style>
           </head>
           <body>
-            <img
-              src="${dataUrl}"
-              onload="window.print();"
-            />
+            <img src="${dataUrl}" onload="window.print();" />
           </body>
         </html>
       `);
-
       win.document.close();
+    }
+  };
+
+  const copyCredentialId = () => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(credentialId);
+      setCopiedId(true);
+      setTimeout(() => setCopiedId(false), 2500);
     }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
-      <div className="bg-white w-full max-w-4xl rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
-
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md animate-fadeIn select-none">
+      <div className="bg-white dark:bg-slate-900 w-screen h-screen overflow-hidden flex flex-col transition-colors">
+        
         {/* Header */}
-        <div className="p-3.5 border-b border-slate-100 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Award className="w-5 h-5 text-[#6D1BEA]" />
-            <span className="text-sm font-bold text-slate-700">
-              UQlearn Certificate of Completion
-            </span>
+        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/80 dark:bg-slate-950/50">
+          <div className="flex items-center space-x-2.5">
+            <div className="w-8 h-8 rounded-xl bg-purple-100 dark:bg-purple-950/80 text-purple-600 dark:text-purple-400 flex items-center justify-center border border-purple-200 dark:border-purple-800">
+              <Award className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                <span>Official UQlearn Certificate of Completion</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                  Verified
+                </span>
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Official credential with cryptographic QR validation
+              </p>
+            </div>
           </div>
 
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-700 text-sm font-bold cursor-pointer"
+            className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            title="Close certificate viewer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Preview */}
-        <div className="p-4 overflow-auto flex-1 flex items-center justify-center bg-slate-100">
-          <canvas
-            ref={canvasRef}
-            className="w-full max-w-3xl h-auto shadow-xl border border-slate-200 rounded-xl"
-          />
+        {/* Certificate SVG Canvas Container */}
+        <div className="p-4 sm:p-6 overflow-auto flex-1 flex items-center justify-center bg-slate-100 dark:bg-slate-950/80">
+          <div className="w-full max-w-5xl shadow-2xl rounded-2xl overflow-hidden border border-slate-300 dark:border-slate-800 bg-white">
+            <UqlearnCertificateSvg
+              data={certData}
+              svgRef={svgRef}
+              className="w-full h-auto block"
+            />
+          </div>
         </div>
 
-        {/* Actions */}
-        <div className="p-3.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-white">
-          <div className="text-[11px] text-slate-500 font-mono">
-            ID: {certificateData.credentialId || '—'}
-          </div>
+        {/* Action Controls & Export Buttons */}
+        <div className="px-5 py-4 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900">
+          <button
+            type="button"
+            onClick={copyCredentialId}
+            className="text-[11px] font-mono text-slate-600 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-400 flex items-center gap-1.5 cursor-pointer bg-slate-50 dark:bg-slate-800/60 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700"
+            title="Click to copy Credential ID"
+          >
+            {copiedId ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> : <Award className="w-3.5 h-3.5 text-purple-500" />}
+            <span>ID: <strong>{credentialId}</strong></span>
+          </button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Print */}
             <button
               onClick={handlePrint}
-              className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer border border-slate-200 dark:border-slate-700"
             >
-              <Printer className="w-4 h-4" />
-              Print
+              <Printer className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
+              <span>Print</span>
             </button>
 
+            {/* Download High-Res PNG */}
+            <button
+              onClick={handleDownloadPNG}
+              disabled={downloadingPng}
+              className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+            >
+              <Download className="w-4 h-4" />
+              <span>{downloadingPng ? 'Generating PNG...' : 'Download PNG'}</span>
+            </button>
+
+            {/* Download PDF */}
             <button
               onClick={handleDownloadPDF}
               disabled={downloadingPdf}
-              className="px-4 py-2 bg-[#6D1BEA] hover:bg-[#5B16C7] text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer"
+              className="px-4 py-2 bg-purple-700 hover:bg-purple-600 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
             >
               <FileText className="w-4 h-4" />
-              {downloadingPdf ? 'PDF...' : 'Download PDF'}
-            </button>
-
-            <button
-              onClick={handleDownloadPNG}
-              disabled={downloading}
-              className="px-4 py-2 bg-[#10C7C9] hover:bg-[#0FAEB0] text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer"
-            >
-              <Download className="w-4 h-4" />
-              {downloading ? 'PNG...' : 'Download PNG'}
+              <span>{downloadingPdf ? 'Generating PDF...' : 'Download PDF'}</span>
             </button>
           </div>
         </div>
+
       </div>
     </div>
   );

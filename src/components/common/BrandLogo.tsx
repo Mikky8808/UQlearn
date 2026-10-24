@@ -39,14 +39,14 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
     if (imageSizeClass) return imageSizeClass;
     switch (size) {
       case 'sm':
-        return 'w-8 h-8 rounded-lg p-1';
+        return 'w-8 h-8 rounded-full p-0.5';
       case 'lg':
-        return 'w-12 h-12 rounded-2xl p-1.5';
+        return 'w-12 h-12 rounded-full p-0.5';
       case 'xl':
-        return 'w-14 h-14 rounded-2xl p-2';
+        return 'w-14 h-14 rounded-full p-0.5';
       case 'md':
       default:
-        return 'w-10 h-10 rounded-xl p-1';
+        return 'w-10 h-10 rounded-full p-0.5';
     }
   };
 
@@ -71,7 +71,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
           src={resolvedSrc}
           alt="UQlearn Logo"
           onError={() => setImgError(true)}
-          className={`${getImageDimensions()} object-contain bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xs group-hover:scale-105 transition-transform`}
+          className={`${getImageDimensions()} object-contain group-hover:scale-105 transition-transform drop-shadow-xs`}
           referrerPolicy="no-referrer"
         />
       )}
@@ -96,4 +96,5 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
 
   return content;
 };
+
 

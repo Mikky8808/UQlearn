@@ -22,19 +22,20 @@ try {
         `is_default` TINYINT(1) DEFAULT 0
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
-    // Seed default currencies if table is empty
-    $res_check = $conn->query("SELECT COUNT(*) as cnt FROM currencies");
-    $row_check = $res_check ? $res_check->fetch_assoc() : ['cnt' => 0];
-    if (intval($row_check['cnt']) === 0) {
-        $conn->query("INSERT INTO currencies (code, symbol, name, exchange_rate, is_default) VALUES 
-            ('KES', 'KSh', 'Kenyan Shilling', 130.0000, 1),
-            ('USD', '$', 'US Dollar', 1.0000, 0),
-            ('ZMW', 'ZK', 'Zambian Kwacha', 26.0000, 0),
-            ('ZAR', 'R', 'South African Rand', 18.5000, 0),
-            ('UGX', 'USh', 'Ugandan Shilling', 3700.0000, 0),
-            ('RWF', 'FRw', 'Rwandan Franc', 1300.0000, 0)
-        ON DUPLICATE KEY UPDATE name=VALUES(name)");
-    }
+    // Clean up any extraneous currencies not in the allowed list
+    $conn->query("DELETE FROM currencies WHERE code NOT IN ('NGN', 'GHS', 'KES', 'ZMW', 'USD', 'ZAR', 'XAF', 'UGX')");
+
+    // Upsert the 8 supported currencies
+    $conn->query("INSERT INTO currencies (code, symbol, name, exchange_rate, is_default) VALUES 
+        ('NGN', '₦', 'Nigerian Naira', 1400.0000, 0),
+        ('GHS', 'GH₵', 'Ghanaian Cedi', 15.5000, 0),
+        ('KES', 'KSh', 'Kenyan Shilling', 130.0000, 1),
+        ('ZMW', 'ZK', 'Zambian Kwacha', 26.0000, 0),
+        ('USD', '$', 'US Dollar', 1.0000, 0),
+        ('ZAR', 'R', 'South African Rand', 18.5000, 0),
+        ('XAF', 'FCFA', 'Central African CFA Franc', 600.0000, 0),
+        ('UGX', 'USh', 'Ugandan Shilling', 3700.0000, 0)
+    ON DUPLICATE KEY UPDATE symbol=VALUES(symbol), name=VALUES(name), exchange_rate=VALUES(exchange_rate)");
 
     // Auto-create user_currency_preferences table
     $conn->query("CREATE TABLE IF NOT EXISTS `user_currency_preferences` (
@@ -44,6 +45,7 @@ try {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
     $method = $_SERVER['REQUEST_METHOD'];
+    $allowedOrder = "ORDER BY FIELD(code, 'NGN', 'GHS', 'KES', 'ZMW', 'USD', 'ZAR', 'XAF', 'UGX')";
 
     if ($method === 'GET') {
         $user_id = $_GET['user_id'] ?? ($_GET['userId'] ?? null);
@@ -57,7 +59,7 @@ try {
             $stmt->close();
 
             // Also fetch supported currencies list
-            $cur_res = $conn->query("SELECT * FROM currencies ORDER BY is_default DESC, code ASC");
+            $cur_res = $conn->query("SELECT * FROM currencies WHERE code IN ('NGN', 'GHS', 'KES', 'ZMW', 'USD', 'ZAR', 'XAF', 'UGX') {$allowedOrder}");
             $currencies = [];
             while ($c = $cur_res->fetch_assoc()) {
                 $currencies[] = $c;
@@ -72,7 +74,7 @@ try {
         }
 
         // Return all supported currencies
-        $cur_res = $conn->query("SELECT * FROM currencies ORDER BY is_default DESC, code ASC");
+        $cur_res = $conn->query("SELECT * FROM currencies WHERE code IN ('NGN', 'GHS', 'KES', 'ZMW', 'USD', 'ZAR', 'XAF', 'UGX') {$allowedOrder}");
         $currencies = [];
         if ($cur_res) {
             while ($c = $cur_res->fetch_assoc()) {

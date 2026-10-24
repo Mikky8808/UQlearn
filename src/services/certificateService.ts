@@ -105,8 +105,10 @@ export const fetchCertificateMetadata = async (credentialId: string): Promise<Ce
 export const fetchUserCertificatesApi = async (userId: string): Promise<CertificateMetadata[]> => {
   try {
     const res = await apiFetch(`${API_ENDPOINTS.CERTIFICATES}?user_id=${encodeURIComponent(userId)}`, { silent: true }, 0);
-    if (res && (res.certificates || Array.isArray(res))) {
-      return res.certificates || res;
+    if (res) {
+      if (Array.isArray(res)) return res;
+      if (Array.isArray(res.certificates)) return res.certificates;
+      if (Array.isArray(res.data)) return res.data;
     }
   } catch (e) {}
   return [];

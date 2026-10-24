@@ -34,7 +34,8 @@ import {
   BarChart3,
   ChevronRight,
   Sliders,
-  Star
+  Star,
+  Flame
 } from 'lucide-react';
 import { AdminTabKey } from './AdminNavbar';
 
@@ -151,6 +152,7 @@ export const AdminSidebarDrawer: React.FC<AdminSidebarDrawerProps> = ({
         { id: 'top-adverts' as AdminTabKey, label: 'Top Nav Advert Manager', icon: Sparkles },
         { id: 'adverts-manager' as AdminTabKey, label: 'Section Advert Banners', icon: Megaphone },
         { id: 'sponsored-ads' as AdminTabKey, label: 'Sponsored Ads & Products', icon: Tag, badgeText: 'NEW' },
+        { id: 'flash-sale' as AdminTabKey, label: 'Flash Sale & Top Selling', icon: Flame, badgeText: 'Live' },
       ]
     },
     {
@@ -246,19 +248,15 @@ export const AdminSidebarDrawer: React.FC<AdminSidebarDrawerProps> = ({
                   <div>
                     <div className="p-4 sm:p-5 border-b border-slate-800/80 flex items-center justify-between bg-slate-950/80">
                       <div className="flex items-center space-x-3">
-                        <div className="w-9 h-9 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center p-1.5">
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center p-0.5">
                           <img 
                             src={resolveBrandingLogoUrl(logoUrl)} 
-                            alt="UQlearn Logo" 
+                            alt="Logo" 
                             onError={(e) => { (e.currentTarget as HTMLImageElement).src = DEFAULT_LOGO_URL; }}
-                            className="w-full h-full object-contain"
+                            className="w-full h-full object-contain drop-shadow-xs hover:scale-105 transition-transform"
                             referrerPolicy="no-referrer"
                           />
                         </div>
-                        <span className="text-lg font-black tracking-tight select-none leading-none">
-                          <span className="text-rose-500">UQ</span>
-                          <span className="text-emerald-400">learn</span>
-                        </span>
                       </div>
 
                       <div className="flex items-center space-x-1">

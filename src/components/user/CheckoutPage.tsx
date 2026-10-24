@@ -33,7 +33,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   onCheckoutComplete,
 }) => {
   const navigate = useNavigate();
-  const { formatPrice, currentUser } = useApp();
+  const { formatPrice, currentUser, enrollCourse } = useApp();
 
   const [paymentMethod, setPaymentMethod] = useState<'mpesa' | 'card'>('mpesa');
   const [payheroPhone, setPayheroPhone] = useState(currentUser?.phone || '');
@@ -46,9 +46,25 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   const [statusMessage, setStatusMessage] = useState('Waiting for M-Pesa PIN authorization...');
   const [timeLeft, setTimeLeft] = useState(180);
 
-  const totalAmountUsd = cart.reduce((acc, c) => acc + c.price, 0);
-  const totalAmount = formatPrice(totalAmountUsd);
+  const totalAmountUsd = cart.reduce((acc, c) => acc + (Number(c.price) || 0), 0);
+  const isCartFree = cart.length > 0 && (totalAmountUsd <= 0 || cart.every(c => !c.price || Number(c.price) === 0));
+  const totalAmount = isCartFree ? 'Free' : formatPrice(totalAmountUsd);
   const [showPaymentStatusModal, setShowPaymentStatusModal] = useState<{show: boolean, success: boolean, message: string, courseId?: string} >({show: false, success: false, message: ''});
+
+  const handleFreeCheckout = () => {
+    if (loading) return;
+    setLoading(true);
+    cart.forEach(c => enrollCourse(c));
+    onCheckoutComplete(cart);
+    setTimeout(() => {
+      setLoading(false);
+      if (cart.length > 0) {
+        navigate(`/learn/${cart[0].id}`);
+      } else {
+        navigate('/dashboard');
+      }
+    }, 400);
+  };
 
   // Timer & Polling logic (similar to CourseEnrollmentPage)
   const subRef = useRef(submittedSub);
@@ -374,13 +390,49 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
           <div className="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 sm:p-8 space-y-6">
             <div>
               <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-                Secure Checkout
+                {isCartFree ? 'Free Course Enrollment' : 'Secure Checkout'}
               </h1>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Complete your payment details below for instant course access
+                {isCartFree 
+                  ? 'All courses in your cart are 100% free. No payment details required!' 
+                  : 'Complete your payment details below for instant course access'}
               </p>
             </div>
 
+            {isCartFree ? (
+              <div className="space-y-6 py-4">
+                <div className="p-6 bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl flex items-center space-x-4">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-900 dark:text-white text-sm">No Payment Needed</h3>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+                      Your selection qualifies for 100% free access. Click below to start learning immediately.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleFreeCheckout}
+                  disabled={loading}
+                  className="w-full py-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm rounded-xl shadow-lg shadow-emerald-600/25 transition-all flex items-center justify-center space-x-2 cursor-pointer active:scale-[0.99] disabled:opacity-50"
+                >
+                  {loading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Enrolling you now...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4 fill-white" />
+                      <span>Complete Free Enrollment & Start Learning</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            ) : (
             <form onSubmit={handleProcessPayment} className="space-y-6">
               
               {/* Payment Method Selector - M-Pesa or Card */}
@@ -491,6 +543,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 )}
               </button>
             </form>
+            )}
           </div>
 
           {/* Right Column: Order Summary */}

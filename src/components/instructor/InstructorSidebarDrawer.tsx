@@ -185,15 +185,15 @@ export const InstructorSidebarDrawer: React.FC<InstructorSidebarDrawerProps> = (
                       src={resolveBrandingLogoUrl(logoUrl)} 
                       alt="UQlearn Logo" 
                       onError={(e) => { (e.currentTarget as HTMLImageElement).src = DEFAULT_LOGO_URL; }}
-                      className="w-9 h-9 object-contain rounded-xl bg-white dark:bg-slate-800 p-1 border border-slate-200 dark:border-slate-700"
+                      className="w-9 h-9 object-contain rounded-full p-0.5 drop-shadow-xs"
                       referrerPolicy="no-referrer"
                     />
                     <div>
                       <span className="text-lg font-black tracking-tight leading-none block">
-                        <span className="text-indigo-600 dark:text-indigo-400">UQ</span>
+                        <span className="text-teal-600 dark:text-teal-400">UQ</span>
                         <span className="text-purple-600 dark:text-purple-400">learn</span>
                       </span>
-                      <span className="text-[10px] font-bold text-indigo-500 dark:text-indigo-400 block tracking-wider uppercase mt-0.5">
+                      <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 block tracking-wider uppercase mt-0.5">
                         Instructor Studio
                       </span>
                     </div>

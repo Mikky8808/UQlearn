@@ -130,7 +130,7 @@ export const InstructorPhpSyncTab: React.FC = () => {
     setLoadingFiles(true);
     addLog('[FS] Reading local /api/v1/ directory tree...', 'info');
     try {
-      const data = await localApiFetch('/api/v1/remote-sync/local-files');
+      const data = await localApiFetch('/api/v1/remote-sync/local-files', { silent: true });
       if (data && data.success && Array.isArray(data.files)) {
         setFiles(data.files);
         setSelectedFileNames(data.files.map((f: ApiFile) => f.name));
@@ -140,7 +140,7 @@ export const InstructorPhpSyncTab: React.FC = () => {
         }
       }
     } catch (err: any) {
-      addLog(`[FS] ✕ Failed to load local files: ${err.message}.`, 'warn');
+      addLog(`[FS] ✕ Failed to load local files: ${err?.message || 'Error'}.`, 'warn');
     } finally {
       setLoadingFiles(false);
     }
@@ -150,7 +150,7 @@ export const InstructorPhpSyncTab: React.FC = () => {
   const fetchDistFiles = async () => {
     setLoadingDistFiles(true);
     try {
-      const data = await localApiFetch('/api/v1/dist-files');
+      const data = await localApiFetch('/api/v1/dist-files', { silent: true });
       if (data && data.success) {
         setHasBuiltDist(data.hasBuilt && data.files?.length > 0);
         setDistFiles(data.files || []);
@@ -162,7 +162,7 @@ export const InstructorPhpSyncTab: React.FC = () => {
           }
         }
       }
-    } catch (err: any) {
+    } catch {
       // ignore transient fetch
     } finally {
       setLoadingDistFiles(false);
@@ -230,50 +230,48 @@ export const InstructorPhpSyncTab: React.FC = () => {
     const startTime = performance.now();
     addLog(`[NET] Pinging remote deploy worker: ${url} ...`, 'info');
 
-    // Method A: Direct Browser Fetch (Bypasses Cloudflare datacenter challenges)
-    try {
-      let proxyUrl = url;
-      const isLiveHost = typeof window !== 'undefined' && (window.location.hostname === 'uqlearn.org' || window.location.hostname.endsWith('.uqlearn.org'));
-      if (!isLiveHost && proxyUrl.startsWith('https://uqlearn.org/api/v1')) {
-        proxyUrl = proxyUrl.replace('https://uqlearn.org/api/v1', '/api/v1');
-      }
-      const browserRes = await fetch(proxyUrl, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json, text/plain, */*',
-          'X-Deploy-Key': deployKey
-        }
-      });
-      const elapsed = Math.round(performance.now() - startTime);
+    // Method A: Direct Browser Fetch (Only when running on live uqlearn.org host to avoid CORS)
+    const isLiveHost = typeof window !== 'undefined' && (window.location.hostname === 'uqlearn.org' || window.location.hostname.endsWith('.uqlearn.org'));
+    if (isLiveHost) {
+      try {
+        const browserRes = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json, text/plain, */*',
+            'X-Deploy-Key': deployKey
+          }
+        });
+        const elapsed = Math.round(performance.now() - startTime);
 
-      if (browserRes.ok) {
-        const text = await browserRes.text();
-        let directData: any = null;
-        try {
-          directData = JSON.parse(text);
-        } catch {
-          // not json
-        }
+        if (browserRes.ok) {
+          const text = await browserRes.text();
+          let directData: any = null;
+          try {
+            directData = JSON.parse(text);
+          } catch {
+            // not json
+          }
 
-        if (directData && (directData.success || directData.worker || directData.status === 'ready')) {
-          setRemoteStatus({
-            checked: true,
-            online: true,
-            loading: false,
-            latencyMs: elapsed,
-            data: directData
-          });
-          addLog(`[NET] ✓ Remote worker responded 200 OK (${elapsed}ms) at ${url}`, 'success');
-          return;
+          if (directData && (directData.success || directData.worker || directData.status === 'ready')) {
+            setRemoteStatus({
+              checked: true,
+              online: true,
+              loading: false,
+              latencyMs: elapsed,
+              data: directData
+            });
+            addLog(`[NET] ✓ Remote worker responded 200 OK (${elapsed}ms) at ${url}`, 'success');
+            return;
+          }
         }
+      } catch {
+        // Fall through to server-side proxy
       }
-    } catch {
-      // Fall through to server-side proxy
     }
 
     // Method B: Server Proxy Fetch
     try {
-      const data = await localApiFetch(`/api/v1/remote-sync/remote-status?url=${encodeURIComponent(url)}&key=${encodeURIComponent(deployKey)}`);
+      const data = await localApiFetch(`/api/v1/remote-sync/remote-status?url=${encodeURIComponent(url)}&key=${encodeURIComponent(deployKey)}`, { silent: true });
       const elapsed = Math.round(performance.now() - startTime);
 
       if (data && data.success && data.reachable) {
@@ -300,20 +298,25 @@ export const InstructorPhpSyncTab: React.FC = () => {
         checked: true,
         online: false,
         loading: false,
-        error: err.message
+        error: err?.message || 'Connection error'
       });
-      addLog(`[NET] ✕ Connection failed: ${err.message}`, 'error');
+      addLog(`[NET] ✕ Connection notice: ${err?.message || 'Check connection'}`, 'warn');
     }
   };
 
+  const isFirstMountRef = useRef(true);
   useEffect(() => {
     fetchLocalFiles();
     fetchDistFiles();
-    checkRemoteStatus();
+    checkRemoteStatus(currentRemoteUrl);
   }, []);
 
   // Whenever deploy mode changes, ping the appropriate remote URL
   useEffect(() => {
+    if (isFirstMountRef.current) {
+      isFirstMountRef.current = false;
+      return;
+    }
     checkRemoteStatus(currentRemoteUrl);
   }, [deployMode]);
 
@@ -339,8 +342,8 @@ export const InstructorPhpSyncTab: React.FC = () => {
         addLog(`[DEPLOY] Transmitting ${payloadRes.totalFiles} files directly from browser to ${backendRemoteUrl}...`, 'info');
         let proxyUrl = backendRemoteUrl;
         const isLiveHost = typeof window !== 'undefined' && (window.location.hostname === 'uqlearn.org' || window.location.hostname.endsWith('.uqlearn.org'));
-        if (!isLiveHost && proxyUrl.startsWith('https://uqlearn.org/api/v1')) {
-          proxyUrl = proxyUrl.replace('https://uqlearn.org/api/v1', '/api/v1');
+        if (!isLiveHost && proxyUrl.startsWith(API_BASE_URL.replace(/\/$/, ''))) {
+          proxyUrl = proxyUrl.replace(API_BASE_URL.replace(/\/$/, ''), '/api/v1');
         }
         const directPushRes = await fetch(proxyUrl, {
           method: 'POST',

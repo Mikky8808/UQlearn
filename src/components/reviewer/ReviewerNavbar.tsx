@@ -47,22 +47,18 @@ export const ReviewerNavbar: React.FC<ReviewerNavbarProps> = ({
           <div className="flex items-center space-x-3">
             <img 
               src={resolveBrandingLogoUrl(logoUrl)} 
-              alt="UQlearn Reviewer Logo" 
+              alt="Logo" 
               onError={(e) => { (e.currentTarget as HTMLImageElement).src = DEFAULT_LOGO_URL; }}
-              className="w-9 h-9 object-contain rounded-xl bg-slate-100 dark:bg-slate-800 p-1 border border-slate-200 dark:border-purple-500/30"
+              className="w-10 h-10 object-contain rounded-xl bg-slate-100 dark:bg-slate-800 p-1 hover:scale-105 transition-transform"
             />
             <div>
               <div className="flex items-center space-x-1.5">
-                <span className="text-base sm:text-lg font-black tracking-tight">
-                  <span className="text-teal-500 dark:text-teal-400">UQ</span>
-                  <span className="text-purple-600 dark:text-purple-400">learn</span>
-                </span>
-                <span className="bg-purple-100 dark:bg-purple-500/20 border border-purple-300 dark:border-purple-500/40 text-purple-700 dark:text-purple-300 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider hidden sm:inline-flex items-center space-x-1">
+                <span className="bg-purple-100 dark:bg-purple-500/20 border border-purple-300 dark:border-purple-500/40 text-purple-700 dark:text-purple-300 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider inline-flex items-center space-x-1">
                   <ShieldCheck className="w-3 h-3 text-purple-600 dark:text-purple-400" />
                   <span>Reviewer</span>
                 </span>
               </div>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold block leading-none">Course Quality & Compliance Portal</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold block leading-none mt-1">Quality & Compliance Portal</span>
             </div>
           </div>
         </div>

@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { Star, BadgeCheck } from 'lucide-react';
 import { Course } from '../../types';
 import { SponsoredLabel } from './SponsoredLabel';
-import { recordSponsoredClickApi } from '../../lib/apiConfig';
+import { recordSponsoredClickApi, recordRecentlyViewedApi } from '../../lib/apiConfig';
 import { useApp } from '../../context/AppContext';
 
 interface CourseCardProps {
@@ -13,6 +13,7 @@ interface CourseCardProps {
   navigate: (to: string) => void;
   className?: string;
   cardTheme?: 'white' | 'purple' | 'dark';
+  discountDisplayMode?: 'save' | 'percentage';
 }
 
 export const CourseCard: React.FC<CourseCardProps> = ({
@@ -23,9 +24,14 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   navigate,
   className = "",
   cardTheme = 'white',
+  discountDisplayMode = 'percentage',
 }) => {
-  const { addToCart, setCartModalOpen } = useApp();
+  const { addToCart, setCartModalOpen, enrolledCourses, enrollCourse, currentUser } = useApp();
+  const isEnrolled = enrolledCourses?.some(e => e.id === course.id);
+  const isFree = !course.price || Number(course.price) === 0;
   const hasDiscount = Boolean(course.originalPrice && course.originalPrice > course.price);
+  const savedAmount = hasDiscount && course.originalPrice ? Math.max(0, course.originalPrice - course.price) : 0;
+  const discountPercent = hasDiscount && course.originalPrice ? getDiscountPercentage(course.price, course.originalPrice) : 0;
 
   const isBestseller = Boolean(
     course.bestSeller || 
@@ -48,11 +54,23 @@ export const CourseCard: React.FC<CourseCardProps> = ({
     if (course.isSponsored) {
       recordSponsoredClickApi(course.id).catch(() => {});
     }
+    recordRecentlyViewedApi(course.id, currentUser?.id).catch(() => {});
     navigate(`/course/${course.id}`);
   };
 
   const handleEnroll = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (isEnrolled) {
+      navigate(`/learn/${course.id}`);
+      return;
+    }
+    if (isFree) {
+      if (enrollCourse) {
+        enrollCourse(course);
+      }
+      navigate(`/learn/${course.id}`);
+      return;
+    }
     if (addToCart) {
       addToCart(course);
     }
@@ -93,8 +111,15 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               referrerPolicy="no-referrer"
               className="w-full h-full object-cover object-center"
             />
-
-
+            {hasDiscount && discountDisplayMode !== 'save' && (
+              <div className="absolute top-1.5 right-1.5 z-10">
+                {discountPercent > 0 && (
+                  <span className="px-1.5 py-0.5 bg-red-600 text-white font-black text-[9px] sm:text-[10px] rounded shadow-xs tracking-tight">
+                    -{discountPercent}%
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Details Section (Squeezed compact vertical spacing, no instructor text) */}
@@ -138,19 +163,36 @@ export const CourseCard: React.FC<CourseCardProps> = ({
         </div>
 
         {/* Pricing & Enroll Button Row (Squeezed compact height) */}
-        <div className={`pt-1.5 border-t flex items-center justify-between ${isPurpleCard ? 'border-purple-400/20' : 'border-slate-100 dark:border-slate-800'}`}>
-          <div className="flex items-baseline space-x-1">
-            <span className={`text-xs sm:text-sm font-black tracking-tight ${isPurpleCard ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
-              {formatPrice(course.price)}
-            </span>
-            {hasDiscount && course.originalPrice && (
-              <span className="text-[10px] text-slate-400 dark:text-slate-500 line-through font-semibold">
-                {formatPrice(course.originalPrice)}
+        <div className={`pt-1.5 border-t flex items-center justify-between gap-1.5 ${isPurpleCard ? 'border-purple-400/20' : 'border-slate-100 dark:border-slate-800'}`}>
+          <div className="flex flex-col min-w-0">
+            <div className="flex items-baseline flex-wrap gap-x-1">
+              <span className={`text-xs sm:text-sm font-black tracking-tight ${isPurpleCard ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
+                {formatPrice(course.price)}
               </span>
+              {hasDiscount && course.originalPrice && (
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 line-through font-semibold">
+                  {formatPrice(course.originalPrice)}
+                </span>
+              )}
+            </div>
+            {hasDiscount && course.originalPrice && (
+              <div className="mt-0.5">
+                {discountDisplayMode === 'save' ? (
+                  <span className="inline-flex items-center px-1.5 py-0.5 bg-emerald-600 text-white font-black text-[9.5px] rounded shadow-xs tracking-tight">
+                    Save {formatPrice(savedAmount)}
+                  </span>
+                ) : (
+                  discountPercent > 0 && (
+                    <span className="inline-flex items-center px-1.5 py-0.5 bg-red-600 text-white font-black text-[9.5px] rounded shadow-xs tracking-tight">
+                      Save {discountPercent}%
+                    </span>
+                  )
+                )}
+              </div>
             )}
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 shrink-0">
             {course.isSponsored && (
               <div data-sponsored-label="true">
                 <SponsoredLabel size="xs" />
@@ -160,9 +202,15 @@ export const CourseCard: React.FC<CourseCardProps> = ({
             <button
               data-action-btn="true"
               onClick={handleEnroll}
-              className="py-1 px-3 bg-transparent hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-600 dark:border-indigo-500 font-bold text-[11px] rounded-lg transition-all cursor-pointer active:scale-[0.98]"
+              className={`py-1 px-3 font-bold text-[11px] rounded-lg transition-all cursor-pointer active:scale-[0.98] ${
+                isEnrolled
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-500'
+                  : isFree
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs'
+                    : 'bg-transparent hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-600 dark:border-indigo-500'
+              }`}
             >
-              Enroll
+              {isEnrolled ? 'Start Learning' : isFree ? 'Enroll Free' : 'Enroll'}
             </button>
           </div>
         </div>

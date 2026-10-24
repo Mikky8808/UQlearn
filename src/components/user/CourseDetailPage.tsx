@@ -22,7 +22,7 @@ import {
   Smartphone,
   Heart
 } from 'lucide-react';
-import { fetchCourseModulesApi, normalizeCourse, getIntendedLearnersApi, getWishlistApi, addToWishlistApi, removeFromWishlistApi } from '../../lib/apiConfig';
+import { fetchCourseModulesApi, normalizeCourse, getIntendedLearnersApi, getWishlistApi, addToWishlistApi, removeFromWishlistApi, recordRecentlyViewedApi } from '../../lib/apiConfig';
 import { subscriptionService } from '../../services/subscription-service';
 import { CourseSubscription } from '../../types';
 import { SponsoredLabel } from '../common/SponsoredLabel';
@@ -42,9 +42,13 @@ export const CourseDetailPage: React.FC = () => {
   useEffect(() => {
     async function checkWishlist() {
       if (!courseId) return;
-      const uid = currentUser?.id || 'guest';
-      const wIds = await getWishlistApi(uid);
-      setIsWishlisted(wIds.includes(courseId));
+      try {
+        const uid = currentUser?.id || 'guest';
+        const wIds = await getWishlistApi(uid);
+        setIsWishlisted(Array.isArray(wIds) && wIds.includes(courseId));
+      } catch {
+        setIsWishlisted(false);
+      }
     }
     checkWishlist();
   }, [courseId, currentUser?.id]);
@@ -65,17 +69,27 @@ export const CourseDetailPage: React.FC = () => {
   useEffect(() => {
     async function checkSubscription() {
       if (!course || !currentUser?.id) return;
-      const subs = await subscriptionService.getStudentSubscriptions(currentUser.id, currentUser.email);
-      const match = subs.find(s => s.courseId === course.id);
-      if (match) {
-        setStudentSub(match);
-        if (match.status === 'active') {
-          enrollCourse(course);
+      try {
+        const subs = await subscriptionService.getStudentSubscriptions(currentUser.id, currentUser.email);
+        if (Array.isArray(subs)) {
+          const match = subs.find(s => s.courseId === course.id);
+          if (match) {
+            setStudentSub(match);
+            if (match.status === 'active') {
+              enrollCourse(course);
+            }
+          }
         }
-      }
+      } catch {}
     }
     checkSubscription();
   }, [course, currentUser]);
+
+  useEffect(() => {
+    if (course?.id) {
+      recordRecentlyViewedApi(course.id, currentUser?.id);
+    }
+  }, [course?.id, currentUser?.id]);
 
   useEffect(() => {
     if (course?.category) {
@@ -167,8 +181,10 @@ export const CourseDetailPage: React.FC = () => {
     openShareCourseModal(course);
   };
 
+  const isFree = !course.price || Number(course.price) === 0;
+
   const handleEnrollNow = () => {
-    if (course.price === 0) {
+    if (isFree) {
       enrollCourse(course);
       navigate(`/learn/${course.id}`);
     } else {
@@ -502,8 +518,8 @@ export const CourseDetailPage: React.FC = () => {
                     </span>
                   )}
                   {course.originalPrice && course.originalPrice > course.price && (
-                    <span className="text-xs font-bold text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/50 px-2 py-0.5 rounded-md">
-                      {getDiscountPercentage(course.price, course.originalPrice)}% OFF
+                    <span className="text-xs font-bold text-white bg-red-600 px-2 py-0.5 rounded-md shadow-xs">
+                      Save {getDiscountPercentage(course.price, course.originalPrice)}%
                     </span>
                   )}
                 </div>
@@ -526,19 +542,21 @@ export const CourseDetailPage: React.FC = () => {
                   <>
                     <button
                       onClick={handleEnrollNow}
-                      className="w-full py-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black rounded-2xl shadow-xl shadow-emerald-600/25 text-sm transition-all flex items-center justify-center space-x-2 cursor-pointer"
+                      className="w-full py-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black rounded-2xl shadow-xl shadow-emerald-600/25 text-sm transition-all flex items-center justify-center space-x-2 cursor-pointer active:scale-[0.99]"
                     >
-                      <Smartphone className="w-4 h-4" />
-                      <span>{course.price === 0 ? 'Enroll Free Course' : `Buy Now (${formatPrice(course.price)})`}</span>
+                      {isFree ? <CheckCircle2 className="w-4 h-4" /> : <Smartphone className="w-4 h-4" />}
+                      <span>{isFree ? 'Enroll Free Course & Start Learning' : `Buy Now (${formatPrice(course.price)})`}</span>
                     </button>
 
-                    <button
-                      onClick={() => addToCart(course)}
-                      className="w-full py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold rounded-2xl text-xs transition-all flex items-center justify-center space-x-2 border border-slate-200 dark:border-slate-700 cursor-pointer"
-                    >
-                      <ShoppingCart className="w-3.5 h-3.5" />
-                      <span>Add to Cart</span>
-                    </button>
+                    {!isFree && (
+                      <button
+                        onClick={() => addToCart(course)}
+                        className="w-full py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold rounded-2xl text-xs transition-all flex items-center justify-center space-x-2 border border-slate-200 dark:border-slate-700 cursor-pointer"
+                      >
+                        <ShoppingCart className="w-3.5 h-3.5" />
+                        <span>Add to Cart</span>
+                      </button>
+                    )}
 
                     <button
                       onClick={handleToggleWishlist}

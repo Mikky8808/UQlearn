@@ -9,6 +9,8 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from './firebase';
 
+import { API_BASE_URL } from './apiConstants';
+
 export enum OperationType {
   CREATE = 'create',
   UPDATE = 'update',
@@ -137,7 +139,7 @@ export async function logApiError(input: ApiErrorLogInput): Promise<void> {
   const originalUrl = String(
     input.originalUrl ||
       (url.startsWith('/api/proxy/v1')
-        ? url.replace('/api/proxy/v1', 'https://uqlearn.org/api/v1')
+        ? url.replace('/api/proxy/v1', API_BASE_URL.replace(/\/$/, ''))
         : url)
   ).slice(0, 1000);
   const method = String(input.method || 'GET').toUpperCase().slice(0, 20);
@@ -147,7 +149,7 @@ export async function logApiError(input: ApiErrorLogInput): Promise<void> {
   const responsePreview = input.responsePreview
     ? String(input.responsePreview).slice(0, 2000)
     : '';
-  const domain = String(input.domain || 'uqlearn.org/api/v1/').slice(0, 100);
+  const domain = String(input.domain || API_BASE_URL.replace('https://', '')).slice(0, 100);
   const userId = resolveCurrentUserId(input.userId);
 
   const firestorePayload: Record<string, unknown> = {

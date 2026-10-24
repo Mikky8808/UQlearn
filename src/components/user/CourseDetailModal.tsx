@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Star, CheckCircle2, Clock, Users, ShieldCheck, Play, FileText, Award, BookOpen, ShoppingCart, Sparkles } from 'lucide-react';
 import { Course } from '../../types';
+import { useApp } from '../../context/AppContext';
 
 interface CourseDetailModalProps {
   course: Course;
@@ -19,7 +20,9 @@ export const CourseDetailModal: React.FC<CourseDetailModalProps> = ({
   isEnrolled,
   onStartLearning,
 }) => {
+  const { formatPrice } = useApp();
   const [activeTab, setActiveTab] = useState<'overview' | 'syllabus' | 'instructor'>('overview');
+  const isFree = !course.price || Number(course.price) === 0;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6">
@@ -218,16 +221,18 @@ export const CourseDetailModal: React.FC<CourseDetailModalProps> = ({
               </div>
 
               <div className="flex items-baseline space-x-3">
-                <span className="text-3xl font-black text-slate-900 dark:text-slate-100">${course.price}</span>
-                {course.originalPrice && (
-                  <span className="text-sm text-slate-400 line-through">${course.originalPrice}</span>
+                <span className={`text-3xl font-black ${isFree ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-slate-100'}`}>
+                  {isFree ? 'Free' : formatPrice(course.price)}
+                </span>
+                {course.originalPrice && course.originalPrice > course.price && (
+                  <span className="text-sm text-slate-400 line-through">{formatPrice(course.originalPrice)}</span>
                 )}
               </div>
 
               {isEnrolled ? (
                 <button
                   onClick={() => onStartLearning(course)}
-                  className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-md flex items-center justify-center space-x-2 text-sm transition-all"
+                  className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-md flex items-center justify-center space-x-2 text-sm transition-all cursor-pointer"
                 >
                   <Play className="w-4 h-4 fill-white" />
                   <span>Start Learning Now</span>
@@ -236,17 +241,20 @@ export const CourseDetailModal: React.FC<CourseDetailModalProps> = ({
                 <div className="space-y-3">
                   <button
                     onClick={() => onEnrollNow(course)}
-                    className="w-full py-3.5 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-xl shadow-md text-sm transition-all"
+                    className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black rounded-xl shadow-md text-sm transition-all flex items-center justify-center space-x-2 cursor-pointer active:scale-[0.99]"
                   >
-                    Enroll Now
+                    {isFree ? <CheckCircle2 className="w-4 h-4" /> : <Play className="w-4 h-4 fill-white" />}
+                    <span>{isFree ? 'Enroll for Free' : 'Enroll Now'}</span>
                   </button>
-                  <button
-                    onClick={() => onAddToCart(course)}
-                    className="w-full py-3.5 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-100 font-bold rounded-xl border border-slate-300 dark:border-slate-700 text-sm transition-all flex items-center justify-center space-x-2"
-                  >
-                    <ShoppingCart className="w-4 h-4" />
-                    <span>Add to Cart</span>
-                  </button>
+                  {!isFree && (
+                    <button
+                      onClick={() => onAddToCart(course)}
+                      className="w-full py-3.5 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-100 font-bold rounded-xl border border-slate-300 dark:border-slate-700 text-sm transition-all flex items-center justify-center space-x-2 cursor-pointer"
+                    >
+                      <ShoppingCart className="w-4 h-4" />
+                      <span>Add to Cart</span>
+                    </button>
+                  )}
                 </div>
               )}
 

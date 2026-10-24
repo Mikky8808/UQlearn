@@ -95,6 +95,9 @@ const handleV1Request = (req: express.Request, res: express.Response, next: expr
     url.includes('signatures') ||
     url.includes('quizzes') ||
     url.includes('analytics') ||
+    url.includes('recently-viewed') ||
+    url.includes('currencies') ||
+    url.includes('flash-sale') ||
     url.includes('tiktok-pixel')
   ) {
     return apiRouter(req, res, next);

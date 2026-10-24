@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
   Star,
@@ -27,47 +27,73 @@ import {
   apiFetch, 
   getActiveSponsoredCoursesApi, 
   recordSponsoredImpressionApi, 
-  recordSponsoredClickApi 
+  recordSponsoredClickApi,
+  fetchFlashSaleConfigApi
 } from '../../lib/apiConfig';
+import { getStoredFlashSaleConfig, DEFAULT_FLASH_SALE_END, DEFAULT_FLASH_SALE_START } from '../admin/AdminFlashSaleManager';
 
 // Isolated Flash Sale Countdown component to avoid re-rendering entire LandingPage
-const FlashSaleCountdown: React.FC = () => {
-  const [timeLeft, setTimeLeft] = useState({ hours: 7, minutes: 34, seconds: 22 });
+interface FlashSaleCountdownProps {
+  endTime?: string; // ISO date string or SQL datetime set by admin
+  startTime?: string;
+}
+
+const FlashSaleCountdown: React.FC<FlashSaleCountdownProps> = ({ endTime }) => {
+  const getTargetTimestamp = useCallback(() => {
+    if (endTime) {
+      const parsed = new Date(endTime).getTime();
+      if (!isNaN(parsed) && parsed > 0) return parsed;
+    }
+    return new Date(DEFAULT_FLASH_SALE_END).getTime();
+  }, [endTime]);
+
+  const getTimeRemaining = useCallback(() => {
+    const target = getTargetTimestamp();
+    const difference = Math.max(0, target - Date.now());
+    return {
+      days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+      hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+      minutes: Math.floor((difference / 1000 / 60) % 60),
+      seconds: Math.floor((difference / 1000) % 60)
+    };
+  }, [getTargetTimestamp]);
+
+  const [timeLeft, setTimeLeft] = useState(getTimeRemaining);
 
   useEffect(() => {
+    setTimeLeft(getTimeRemaining());
     const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev.seconds > 0) {
-          return { ...prev, seconds: prev.seconds - 1 };
-        } else if (prev.minutes > 0) {
-          return { ...prev, minutes: 59, seconds: 59 };
-        } else if (prev.hours > 0) {
-          return { ...prev, hours: prev.hours - 1, minutes: 59, seconds: 59 };
-        }
-        return { hours: 11, minutes: 59, seconds: 59 };
-      });
+      setTimeLeft(getTimeRemaining());
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [getTimeRemaining]);
 
   return (
-    <div className="flex items-center space-x-1.5 bg-black/35 dark:bg-black/50 px-2.5 py-1 rounded-sm border border-white/25 shadow-xs">
-      <span className="text-[9px] font-black text-amber-300 uppercase tracking-wider flex items-center gap-1">
-        <Clock className="w-2.5 h-2.5 text-amber-300 animate-pulse" />
-        Ends In:
+    <div className="flex items-center space-x-1 sm:space-x-1.5 bg-purple-950/70 dark:bg-purple-950/90 px-2 sm:px-3 py-1 rounded-lg border border-purple-400/40 shadow-xs">
+      <span className="text-[9px] sm:text-[10px] font-black text-amber-300 uppercase tracking-tight flex items-center gap-1 shrink-0">
+        <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-amber-300 animate-pulse" />
+        <span className="hidden xs:inline">Hurry up!</span> <span className="text-white/80 font-semibold">Sale end in:</span>
       </span>
-      <div className="flex items-center space-x-1 font-mono font-bold text-[11px] text-white">
-        <span className="px-1 py-0.5 bg-white/15 border border-white/30 rounded-xs text-white">
-          {String(timeLeft.hours).padStart(2, '0')}
-        </span>
-        <span className="text-white/70">:</span>
-        <span className="px-1 py-0.5 bg-white/15 border border-white/30 rounded-xs text-white">
-          {String(timeLeft.minutes).padStart(2, '0')}
-        </span>
-        <span className="text-white/70">:</span>
-        <span className="px-1 py-0.5 bg-white/15 border border-white/30 rounded-xs text-white">
-          {String(timeLeft.seconds).padStart(2, '0')}
-        </span>
+      <div className="flex items-center space-x-1 font-mono font-black text-[10px] sm:text-xs text-white">
+        <div className="flex flex-col items-center px-1 py-0.5 bg-white/15 border border-white/30 rounded text-center min-w-[26px]">
+          <span className="text-amber-300">{String(timeLeft.days).padStart(3, '0')}</span>
+          <span className="text-[7px] text-white/70 uppercase tracking-tighter scale-90">Days</span>
+        </div>
+        <span className="text-white/70 font-bold">:</span>
+        <div className="flex flex-col items-center px-1 py-0.5 bg-white/15 border border-white/30 rounded text-center min-w-[22px]">
+          <span className="text-white">{String(timeLeft.hours).padStart(2, '0')}</span>
+          <span className="text-[7px] text-white/70 uppercase tracking-tighter scale-90">Hours</span>
+        </div>
+        <span className="text-white/70 font-bold">:</span>
+        <div className="flex flex-col items-center px-1 py-0.5 bg-white/15 border border-white/30 rounded text-center min-w-[22px]">
+          <span className="text-white">{String(timeLeft.minutes).padStart(2, '0')}</span>
+          <span className="text-[7px] text-white/70 uppercase tracking-tighter scale-90">Mins</span>
+        </div>
+        <span className="text-white/70 font-bold">:</span>
+        <div className="flex flex-col items-center px-1 py-0.5 bg-white/15 border border-white/30 rounded text-center min-w-[22px]">
+          <span className="text-amber-300">{String(timeLeft.seconds).padStart(2, '0')}</span>
+          <span className="text-[7px] text-white/70 uppercase tracking-tighter scale-90">Secs</span>
+        </div>
       </div>
     </div>
   );
@@ -96,6 +122,9 @@ interface JumiaShelfSectionProps {
   trackImpression: (courseId: string) => void;
   navigate: (to: string) => void;
   cardTheme?: 'purple' | 'dark';
+  discountDisplayMode?: 'save' | 'percentage';
+  endTime?: string;
+  startTime?: string;
 }
 
 const JumiaShelfSection: React.FC<JumiaShelfSectionProps> = ({
@@ -112,6 +141,9 @@ const JumiaShelfSection: React.FC<JumiaShelfSectionProps> = ({
   trackImpression,
   navigate,
   cardTheme = 'purple',
+  discountDisplayMode = 'percentage',
+  endTime,
+  startTime,
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const resetTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -242,7 +274,7 @@ const JumiaShelfSection: React.FC<JumiaShelfSectionProps> = ({
 
           {/* Right side: Pill Arrow Button */}
           <div className="flex items-center space-x-2.5 shrink-0">
-            {countdown && <FlashSaleCountdown />}
+            {countdown && <FlashSaleCountdown endTime={endTime} startTime={startTime} />}
 
             <Link
               to={seeAllLink}
@@ -291,6 +323,7 @@ const JumiaShelfSection: React.FC<JumiaShelfSectionProps> = ({
                 getDiscountPercentage={getDiscountPercentage}
                 trackImpression={trackImpression}
                 navigate={navigate}
+                discountDisplayMode={discountDisplayMode}
                 className="w-[220px] xs:w-[250px] sm:w-[290px] flex-shrink-0"
               />
             ))
@@ -428,16 +461,47 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     .filter(c => (c.rating || 0) >= 4.0)
     .slice(0, 10);
 
-  const flashSaleCourses = [...processedCourses]
-    .filter(c => c.isPublished && (c.isApprovedByAdmin || (currentUser && (currentUser.role === 'admin' || currentUser.role === 'instructor'))))
-    .sort((a, b) => {
-      if (a.isSponsored && !b.isSponsored) return -1;
-      if (!a.isSponsored && b.isSponsored) return 1;
-      const discountA = a.originalPrice && a.originalPrice > a.price ? (a.originalPrice - a.price) / a.originalPrice : 0;
-      const discountB = b.originalPrice && b.originalPrice > b.price ? (b.originalPrice - b.price) / b.originalPrice : 0;
-      return discountB - discountA;
-    })
-    .slice(0, 10);
+  const [flashSaleConfig, setFlashSaleConfig] = useState(getStoredFlashSaleConfig());
+  useEffect(() => {
+    const loadServerConfig = async () => {
+      try {
+        const remote = await fetchFlashSaleConfigApi();
+        if (remote && typeof remote === 'object') {
+          const merged = {
+            enabled: remote.enabled !== false,
+            title: remote.title || 'Top selling items',
+            startTime: remote.startTime || DEFAULT_FLASH_SALE_START,
+            endTime: remote.endTime || DEFAULT_FLASH_SALE_END,
+            courseIds: Array.isArray(remote.courseIds) ? remote.courseIds : []
+          };
+          setFlashSaleConfig(merged);
+          localStorage.setItem('uqlearn_admin_flash_sale_config', JSON.stringify(merged));
+        }
+      } catch {}
+    };
+    loadServerConfig();
+
+    const handleStorage = () => setFlashSaleConfig(getStoredFlashSaleConfig());
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
+  const flashSaleCourses = useMemo(() => {
+    if (flashSaleConfig.courseIds && flashSaleConfig.courseIds.length > 0) {
+      const marked = processedCourses.filter(c => flashSaleConfig.courseIds.includes(c.id));
+      if (marked.length > 0) return marked;
+    }
+    return [...processedCourses]
+      .filter(c => c.isPublished && (c.isApprovedByAdmin || (currentUser && (currentUser.role === 'admin' || currentUser.role === 'instructor'))))
+      .sort((a, b) => {
+        if (a.isSponsored && !b.isSponsored) return -1;
+        if (!a.isSponsored && b.isSponsored) return 1;
+        const discountA = a.originalPrice && a.originalPrice > a.price ? (a.originalPrice - a.price) / a.originalPrice : 0;
+        const discountB = b.originalPrice && b.originalPrice > b.price ? (b.originalPrice - b.price) / b.originalPrice : 0;
+        return discountB - discountA;
+      })
+      .slice(0, 10);
+  }, [processedCourses, flashSaleConfig, currentUser]);
 
   const recentFindsCourses = useMemo(() => {
     const wishlisted = processedCourses.filter(c => userWishlistIds.includes(c.id));
@@ -492,8 +556,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <div>
             <JumiaShelfSection
               cardTheme="purple"
-              title="Top selling items"
+              title={flashSaleConfig.title || "Top selling items"}
               countdown={true}
+              discountDisplayMode="save"
               items={flashSaleCourses.length > 0 ? flashSaleCourses : trendingCourses}
               isLoading={isLoadingCourses}
               seeAllLink="/courses"
@@ -501,6 +566,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               getDiscountPercentage={getDiscountPercentage}
               trackImpression={trackImpression}
               navigate={navigate}
+              endTime={flashSaleConfig.endTime}
+              startTime={flashSaleConfig.startTime}
             />
             <AdvertBanner slot="super_deals" />
           </div>

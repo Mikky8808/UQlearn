@@ -39,19 +39,24 @@ export const LearnerCertificatesTab: React.FC<LearnerCertificatesTabProps> = ({ 
       try {
         const userId = currentUser?.id || 'current-user';
         const userCerts = await fetchUserCertificatesApi(userId);
-        if (userCerts && userCerts.length > 0 && isMounted) {
+        if (Array.isArray(userCerts) && userCerts.length > 0 && isMounted) {
           setCertificates(userCerts);
         } else {
           // Fallback to active courses
-          const courses = await fetchCoursesApi();
-          const finishedCourses = (courses || []).slice(0, 2).map((c: any, idx: number) => ({
+          const rawCourses = await fetchCoursesApi();
+          const coursesList = Array.isArray(rawCourses)
+            ? rawCourses
+            : (Array.isArray((rawCourses as any)?.data)
+                ? (rawCourses as any).data
+                : (Array.isArray((rawCourses as any)?.courses) ? (rawCourses as any).courses : []));
+          const finishedCourses = coursesList.slice(0, 2).map((c: any, idx: number) => ({
             id: c.id || `cert-${idx}`,
             credentialId: `UQL-2026-${Math.floor(1000 + Math.random() * 9000)}-${(c.title || 'COURSE').slice(0, 4).toUpperCase()}`,
             courseId: c.id,
             courseTitle: c.title || 'Masterclass Certificate',
             studentName: currentUser?.name || currentUser?.displayName || 'Michael Kenyanya',
             completionDate: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
-            instructorName: c.instructor?.name || 'Sir Rajab Wamuu',
+            instructorName: c.instructor?.name || (typeof c.instructor === 'string' ? c.instructor : 'Sir Rajab Wamuu'),
             instructorSignature: '',
             grade: 'Excellence (100%)',
             skills: c.category ? [c.category, 'Professional Mastery', 'Practical Application'] : ['Professional Mastery', 'Practical Application', 'Advanced Execution']

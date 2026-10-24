@@ -62,6 +62,57 @@ const ADVERT_SLOTS: SlotDefinition[] = [
   },
 ];
 
+const SlotPreviewCarousel: React.FC<{ banners: Advert[] }> = ({ banners }) => {
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    if (banners.length <= 1) return;
+    const t = setInterval(() => {
+      setIdx((prev) => (prev + 1) % banners.length);
+    }, 2000);
+    return () => clearInterval(t);
+  }, [banners.length]);
+
+  if (banners.length === 0) return null;
+  const safeIdx = idx >= banners.length ? 0 : idx;
+  const current = banners[safeIdx];
+
+  return (
+    <div className="space-y-1.5 pt-1">
+      <div 
+        className="w-full h-24 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 p-2 flex items-center justify-center shadow-inner relative transition-colors"
+        style={{ backgroundColor: current.bgColor || current.bg_color || '#0f172a' }}
+      >
+        <img
+          src={current.imageUrl || current.image_url}
+          alt={current.title || 'Slot Advert'}
+          className="max-h-full w-auto max-w-full object-contain transition-opacity duration-300"
+        />
+        {current.badgeText && (
+          <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-rose-600 text-white shadow-xs">
+            {current.badgeText}
+          </span>
+        )}
+      </div>
+      {banners.length > 1 && (
+        <div className="flex items-center justify-center space-x-1">
+          {banners.map((_, dotIdx) => (
+            <button
+              key={dotIdx}
+              type="button"
+              onClick={() => setIdx(dotIdx)}
+              className={`transition-all rounded-full cursor-pointer ${
+                safeIdx === dotIdx ? 'w-4 h-1 bg-teal-500' : 'w-1 h-1 bg-slate-300 dark:bg-slate-700'
+              }`}
+              title={`View banner ${dotIdx + 1}`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const AdvertManager: React.FC = () => {
   const [adverts, setAdverts] = useState<Advert[]>([]);
   const [loading, setLoading] = useState(true);
@@ -374,7 +425,7 @@ export const AdvertManager: React.FC = () => {
                 <span>{editingId ? 'Edit Section Advert Banner' : 'Upload & Configure Section Advert'}</span>
               </h1>
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
-                Upload wide graphical banners designed for the in-page showcase sections (Recommended size: 1200x240px to 1920x360px).
+                Upload wide graphical banners designed for the in-page showcase sections (Recommended size: 1200x240px to 1920x360px). Active banners smoothly rotate every 2 seconds on the marketplace page (supports up to 10 banners per section).
               </p>
             </div>
             <button
@@ -531,11 +582,12 @@ export const AdvertManager: React.FC = () => {
 
               <div className="space-y-1.5">
                 <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                  Display Order
+                  Rotation Order (1 to 10)
                 </label>
                 <input
                   type="number"
                   min="0"
+                  max="10"
                   value={displayOrder}
                   onChange={(e) => setDisplayOrder(parseInt(e.target.value) || 0)}
                   className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 focus:outline-none font-medium"
@@ -553,7 +605,7 @@ export const AdvertManager: React.FC = () => {
                 className="w-4 h-4 text-teal-600 rounded-md focus:ring-teal-500 cursor-pointer"
               />
               <label htmlFor="is_advert_active_toggle" className="text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer select-none">
-                Make this advert active immediately in the selected section
+                Make active immediately (participates in 2-second continuous auto-advance)
               </label>
             </div>
 
@@ -626,7 +678,7 @@ export const AdvertManager: React.FC = () => {
               In-Page Section Advert Banners
             </h1>
             <p className="text-xs sm:text-sm text-slate-400 max-w-2xl font-medium">
-              Manage the 2 in-page advertisement banners displayed on the main marketplace: at the <strong>Super Deals & Flash Sale</strong> section and after the <strong>Tailored For You</strong> section.
+              Manage up to 10 in-page section banners with 2-second continuous auto-rotation: at the <strong>Super Deals & Flash Sale</strong> section and after the <strong>Tailored For You</strong> section.
             </p>
           </div>
 
@@ -663,6 +715,10 @@ export const AdvertManager: React.FC = () => {
             <Sparkles className="w-3.5 h-3.5 text-purple-400" />
             <span>Tailored For You: <strong className="text-white">{adverts.filter(a => a.slot === 'tailored_for_you' || a.slot === 'tailored').length}</strong></span>
           </span>
+          <span className="flex items-center space-x-1.5 px-3 py-1 bg-slate-800/80 rounded-lg border border-slate-700/60 text-teal-300 font-bold">
+            <Sliders className="w-3.5 h-3.5 text-teal-400" />
+            <span>2s Auto-Advance Enabled (Up to 10 Banners)</span>
+          </span>
         </div>
       </div>
 
@@ -670,7 +726,7 @@ export const AdvertManager: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {ADVERT_SLOTS.map((slotDef) => {
           const slotAdverts = adverts.filter(a => a.slot === slotDef.key || (slotDef.key === 'super_deals' && a.slot === 'deals') || (slotDef.key === 'tailored_for_you' && a.slot === 'tailored'));
-          const activeAdvert = slotAdverts.find(a => a.isActive ?? a.is_active);
+          const activeBanners = slotAdverts.filter(a => a.isActive ?? a.is_active);
           const IconComp = slotDef.icon;
 
           return (
@@ -683,10 +739,10 @@ export const AdvertManager: React.FC = () => {
                   <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${slotDef.badgeColor}`}>
                     {slotDef.badge}
                   </span>
-                  {activeAdvert ? (
+                  {activeBanners.length > 0 ? (
                     <span className="flex items-center space-x-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
                       <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Active on Page</span>
+                      <span>{activeBanners.length} Active in 2s Auto-Rotation</span>
                     </span>
                   ) : (
                     <span className="flex items-center space-x-1 text-[11px] font-bold text-amber-500">
@@ -706,23 +762,14 @@ export const AdvertManager: React.FC = () => {
                   </div>
                 </div>
 
-                {activeAdvert && (
-                  <div 
-                    className="w-full h-24 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 p-2 flex items-center justify-center mt-2 shadow-inner"
-                    style={{ backgroundColor: activeAdvert.bgColor || activeAdvert.bg_color || '#0f172a' }}
-                  >
-                    <img
-                      src={activeAdvert.imageUrl || activeAdvert.image_url}
-                      alt={activeAdvert.title || 'Slot Advert'}
-                      className="max-h-full w-auto max-w-full object-contain"
-                    />
-                  </div>
+                {activeBanners.length > 0 && (
+                  <SlotPreviewCarousel banners={activeBanners} />
                 )}
               </div>
 
               <div className="pt-2 flex items-center justify-between border-t border-slate-100 dark:border-slate-800">
                 <span className="text-xs text-slate-500 font-medium">
-                  {slotAdverts.length} banner{slotAdverts.length === 1 ? '' : 's'} configured
+                  {slotAdverts.length} banner{slotAdverts.length === 1 ? '' : 's'} ({activeBanners.length}/10 active)
                 </span>
                 <button
                   onClick={() => handleOpenNewForSlot(slotDef.key)}

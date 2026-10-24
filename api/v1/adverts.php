@@ -212,8 +212,8 @@ try {
         $reqAction = $data['action'] ?? $action;
 
         // Toggle Active
-        if ($reqAction === 'toggle_active') {
-            $id = (int)($data['id'] ?? 0);
+        if ($reqAction === 'toggle_active' || $reqAction === 'toggle') {
+            $id = (int)($data['id'] ?? ($_GET['id'] ?? 0));
             if (!$id) {
                 http_response_code(400);
                 echo json_encode(["success" => false, "message" => "Advert ID is required"]);

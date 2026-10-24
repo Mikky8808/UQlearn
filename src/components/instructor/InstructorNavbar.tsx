@@ -167,15 +167,15 @@ export const InstructorNavbar: React.FC<InstructorNavbarProps> = ({
                 src={resolveBrandingLogoUrl(logoUrl)} 
                 alt="UQlearn Logo" 
                 onError={(e) => { (e.currentTarget as HTMLImageElement).src = DEFAULT_LOGO_URL; }}
-                className="w-9 h-9 object-contain rounded-xl bg-slate-50 dark:bg-slate-800 p-1 border border-slate-200 dark:border-slate-700 group-hover:scale-105 transition-transform"
+                className="w-9 h-9 object-contain rounded-full p-0.5 group-hover:scale-105 transition-transform drop-shadow-xs"
                 referrerPolicy="no-referrer"
               />
               <div className="flex flex-col">
                 <span className="text-xl font-black tracking-tight select-none leading-none">
-                  <span className="text-indigo-600 dark:text-indigo-400 group-hover:text-indigo-500 transition-colors">UQ</span>
+                  <span className="text-teal-600 dark:text-teal-400 group-hover:text-teal-500 transition-colors">UQ</span>
                   <span className="text-purple-600 dark:text-purple-400 group-hover:text-purple-500 transition-colors">learn</span>
                 </span>
-                <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 tracking-wider uppercase leading-tight">
+                <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 tracking-wider uppercase leading-tight">
                   Instructor Studio
                 </span>
               </div>
