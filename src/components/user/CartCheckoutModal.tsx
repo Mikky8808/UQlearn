@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, Lock, ShoppingCart, RefreshCw, CheckCircle2, Clock, Plus, ArrowRight, Sparkles } from 'lucide-react';
+import { X, Lock, ShoppingCart, RefreshCw, CheckCircle2, ArrowRight, Tag, Star, BadgeCheck } from 'lucide-react';
 import { Course } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { useNavigate } from 'react-router-dom';
-import { fetchRecentlyViewedApi } from '../../lib/apiConfig';
+import { fetchRecentlyViewedApi, normalizeCourse } from '../../lib/apiConfig';
+import { CourseCard } from '../common/CourseCard';
 
 interface CartCheckoutModalProps {
   cart: Course[];
@@ -22,16 +23,23 @@ export const CartCheckoutModal: React.FC<CartCheckoutModalProps> = ({
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [recentlyViewedIds, setRecentlyViewedIds] = useState<string[]>([]);
-  const [loadingRecent, setLoadingRecent] = useState(true);
-  const [recentlyAddedId, setRecentlyAddedId] = useState<string | null>(null);
+  const [savedForLater, setSavedForLater] = useState<Course[]>([]);
+  const [couponCode, setCouponCode] = useState('');
+  const [couponApplied, setCouponApplied] = useState(false);
+  const [showCouponInput, setShowCouponInput] = useState(false);
 
   const totalAmountUsd = cart.reduce((acc, c) => acc + (Number(c.price) || 0), 0);
+  const originalTotalUsd = cart.reduce((acc, c) => acc + (Number(c.originalPrice) || Number(c.price) || 0), 0);
   const isCartFree = cart.length > 0 && (totalAmountUsd <= 0 || cart.every(c => !c.price || Number(c.price) === 0));
+  
+  const discountAmount = Math.max(0, originalTotalUsd - totalAmountUsd);
+  const overallDiscountPercent = originalTotalUsd > totalAmountUsd ? Math.round((discountAmount / originalTotalUsd) * 100) : 0;
+
   const totalAmount = isCartFree ? 'Free' : formatPrice(totalAmountUsd);
   const totalKes = totalAmountUsd < 100 ? Math.round(totalAmountUsd * 130) : totalAmountUsd;
   const formattedAmountKes = totalKes.toFixed(2);
 
-  // Fetch recently viewed courses from API and sync with local storage
+  // Fetch recently viewed courses from API
   const loadRecentlyViewed = async () => {
     try {
       const uid = currentUser?.id || 'guest';
@@ -39,8 +47,6 @@ export const CartCheckoutModal: React.FC<CartCheckoutModalProps> = ({
       setRecentlyViewedIds(Array.isArray(ids) ? ids : []);
     } catch {
       setRecentlyViewedIds([]);
-    } finally {
-      setLoadingRecent(false);
     }
   };
 
@@ -64,15 +70,14 @@ export const CartCheckoutModal: React.FC<CartCheckoutModalProps> = ({
     .filter(c => !cart.some(ci => String(ci.id) === String(c.id)))
     .filter(c => !enrolledCourses.some(ec => String(ec.id) === String(c.id)));
 
-  // If user has viewed fewer than 2 items, complement with trending/popular recommendations
+  // Complement with popular courses if recent views are few
   const fallbackRecommendations: Course[] = courses
     .filter(c => !cart.some(ci => String(ci.id) === String(c.id)))
     .filter(c => !enrolledCourses.some(ec => String(ec.id) === String(c.id)))
     .filter(c => !genuineRecentCourses.some(rc => String(rc.id) === String(c.id)))
-    .slice(0, Math.max(0, 3 - genuineRecentCourses.length));
+    .slice(0, Math.max(0, 8 - genuineRecentCourses.length));
 
-  const crossSellCourses = [...genuineRecentCourses, ...fallbackRecommendations].slice(0, 4);
-  const hasGenuineRecent = genuineRecentCourses.length > 0;
+  const crossSellCourses = [...genuineRecentCourses, ...fallbackRecommendations].slice(0, 8);
 
   // Direct Free Enrollment: enroll immediately without payment
   const handleFreeEnrollment = () => {
@@ -104,7 +109,7 @@ export const CartCheckoutModal: React.FC<CartCheckoutModalProps> = ({
     }
   };
 
-  // Redirect to /checkout with loading feedback and submission lock
+  // Redirect to /checkout
   const handleProceedToPayment = () => {
     if (loading) return;
     setLoading(true);
@@ -119,12 +124,16 @@ export const CartCheckoutModal: React.FC<CartCheckoutModalProps> = ({
     }, 350);
   };
 
-  const handleQuickAdd = (course: Course) => {
+  const handleSaveForLater = (course: Course) => {
+    onRemoveFromCart(course.id);
+    if (!savedForLater.some(s => s.id === course.id)) {
+      setSavedForLater(prev => [...prev, course]);
+    }
+  };
+
+  const handleMoveToCart = (course: Course) => {
+    setSavedForLater(prev => prev.filter(s => s.id !== course.id));
     addToCart(course);
-    setRecentlyAddedId(course.id);
-    setTimeout(() => {
-      setRecentlyAddedId(null);
-    }, 1500);
   };
 
   const handleViewCourse = (courseId: string) => {
@@ -132,62 +141,87 @@ export const CartCheckoutModal: React.FC<CartCheckoutModalProps> = ({
     navigate(`/course/${courseId}`);
   };
 
+  const handleApplyCoupon = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (couponCode.trim()) {
+      setCouponApplied(true);
+      setShowCouponInput(false);
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl border border-slate-200 dark:border-slate-800 relative animate-in fade-in zoom-in-95 duration-200 transition-colors max-h-[92vh] flex flex-col">
-        
-        {/* Close Button */}
+    <div className="fixed inset-0 z-50 w-full h-full bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col overflow-y-auto animate-in fade-in duration-200 font-sans">
+      
+      {/* Top Bar with Close Button */}
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-8 pt-6 flex items-center justify-between">
+        <div className="flex items-center space-x-2 text-teal-600 dark:text-teal-400 font-extrabold text-sm tracking-wide uppercase">
+          <ShoppingCart className="w-5 h-5" />
+          <span>UQ Learn Checkout</span>
+        </div>
         <button
           onClick={onClose}
           disabled={loading}
-          aria-label="Close cart drawer"
-          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-full transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed z-10"
+          aria-label="Close cart modal"
+          className="p-2.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer disabled:opacity-50"
         >
-          <X className="w-5 h-5" />
+          <X className="w-6 h-6" />
         </button>
+      </div>
 
-        {/* Modal Header */}
-        <div className="flex items-center space-x-3 pb-4 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
-          <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400 flex items-center justify-center">
-            <ShoppingCart className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-xl font-black text-slate-900 dark:text-slate-100">Shopping Cart</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {cart.length} {cart.length === 1 ? 'course' : 'courses'} in your cart
-            </p>
+      <div className="max-w-7xl mx-auto w-full px-4 sm:px-8 py-6 sm:py-8 space-y-10 flex-1">
+        
+        {/* Main Header */}
+        <div>
+          <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
+            Shopping Cart
+          </h1>
+          <div className="mt-3 pt-3 border-b border-slate-200 dark:border-slate-800">
+            <span className="text-sm font-bold text-slate-800 dark:text-slate-200 border-b-2 border-slate-900 dark:border-white pb-3 inline-block">
+              {cart.length} {cart.length === 1 ? 'Course in Cart' : 'Courses in Cart'}
+            </span>
           </div>
         </div>
 
-        {/* Scrollable Modal Content */}
-        <div className="flex-1 overflow-y-auto pr-1 py-4 space-y-6">
-          {cart.length === 0 ? (
-            <div className="py-6 text-center space-y-4">
-              <div className="w-12 h-12 mx-auto rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
-                <ShoppingCart className="w-6 h-6" />
+        {/* Two-Column Grid: Left (Cart Items) & Right (Checkout Sidebar) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+          
+          {/* Left Column: Cart Items List */}
+          <div className="lg:col-span-8 space-y-6">
+            {cart.length === 0 ? (
+              <div className="py-12 text-center space-y-4 bg-slate-50 dark:bg-slate-900/40 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-8">
+                <div className="w-16 h-16 mx-auto rounded-full bg-slate-200/60 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+                  <ShoppingCart className="w-8 h-8" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-lg font-bold text-slate-800 dark:text-slate-200">Your cart is currently empty</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                    Explore our top courses below and level up your skills today.
+                  </p>
+                </div>
+                <button
+                  onClick={onClose}
+                  className="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer"
+                >
+                  Explore Catalog
+                </button>
               </div>
-              <div className="space-y-1">
-                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Your cart is currently empty</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {crossSellCourses.length > 0 
-                    ? 'Check out courses you recently viewed or pick from popular picks below:'
-                    : 'Explore our catalog and find the next skill to level up your career.'}
-                </p>
-              </div>
-            </div>
-          ) : (
-            /* Cart Items List */
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
-                <span>Selected Items</span>
-                <span>{cart.length} item{cart.length === 1 ? '' : 's'}</span>
-              </div>
-              <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-48 overflow-y-auto pr-1">
-                {cart.map((course) => {
+            ) : (
+              <div className="divide-y divide-slate-200 dark:divide-slate-800">
+                {cart.map((rawCourse) => {
+                  const course = normalizeCourse(rawCourse);
                   const courseIsFree = !course.price || Number(course.price) === 0;
+                  const isBestseller = Boolean(course.bestSeller || course.bestseller);
+                  const isPremium = Boolean(course.isPremium);
+                  const originalPrice = Number(course.originalPrice) || 0;
+                  const currentPrice = Number(course.price) || 0;
+                  const hasDiscount = originalPrice > currentPrice;
+                  const ratingNum = typeof course.rating === 'number' && course.rating > 0 ? course.rating : null;
+                  const reviewsNum = typeof course.reviewCount === 'number' && course.reviewCount > 0 ? course.reviewCount : null;
+
                   return (
-                    <div key={course.id} className="py-3 flex items-center justify-between gap-3">
-                      <div className="flex items-center space-x-3 min-w-0 flex-1">
+                    <div key={course.id} className="py-5 flex flex-col sm:flex-row items-start justify-between gap-4 group">
+                      {/* Course Image & Main Info */}
+                      <div className="flex items-start space-x-4 min-w-0 flex-1">
                         <img 
                           src={course.image || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80'} 
                           alt={course.title} 
@@ -195,238 +229,288 @@ export const CartCheckoutModal: React.FC<CartCheckoutModalProps> = ({
                             (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80';
                           }}
                           referrerPolicy="no-referrer"
-                          className="w-12 h-10 rounded-lg object-cover flex-shrink-0" 
+                          onClick={() => handleViewCourse(course.id)}
+                          className="w-28 sm:w-36 aspect-[16/9] rounded-lg object-cover flex-shrink-0 cursor-pointer shadow-xs group-hover:opacity-95 transition-opacity" 
                         />
-                        <div className="min-w-0 flex-1">
-                          <h4 
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <h3 
                             onClick={() => handleViewCourse(course.id)}
-                            className="font-bold text-slate-800 dark:text-slate-200 text-xs line-clamp-1 hover:text-teal-600 dark:hover:text-teal-400 cursor-pointer transition-colors"
+                            className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-slate-100 line-clamp-2 hover:text-purple-600 dark:hover:text-purple-400 cursor-pointer transition-colors leading-snug"
                             title={course.title}
                           >
                             {course.title}
-                          </h4>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className={`text-[11px] font-semibold ${courseIsFree ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300'}`}>
-                              {courseIsFree ? 'Free' : formatPrice(course.price)}
-                            </span>
-                            {course.instructor && (
-                              <span className="text-[10px] text-slate-400 line-clamp-1">
-                                • {course.instructor}
+                          </h3>
+                          {course.instructor && (
+                            <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
+                              By {course.instructor}
+                            </p>
+                          )}
+                          
+                          {/* Rating & Badges */}
+                          <div className="flex items-center gap-2 flex-wrap pt-0.5">
+                            {isBestseller && (
+                              <span className="bg-teal-100 dark:bg-teal-950/80 text-teal-800 dark:text-teal-300 font-black text-[10px] px-2 py-0.5 rounded tracking-tight">
+                                Bestseller
                               </span>
                             )}
+                            {ratingNum !== null && (
+                              <div className="flex items-center space-x-1 text-xs font-bold text-amber-500">
+                                <span>{ratingNum.toFixed(1)}</span>
+                                <div className="flex items-center">
+                                  {[...Array(5)].map((_, i) => (
+                                    <Star key={i} className="w-3 h-3 fill-amber-400 text-amber-400" />
+                                  ))}
+                                </div>
+                                {reviewsNum !== null && (
+                                  <span className="text-slate-400 font-normal">({reviewsNum.toLocaleString()} ratings)</span>
+                                )}
+                              </div>
+                            )}
                           </div>
+
+                          {/* Real Module / Level details if available */}
+                          {course.modules && course.modules.length > 0 && (
+                            <p className="text-xs text-slate-500 dark:text-slate-400 pt-0.5">
+                              {course.modules.length} {course.modules.length === 1 ? 'module' : 'modules'} • All Levels
+                            </p>
+                          )}
+
+                          {/* Premium Tag */}
+                          {isPremium && (
+                            <div className="pt-1">
+                              <span className="bg-purple-600 text-white font-extrabold text-[10px] px-2 py-0.5 rounded inline-flex items-center gap-1 shadow-2xs">
+                                <BadgeCheck className="w-3 h-3" />
+                                <span>Premium</span>
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Actions (Remove & Save for Later) */}
+                      <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-2 text-xs border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100 dark:border-slate-800">
+                        <div className="flex sm:flex-col items-center sm:items-end gap-2">
+                          <button
+                            onClick={() => onRemoveFromCart(course.id)}
+                            disabled={loading}
+                            className="text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 font-bold cursor-pointer disabled:opacity-50 transition-colors"
+                          >
+                            Remove
+                          </button>
+                          <button
+                            onClick={() => handleSaveForLater(course)}
+                            disabled={loading}
+                            className="text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 font-bold cursor-pointer disabled:opacity-50 transition-colors"
+                          >
+                            Save for Later
+                          </button>
+                        </div>
+
+                        {/* Price Display */}
+                        <div className="text-right pt-1">
+                          <div className="text-lg font-black text-purple-700 dark:text-purple-400 flex items-center justify-end gap-1">
+                            <span>{courseIsFree ? 'Free' : formatPrice(currentPrice)}</span>
+                            {!courseIsFree && <Tag className="w-3.5 h-3.5 fill-purple-700 text-purple-700 dark:fill-purple-400 dark:text-purple-400" />}
+                          </div>
+                          {!courseIsFree && hasDiscount && (
+                            <div className="text-xs text-slate-400 line-through font-medium">
+                              {formatPrice(originalPrice)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Saved For Later Section */}
+            {savedForLater.length > 0 && (
+              <div className="pt-8 border-t border-slate-200 dark:border-slate-800 space-y-4">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Saved for later ({savedForLater.length})
+                </h3>
+                <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {savedForLater.map((course) => (
+                    <div key={course.id} className="py-3 flex items-center justify-between gap-4">
+                      <div className="flex items-center space-x-3 min-w-0 flex-1">
+                        <img 
+                          src={course.image} 
+                          alt={course.title} 
+                          className="w-16 h-12 rounded object-cover flex-shrink-0" 
+                        />
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-bold text-xs text-slate-800 dark:text-slate-200 line-clamp-1">{course.title}</h4>
+                          <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">{formatPrice(course.price)}</span>
                         </div>
                       </div>
                       <button
-                        onClick={() => onRemoveFromCart(course.id)}
-                        disabled={loading}
-                        className="text-xs text-rose-500 hover:text-rose-700 font-semibold cursor-pointer disabled:opacity-50 flex-shrink-0"
+                        onClick={() => handleMoveToCart(course)}
+                        className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-bold cursor-pointer"
                       >
-                        Remove
+                        Move to Cart
                       </button>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
-          {/* RECENTLY VIEWED / CROSS-SELL SECTION */}
-          {crossSellCourses.length > 0 && (
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-1.5">
-                  {hasGenuineRecent ? (
-                    <Clock className="w-4 h-4 text-teal-600 dark:text-teal-400 flex-shrink-0" />
-                  ) : (
-                    <Sparkles className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                  )}
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
-                    {hasGenuineRecent ? 'Recently Viewed' : 'Recommended For You'}
-                  </h4>
-                  <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-1.5 py-0.5 rounded-full font-bold">
-                    {crossSellCourses.length}
+          {/* Right Column: Checkout Summary Sidebar */}
+          <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-5 sticky top-6">
+            <div className="space-y-1">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Total:</span>
+              <div className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
+                {totalAmount}
+              </div>
+              {!isCartFree && originalTotalUsd > totalAmountUsd && (
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="text-sm text-slate-400 line-through font-medium">
+                    {formatPrice(originalTotalUsd)}
                   </span>
-                </div>
-                <span className="text-[11px] text-slate-400 dark:text-slate-500">
-                  {hasGenuineRecent ? 'Pick up where you left off' : 'Learners also enrolled'}
-                </span>
-              </div>
-
-              {/* Grid of recently viewed courses */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {crossSellCourses.map((c) => {
-                  const courseIsFree = !c.price || Number(c.price) === 0;
-                  const originalPrice = Number(c.originalPrice) || 0;
-                  const currentPrice = Number(c.price) || 0;
-                  const discountPct = getDiscountPercentage(currentPrice, originalPrice);
-                  const isJustAdded = recentlyAddedId === c.id;
-
-                  return (
-                    <div 
-                      key={c.id} 
-                      className="group flex flex-col justify-between p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-slate-100/70 dark:hover:bg-slate-800/70 hover:border-slate-300 dark:hover:border-slate-700 transition-all"
-                    >
-                      <div className="flex items-start gap-2.5">
-                        <img 
-                          src={c.image || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80'} 
-                          alt={c.title} 
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80';
-                          }}
-                          referrerPolicy="no-referrer"
-                          onClick={() => handleViewCourse(c.id)}
-                          className="w-14 h-12 rounded-lg object-cover flex-shrink-0 cursor-pointer shadow-xs group-hover:scale-102 transition-transform" 
-                        />
-                        <div className="min-w-0 flex-1">
-                          <h5 
-                            onClick={() => handleViewCourse(c.id)}
-                            className="font-bold text-slate-800 dark:text-slate-200 text-xs line-clamp-1 cursor-pointer group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors"
-                            title={c.title}
-                          >
-                            {c.title}
-                          </h5>
-                          {c.instructor && (
-                            <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">
-                              {c.instructor}
-                            </p>
-                          )}
-                          <div className="flex items-center gap-1.5 flex-wrap mt-1">
-                            <span className={`text-xs font-black ${courseIsFree ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-slate-100'}`}>
-                              {courseIsFree ? 'Free' : formatPrice(c.price)}
-                            </span>
-                            {!courseIsFree && originalPrice > currentPrice && (
-                              <span className="text-[10px] text-slate-400 line-through">
-                                {formatPrice(originalPrice)}
-                              </span>
-                            )}
-                            {!courseIsFree && discountPct > 0 && (
-                              <span className="bg-rose-600 text-white font-bold text-[9px] px-1.5 py-0.5 rounded leading-none">
-                                Save {discountPct}%
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mt-2.5 pt-2 border-t border-slate-200/50 dark:border-slate-800/80 flex items-center justify-between gap-2">
-                        <button
-                          onClick={() => handleViewCourse(c.id)}
-                          className="text-[11px] font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer flex items-center gap-0.5"
-                        >
-                          <span>Preview</span>
-                          <ArrowRight className="w-3 h-3" />
-                        </button>
-                        <button
-                          onClick={() => handleQuickAdd(c)}
-                          disabled={isJustAdded}
-                          className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
-                            isJustAdded
-                              ? 'bg-emerald-600 text-white shadow-xs'
-                              : 'bg-teal-600 hover:bg-teal-500 text-white shadow-xs hover:shadow-sm'
-                          }`}
-                        >
-                          {isJustAdded ? (
-                            <>
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>Added</span>
-                            </>
-                          ) : (
-                            <>
-                              <Plus className="w-3.5 h-3.5" />
-                              <span>Add to Cart</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Modal Footer / Checkout Controls */}
-        <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex-shrink-0 space-y-4">
-          {cart.length > 0 && (
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-slate-700 dark:text-slate-300 text-sm">Total Amount:</span>
-              <div className="text-right">
-                <div className={`text-2xl font-black ${isCartFree ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-slate-100'}`}>
-                  {totalAmount}
-                </div>
-                {isCartFree ? (
-                  <div className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                    100% Free • No Payment Required
-                  </div>
-                ) : (
-                  <div className="text-[11px] font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-                    KES {formattedAmountKes}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-2.5">
-            {cart.length > 0 ? (
-              isCartFree ? (
-                <button
-                  onClick={handleFreeEnrollment}
-                  disabled={loading}
-                  className={`w-full py-3.5 text-white font-bold text-sm rounded-xl shadow-lg transition-all flex items-center justify-center space-x-2 ${
-                    loading
-                      ? 'bg-emerald-600/85 cursor-wait shadow-emerald-600/10'
-                      : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.99] shadow-emerald-600/25 hover:shadow-xl cursor-pointer'
-                  }`}
-                >
-                  {loading ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Enrolling you now...</span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>Enroll for Free (No Payment Needed)</span>
-                    </>
+                  {overallDiscountPercent > 0 && (
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                      {overallDiscountPercent}% off
+                    </span>
                   )}
-                </button>
+                </div>
+              )}
+              {isCartFree ? (
+                <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 pt-1">
+                  100% Free • No Payment Required
+                </p>
+              ) : (
+                <p className="text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400 pt-1">
+                  KES {formattedAmountKes}
+                </p>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            {cart.length > 0 && (
+              <div className="space-y-3 pt-2">
+                {isCartFree ? (
+                  <button
+                    onClick={handleFreeEnrollment}
+                    disabled={loading}
+                    className={`w-full py-3.5 px-6 text-white font-black text-base rounded-xl shadow-md transition-all flex items-center justify-center space-x-2 cursor-pointer ${
+                      loading
+                        ? 'bg-purple-600/80 cursor-wait'
+                        : 'bg-purple-600 hover:bg-purple-700 active:scale-[0.99]'
+                    }`}
+                  >
+                    {loading ? (
+                      <>
+                        <RefreshCw className="w-5 h-5 animate-spin" />
+                        <span>Enrolling...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Enroll Free (No Payment Needed)</span>
+                        <ArrowRight className="w-5 h-5" />
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleProceedToPayment}
+                    disabled={loading}
+                    className={`w-full py-3.5 px-6 text-white font-black text-base rounded-xl shadow-md transition-all flex items-center justify-center space-x-2 cursor-pointer ${
+                      loading
+                        ? 'bg-purple-600/80 cursor-wait'
+                        : 'bg-purple-600 hover:bg-purple-700 active:scale-[0.99]'
+                    }`}
+                  >
+                    {loading ? (
+                      <>
+                        <RefreshCw className="w-5 h-5 animate-spin" />
+                        <span>Processing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Proceed to Checkout</span>
+                        <ArrowRight className="w-5 h-5" />
+                      </>
+                    )}
+                  </button>
+                )}
+
+                <p className="text-[11px] text-slate-400 text-center font-medium">
+                  You won't be charged yet
+                </p>
+              </div>
+            )}
+
+            {/* Coupon Section */}
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
+              {couponApplied ? (
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-xl flex items-center justify-between text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>Coupon "{couponCode}" Applied!</span>
+                  </div>
+                  <button onClick={() => setCouponApplied(false)} className="text-slate-400 hover:text-slate-600 text-[10px] uppercase font-bold">Remove</button>
+                </div>
+              ) : showCouponInput ? (
+                <form onSubmit={handleApplyCoupon} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value)}
+                    placeholder="Enter Coupon Code"
+                    className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-purple-600 text-white font-bold text-xs rounded-xl hover:bg-purple-700 transition-colors cursor-pointer"
+                  >
+                    Apply
+                  </button>
+                </form>
               ) : (
                 <button
-                  onClick={handleProceedToPayment}
-                  disabled={loading}
-                  className={`w-full py-3.5 text-white font-bold text-sm rounded-xl shadow-lg transition-all flex items-center justify-center space-x-2 ${
-                    loading
-                      ? 'bg-[#0ba4db]/85 cursor-wait shadow-[#0ba4db]/10'
-                      : 'bg-[#0ba4db] hover:bg-[#0993c4] active:scale-[0.99] shadow-[#0ba4db]/20 hover:shadow-xl hover:shadow-[#0ba4db]/30 cursor-pointer'
-                  }`}
+                  type="button"
+                  onClick={() => setShowCouponInput(true)}
+                  className="w-full py-3 border border-purple-600 dark:border-purple-500 text-purple-600 dark:text-purple-400 font-bold text-sm rounded-xl hover:bg-purple-50 dark:hover:bg-purple-950/40 transition-colors text-center cursor-pointer"
                 >
-                  {loading ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Proceeding to Checkout...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Lock className="w-4 h-4" />
-                      <span>Proceed to Payment</span>
-                    </>
-                  )}
+                  Apply Coupon
                 </button>
-              )
-            ) : null}
+              )}
+            </div>
 
-            <button
-              onClick={onClose}
-              disabled={loading}
-              className="w-full py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs rounded-xl transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Continue Exploring
-            </button>
           </div>
+
         </div>
+
+        {/* Bottom Section: "You might also like" Recommendations (Homepage CourseCard UI) */}
+        {crossSellCourses.length > 0 && (
+          <div className="pt-12 border-t border-slate-200 dark:border-slate-800 space-y-6">
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+              You might also like
+            </h2>
+
+            <div className="flex items-stretch overflow-x-auto gap-5 pb-4 scroll-smooth snap-x no-scrollbar">
+              {crossSellCourses.map((c) => {
+                const normalized = normalizeCourse(c);
+                return (
+                  <CourseCard
+                    key={c.id}
+                    course={normalized}
+                    formatPrice={formatPrice}
+                    getDiscountPercentage={getDiscountPercentage}
+                    navigate={(to) => {
+                      onClose();
+                      navigate(to);
+                    }}
+                    className="w-[260px] sm:w-[280px] min-w-[260px] sm:min-w-[280px] shrink-0 snap-start"
+                  />
+                );
+              })}
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

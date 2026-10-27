@@ -93,15 +93,17 @@ export const LearnerDashboard: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col md:flex-row gap-6 items-start relative">
           
-          {/* Collapsible, Hover-Expandable Learner Sidebar */}
-          <LearnerSidebar
-            activeTab={activeTab}
-            onSelectTab={setActiveTab}
-            enrolledCourses={enrolledCourses}
-            currentUser={currentUser}
-            isCollapsed={isSidebarCollapsed}
-            onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          />
+          {/* Collapsible, Hover-Expandable Learner Sidebar (Desktop) */}
+          <div className="hidden md:block shrink-0">
+            <LearnerSidebar
+              activeTab={activeTab}
+              onSelectTab={setActiveTab}
+              enrolledCourses={enrolledCourses}
+              currentUser={currentUser}
+              isCollapsed={isSidebarCollapsed}
+              onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            />
+          </div>
 
           {/* Active Tab Main content View Panel */}
           <div className="flex-1 min-w-0 w-full bg-white dark:bg-slate-900/30 p-5 sm:p-8 rounded-3xl border border-slate-100 dark:border-slate-800/80 shadow-xs">

@@ -57,11 +57,11 @@ export const LearnerLearningTab: React.FC<LearnerLearningTabProps> = ({ enrolled
   const isLoading = isLoadingCourses || isLoadingEnrolled;
   const [searchParams, setSearchParams] = useSearchParams();
   
-  // Custom submenu: My Lists, Purchased, Assessments, New, Archived, Learning tools
+  // Custom submenu: All courses, My Lists, Purchased, Assessments, New, Archived, Learning tools
   const subParam = searchParams.get('sub');
-  const validSubmenus = ['my-lists', 'purchased', 'assessments', 'new', 'archived', 'learning-tools'];
-  const [learningSubmenu, setLearningSubmenu] = useState<'my-lists' | 'purchased' | 'assessments' | 'new' | 'archived' | 'learning-tools'>(
-    subParam && validSubmenus.includes(subParam) ? (subParam as any) : 'my-lists'
+  const validSubmenus = ['all', 'my-lists', 'purchased', 'assessments', 'new', 'archived', 'learning-tools'];
+  const [learningSubmenu, setLearningSubmenu] = useState<'all' | 'my-lists' | 'purchased' | 'assessments' | 'new' | 'archived' | 'learning-tools'>(
+    subParam && validSubmenus.includes(subParam) ? (subParam as any) : 'all'
   );
   
   const [myListsFilter, setMyListsFilter] = useState<'all' | 'favorites' | 'in-progress' | 'completed'>('all');
@@ -488,44 +488,49 @@ export const LearnerLearningTab: React.FC<LearnerLearningTabProps> = ({ enrolled
         </div>
       ) : (
         <div className="space-y-6">
-          {/* Submenu selector: My Lists, Purchased, Assessments, New, Archived, Learning tools */}
-          <div className="border-b border-slate-200 dark:border-slate-800 pb-px mb-6 overflow-x-auto flex items-center space-x-6 sm:space-x-8 scrollbar-none">
-            {[
-              { id: 'my-lists', label: 'My Lists', icon: List },
-              { id: 'purchased', label: 'Purchased', icon: ShoppingBag },
-              { id: 'assessments', label: 'Assessments', icon: ClipboardCheck },
-              { id: 'new', label: 'New', icon: Sparkles },
-              { id: 'archived', label: 'Archived', icon: Archive },
-              { id: 'learning-tools', label: 'Learning tools', icon: Wrench },
-            ].map((sub) => {
-              const Icon = sub.icon;
-              const isActive = learningSubmenu === sub.id;
-              return (
-                <button
-                  key={sub.id}
-                  onClick={() => {
-                    setSearchParams({ tab: 'learning', sub: sub.id });
-                    setLearningSubmenu(sub.id as any);
-                    setActiveQuizCourse(null);
-                    setQuizScore(null);
-                    setQuizFinished(false);
-                    setSelectedAnswers({});
-                  }}
-                  className={`flex items-center space-x-2 py-3 border-b-2 text-xs sm:text-sm font-black transition-all cursor-pointer whitespace-nowrap ${
-                    isActive
-                      ? 'border-teal-600 text-teal-700 dark:text-teal-400'
-                      : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-700'
-                  }`}
-                >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-teal-600 dark:text-teal-400' : 'text-slate-400'}`} />
-                  <span>{sub.label}</span>
-                </button>
-              );
-            })}
+          {/* Header Title & Submenu selector */}
+          <div className="space-y-4">
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+              My learning
+            </h1>
+
+            <div className="border-b border-slate-200 dark:border-slate-800 pb-px overflow-x-auto flex items-center space-x-6 sm:space-x-8 no-scrollbar scroll-smooth">
+              {[
+                { id: 'all', label: 'All courses' },
+                { id: 'my-lists', label: 'My Lists' },
+                { id: 'purchased', label: 'Purchased' },
+                { id: 'assessments', label: 'Assessments' },
+                { id: 'new', label: 'New' },
+                { id: 'archived', label: 'Archived' },
+                { id: 'learning-tools', label: 'Learning tools' },
+              ].map((sub) => {
+                const isActive = learningSubmenu === sub.id;
+                return (
+                  <button
+                    key={sub.id}
+                    onClick={() => {
+                      setSearchParams({ tab: 'learning', sub: sub.id });
+                      setLearningSubmenu(sub.id as any);
+                      setActiveQuizCourse(null);
+                      setQuizScore(null);
+                      setQuizFinished(false);
+                      setSelectedAnswers({});
+                    }}
+                    className={`py-2.5 border-b-2 text-sm sm:text-base font-extrabold transition-all cursor-pointer whitespace-nowrap ${
+                      isActive
+                        ? 'border-teal-600 text-teal-700 dark:text-teal-400'
+                        : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                    }`}
+                  >
+                    <span>{sub.label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Render Course Lists search/filter ONLY for list submenus */}
-          {['my-lists', 'purchased', 'new', 'archived'].includes(learningSubmenu) && (
+          {['all', 'my-lists', 'purchased', 'new', 'archived'].includes(learningSubmenu) && (
             <div className="space-y-6">
               
               {/* My lists Title */}

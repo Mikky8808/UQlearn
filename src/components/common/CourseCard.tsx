@@ -182,12 +182,6 @@ export const CourseCard: React.FC<CourseCardProps> = ({
 
             {/* Badges & Rating Row */}
             <div className="flex items-center flex-wrap gap-1 pt-0.5">
-              {isSponsoredCourse && (
-                <span className="px-1.5 py-0.2 bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 font-extrabold text-[9px] rounded tracking-tight flex items-center gap-0.5 border border-amber-300/80 dark:border-amber-700/80 shadow-xs">
-                  <Sparkles className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400 fill-amber-500 shrink-0" />
-                  <span>Sponsored</span>
-                </span>
-              )}
               {isBestseller && (
                 <span className="px-1.5 py-0.2 bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-extrabold text-[9px] rounded tracking-tight">
                   Bestseller
