@@ -229,7 +229,15 @@ export const fetchRecentlyViewedApi = async (userId: string) => await apiFetch(`
 export const recordSponsoredClickApi = async (adId: string) => await apiFetch(API_ENDPOINTS.SPONSORED_CLICKS, { method: 'POST', body: JSON.stringify({ adId }) });
 export const fetchFlashSaleConfigApi = async () => await apiFetch(API_ENDPOINTS.FLASH_SALE_CONFIG);
 export const saveFlashSaleConfigApi = async (data: any) => await apiFetch(API_ENDPOINTS.FLASH_SALE_CONFIG, { method: 'POST', body: JSON.stringify(data) });
-export const getActiveSponsoredCoursesApi = async () => await apiFetch(API_ENDPOINTS.SPONSORED_COURSES);
+export const getActiveSponsoredCoursesApi = async () => {
+  // Primary: Fetch from sponsored_ads.php (active API on backend)
+  const res = await apiFetch(API_ENDPOINTS.SPONSORED_ADS, { silent: true }).catch(() => null);
+  if (res && (res.success || Array.isArray(res) || Array.isArray(res?.data))) {
+    return res;
+  }
+  // Secondary: Fallback to sponsored-courses.php endpoint
+  return await apiFetch(API_ENDPOINTS.SPONSORED_COURSES, { silent: true }).catch(() => null);
+};
 export const recordSponsoredImpressionApi = async (adId: string) => await apiFetch(API_ENDPOINTS.SPONSORED_IMPRESSIONS, { method: 'POST', body: JSON.stringify({ adId }) });
 
 export const getInstructorUrl = () => `${ROOT_URL}/instructor`;
@@ -304,10 +312,10 @@ export const extractSponsoredCourseIds = (res: any): string[] => {
   let list: any[] = [];
   if (Array.isArray(res)) {
     list = res;
-  } else if (res.courseIds && Array.isArray(res.courseIds)) {
-    list = res.courseIds;
   } else if (res.data && Array.isArray(res.data)) {
     list = res.data;
+  } else if (res.courseIds && Array.isArray(res.courseIds)) {
+    list = res.courseIds;
   } else if (res.sponsoredCourses && Array.isArray(res.sponsoredCourses)) {
     list = res.sponsoredCourses;
   } else if (res.courses && Array.isArray(res.courses)) {
@@ -317,10 +325,19 @@ export const extractSponsoredCourseIds = (res: any): string[] => {
   }
   
   return list
+    .filter((item: any) => {
+      if (typeof item === 'string' || typeof item === 'number') return true;
+      if (!item) return false;
+      // If status property exists on ad item, ensure it's active / approved
+      if (item.status && item.status !== 'active' && item.status !== 'approved' && item.status !== 1 && item.status !== '1') {
+        return false;
+      }
+      return true;
+    })
     .map((item: any) => {
       if (typeof item === 'string' || typeof item === 'number') return String(item);
       if (!item) return '';
-      return String(item.courseId || item.course_id || item.id || item.course_ID || '');
+      return String(item.courseId || item.course_id || item.course_ID || '');
     })
     .filter(Boolean);
 };

@@ -3,8 +3,8 @@ import { Sparkles } from 'lucide-react';
 
 export const HeroContent: React.FC = () => {
   const images = [
-    '/public/assets/aistudio/Connected_Learning__Brighter_Futures_1b170216.png',
-    '/public/assets/aistudio/Connected_Learning__Africa_to_Achievement_61efd14a.png'
+    'https://uqlearn.org/uploads/courses/Connected_Learning__Brighter_Futures_1b170216.png',
+    'https://uqlearn.org/uploads/courses/Connected_Learning__Africa_to_Achievement_61efd14a.png'
   ];
   const [currentIdx, setCurrentIdx] = useState(0);
 

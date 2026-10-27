@@ -113,8 +113,7 @@ export function UserPortal() {
         onOpenMainSidebar={() => setMainSidebarOpen(true)}
       />
 
-      {/* Category Sub-Navigation Bar - Hide if user is logged in */}
-      {!currentUser && <CategorySubNav />}
+
 
       {/* Main Routed Content */}
       <main>
