@@ -6,7 +6,8 @@ import { InstructorLandingPage } from './InstructorLandingPage';
 import { InstructorOnboardingWizard } from './InstructorOnboardingWizard';
 import { useApp } from '../../context/AppContext';
 import { Course } from '../../types';
-import { API_ENDPOINTS, deleteCourseApi, API_BASE_URL, apiFetch, checkInstructorOnboardingApi } from '../../lib/apiConfig';
+import { API_ENDPOINTS, deleteCourseApi, API_BASE_URL, apiFetch } from '../../lib/apiConfig';
+import { instructorService } from '../../services/instructor-service';
 import { SkeletonCard, SkeletonTableRows } from '../common/SkeletonLoader';
 import { CheckCircle2, X } from 'lucide-react';
 
@@ -40,7 +41,7 @@ export default function InstructorApp() {
         setIsOnboardingCompleted(true);
       } else {
         // Non-blocking background check
-        checkInstructorOnboardingApi(currentUser.id).then(res => {
+        instructorService.getOnboardingStatus(currentUser.id).then(res => {
           if (res && res.success && res.completed) {
             setIsOnboardingCompleted(true);
             localStorage.setItem(`uqlearn_instructor_onboarding_completed_${currentUser.id}`, 'true');

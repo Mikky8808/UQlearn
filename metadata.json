@@ -1,6 +1,6 @@
 {
-  "name": "Remix Remix Remix Remix Remix Remix Copy of Remix AQLEARN V1.6",
-  "description": "AQLEARN - Online Learning \u0026 Course Marketplace with Instructor Studio, Student Progress, Secure Checkout, and AI Recommendations.",
+  "name": "UQlearn - Online Learning & Course Marketplace",
+  "description": "UQlearn is a premier online learning marketplace for TVET KNEC courses, professional certifications, and interactive education.",
   "requestFramePermissions": [
     "microphone"
   ],

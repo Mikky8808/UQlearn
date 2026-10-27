@@ -175,11 +175,11 @@ export const InstructorSidebarDrawer: React.FC<InstructorSidebarDrawerProps> = (
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: '-100%', opacity: 0.95 }}
               transition={{ type: 'spring', damping: 30, stiffness: 320, mass: 0.8 }}
-              className="w-80 sm:w-90 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col justify-between overflow-y-auto"
+              className="w-full max-w-[280px] sm:w-80 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col h-full overflow-y-auto custom-scrollbar"
             >
               <div>
                 {/* Top Header */}
-                <div className="p-4 border-b border-slate-150 dark:border-slate-800 flex items-center justify-between bg-slate-50/80 dark:bg-slate-950/80">
+                <div className="p-4 border-b border-slate-150 dark:border-slate-800 flex items-center justify-between bg-slate-50/90 dark:bg-slate-950/90 sticky top-0 z-20 backdrop-blur-md">
                   <div className="flex items-center space-x-2.5">
                     <img 
                       src={resolveBrandingLogoUrl(logoUrl)} 

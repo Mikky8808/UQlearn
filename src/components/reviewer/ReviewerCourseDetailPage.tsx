@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Course } from '../../types';
 import { useApp } from '../../context/AppContext';
-import { getIntendedLearnersApi, saveCourseDescriptionChecklistApi, getCourseDescriptionChecklistApi, fetchInstructorDetailsApi, fetchCourseModulesApi, InstructorDetailsData } from '../../lib/apiConfig';
+import { getIntendedLearnersApi, saveCourseDescriptionChecklistApi, getCourseDescriptionChecklistApi, fetchCourseModulesApi, InstructorDetailsData } from '../../lib/apiConfig';
+import { instructorService } from '../../services/instructor-service';
 import { ReviewerGuideModal } from './ReviewerGuideModal';
 import { LearningVideoPlayer } from '../user/learning/LearningVideoPlayer';
 import { LearningLessonNav } from '../user/learning/LearningLessonNav';
@@ -435,7 +436,7 @@ export const ReviewerCourseDetailPage: React.FC<ReviewerCourseDetailPageProps> =
     async function loadInstructorData() {
       if (!course.id) return;
       try {
-        const data = await fetchInstructorDetailsApi(course.id);
+        const data = await instructorService.getProfile(course.id);
         if (data && isMounted) {
           setApiInstructorData(data);
         }

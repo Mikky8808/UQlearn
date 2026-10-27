@@ -204,7 +204,7 @@ export const InstructorSidebar: React.FC<InstructorSidebarProps> = ({
 
   // Render the base navigation items as icons or full list
   const sidebarContent = (
-    <div className="flex flex-col h-full justify-between select-none">
+    <div className="flex flex-col h-full select-none overflow-y-auto custom-scrollbar">
       <div>
         {/* Logo and Collapse Toggle Header */}
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/75 dark:bg-slate-950/80 sticky top-0 z-10 backdrop-blur-md h-16">
@@ -390,16 +390,13 @@ export const InstructorSidebar: React.FC<InstructorSidebarProps> = ({
               onClick={onCloseMobile}
             />
             {/* The expanded sidebar */}
-            <div className="relative flex-1 flex flex-col max-w-xs w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 h-full">
+            <div className="relative flex-1 flex flex-col w-full max-w-[280px] sm:w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 h-full overflow-hidden">
               {sidebarContent}
             </div>
           </div>
         ) : (
-          /* Small persistent mobile icon bar at the left of the screen if desired, or hidden until menu is clicked.
-             To support "opening and collapsing it in mobile phones", let's let it be responsive!
-             When collapsed on mobile, it occupies a small left strip of width w-16 showing ONLY icons! This satisfies:
-             "opening it in mobile phones when it collapses show icons" */
-          <div className="fixed top-16 left-0 bottom-0 z-40 w-16 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between items-center py-4 md:hidden">
+          /* Small persistent mobile icon bar at the left of the screen if desired */
+          <div className="fixed top-14 sm:top-16 left-0 bottom-0 z-40 w-16 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between items-center py-3 overflow-y-auto custom-scrollbar md:hidden">
             <div className="flex flex-col items-center space-y-4 w-full">
               <button
                 onClick={() => handleTabClick('dashboard')}

@@ -35,7 +35,8 @@ import {
   ChevronRight,
   Sliders,
   Star,
-  Flame
+  Flame,
+  Clock
 } from 'lucide-react';
 import { AdminTabKey } from './AdminNavbar';
 
@@ -150,6 +151,7 @@ export const AdminSidebarDrawer: React.FC<AdminSidebarDrawerProps> = ({
         { id: 'promotion-subscribers' as AdminTabKey, label: 'Promotion Subscribers & Campaigns', icon: Users, badgeText: 'Live' },
         { id: 'banner-manager' as AdminTabKey, label: 'Hero Banner Manager', icon: Layout },
         { id: 'top-adverts' as AdminTabKey, label: 'Top Nav Advert Manager', icon: Sparkles },
+        { id: 'top-banner-config' as AdminTabKey, label: 'Banner & Countdown Config', icon: Clock },
         { id: 'adverts-manager' as AdminTabKey, label: 'Section Advert Banners', icon: Megaphone },
         { id: 'sponsored-ads' as AdminTabKey, label: 'Sponsored Ads & Products', icon: Tag, badgeText: 'NEW' },
         { id: 'flash-sale' as AdminTabKey, label: 'Flash Sale & Top Selling', icon: Flame, badgeText: 'Live' },
@@ -174,6 +176,7 @@ export const AdminSidebarDrawer: React.FC<AdminSidebarDrawerProps> = ({
         { id: 'subscriptions' as AdminTabKey, label: 'Transactions & Revenue', icon: CreditCard },
         { id: 'payment-integrations' as AdminTabKey, label: 'Payment Gateways', icon: DollarSign },
         { id: 'payout-countries' as AdminTabKey, label: 'Payout Countries', icon: Globe },
+        { id: 'withdrawals' as AdminTabKey, label: 'Instructor Withdrawals', icon: DollarSign },
       ]
     },
     {
@@ -237,16 +240,16 @@ export const AdminSidebarDrawer: React.FC<AdminSidebarDrawerProps> = ({
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: '-100%', opacity: 0.95 }}
               transition={{ type: 'spring', damping: 30, stiffness: 320, mass: 0.8 }}
-              className="w-80 sm:w-88 bg-slate-900 shadow-2xl flex flex-col justify-between h-full border-r border-slate-800 text-white overflow-hidden relative"
+              className="w-full max-w-[280px] sm:w-80 bg-slate-900 shadow-2xl flex flex-col h-full border-r border-slate-800 text-white overflow-y-auto custom-scrollbar relative"
             >
               
               {/* DRAWER MODE 1: PARENT DRAWER (Clean Main Category Items) */}
               {drawerMode === 'parent' && (
-                <div className="flex flex-col justify-between h-full w-full">
+                <div className="flex flex-col h-full w-full">
                   
                   {/* Top Header */}
                   <div>
-                    <div className="p-4 sm:p-5 border-b border-slate-800/80 flex items-center justify-between bg-slate-950/80">
+                    <div className="p-4 border-b border-slate-800/80 flex items-center justify-between bg-slate-950/90 sticky top-0 z-20 backdrop-blur-md">
                       <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 rounded-full flex items-center justify-center p-0.5">
                           <img 

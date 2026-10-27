@@ -55,10 +55,31 @@ try {
 
     @$conn->query($createWithdrawalsSql);
 
+    $createBalancesSql = "CREATE TABLE IF NOT EXISTS `instructor_balances` (
+        `user_id` VARCHAR(64) PRIMARY KEY,
+        `current_balance` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+        `gross_earned` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+        `total_withdrawn` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+        `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX `idx_user` (`user_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
+    @$conn->query($createBalancesSql);
+
     $method = $_SERVER['REQUEST_METHOD'];
 
     if ($method === 'GET') {
         $action = $_GET['action'] ?? '';
+        if ($action === 'balance') {
+            $userId = $_GET['user_id'] ?? $_GET['userId'] ?? $_GET['instructor_id'] ?? '';
+            $stmt = $conn->prepare("SELECT * FROM `instructor_balances` WHERE `user_id` = ?");
+            $stmt->bind_param("s", $userId);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            $balance = $res->fetch_assoc();
+            echo json_encode(['success' => true, 'data' => $balance ?: ['current_balance' => 0, 'gross_earned' => 0, 'total_withdrawn' => 0]]);
+            exit();
+        }
+
         if ($action === 'withdrawals') {
             $instructorId = $_GET['instructor_id'] ?? $_GET['user_id'] ?? '';
             $instructorEmail = $_GET['instructor_email'] ?? '';
@@ -138,11 +159,25 @@ try {
 
         $action = $input['action'] ?? '';
         if ($action === 'request_withdrawal') {
-            $wId = $input['id'] ?? ('wd_' . time() . '_' . rand(1000, 9999));
             $instId = $input['instructorId'] ?? $input['instructor_id'] ?? $input['user_id'] ?? '';
+            $amount = (float)($input['amount'] ?? 0);
+            
+            // Check funds
+            $stmt = $conn->prepare("SELECT current_balance FROM `instructor_balances` WHERE `user_id` = ?");
+            $stmt->bind_param("s", $instId);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            $balance = $res->fetch_assoc();
+
+            if (!$balance || $balance['current_balance'] < $amount) {
+                echo json_encode(['success' => false, 'message' => 'Insufficient funds']);
+                exit();
+            }
+
+            // Record Withdrawal
+            $wId = $input['id'] ?? ('wd_' . time() . '_' . rand(1000, 9999));
             $instEmail = $input['instructorEmail'] ?? $input['instructor_email'] ?? '';
             $instName = $input['instructorName'] ?? $input['instructor_name'] ?? 'Instructor';
-            $amount = (float)($input['amount'] ?? 0);
             $currency = $input['currency'] ?? 'KES';
             $bankName = $input['bankName'] ?? $input['bank_name'] ?? '';
             $accountNumber = $input['accountNumber'] ?? $input['account_number'] ?? '';
@@ -152,19 +187,25 @@ try {
             $reference = $input['reference'] ?? ('WD-' . date('Ymd') . '-' . rand(1000, 9999));
             $notes = $input['notes'] ?? '';
 
-            $stmt = $conn->prepare("INSERT INTO `instructor_withdrawals` 
-                (`id`, `instructor_id`, `instructor_email`, `instructor_name`, `amount`, `currency`, `bank_name`, `account_number`, `account_name`, `country`, `status`, `reference`, `notes`)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE `status` = VALUES(`status`)");
-            if ($stmt) {
+            $conn->begin_transaction();
+            try {
+                $stmt = $conn->prepare("INSERT INTO `instructor_withdrawals` 
+                    (`id`, `instructor_id`, `instructor_email`, `instructor_name`, `amount`, `currency`, `bank_name`, `account_number`, `account_name`, `country`, `status`, `reference`, `notes`)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                 $stmt->bind_param("ssssdssssssss", $wId, $instId, $instEmail, $instName, $amount, $currency, $bankName, $accountNumber, $accountName, $country, $status, $reference, $notes);
                 $stmt->execute();
+
+                // Update Balance
+                $stmt = $conn->prepare("UPDATE `instructor_balances` SET `current_balance` = `current_balance` - ?, `total_withdrawn` = `total_withdrawn` + ? WHERE `user_id` = ?");
+                $stmt->bind_param("dds", $amount, $amount, $instId);
+                $stmt->execute();
+
+                $conn->commit();
+                echo json_encode(['success' => true, 'message' => 'Withdrawal request recorded and balance updated']);
+            } catch (Exception $e) {
+                $conn->rollback();
+                echo json_encode(['success' => false, 'message' => 'Transaction failed: ' . $e->getMessage()]);
             }
-            echo json_encode([
-                'success' => true,
-                'message' => 'Withdrawal request recorded',
-                'data' => $input
-            ]);
             exit();
         }
 
@@ -217,6 +258,7 @@ try {
         }
         exit();
     }
+
 
 } catch (Exception $e) {
     http_response_code(500);

@@ -28,7 +28,8 @@ import {
 } from 'lucide-react';
 import { Course } from '../../types';
 import { InstructorTabKey } from '../navigation/InstructorSidebar';
-import { API_ENDPOINTS, apiFetch, saveInstructorPayoutApi, getInstructorPayoutApi, getActiveSession, updateActiveSession } from '../../lib/apiConfig';
+import { API_ENDPOINTS, apiFetch, getActiveSession, updateActiveSession } from '../../lib/apiConfig';
+import { instructorService } from '../../services/instructor-service';
 import { useApp } from '../../context/AppContext';
 
 interface AdminSettingsViewsProps {
@@ -146,7 +147,7 @@ export const InstructorAdminSettingsViews: React.FC<AdminSettingsViewsProps> = (
 
   useEffect(() => {
     if (currentUser?.id) {
-      getInstructorPayoutApi(currentUser.id).then(response => {
+      instructorService.getPayoutDetails(currentUser.id).then(response => {
         const dbData = response?.data || response;
         if (dbData && (dbData.bankName || dbData.accountNumber)) {
           if (dbData.countryId) setSelectedCountryId(dbData.countryId);
@@ -227,9 +228,9 @@ export const InstructorAdminSettingsViews: React.FC<AdminSettingsViewsProps> = (
         const last = nameParts.slice(1).join(' ') || 'Educator';
 
         try {
-          const result = await apiFetch(`profile.php?id=${encodeURIComponent(currentUser.id)}&first_name=${encodeURIComponent(first)}&last_name=${encodeURIComponent(last)}&email=${encodeURIComponent(userEmail)}`);
-          if (result && result.data) {
-            const d = result.data;
+          const result = await instructorService.getProfile(currentUser.id);
+          if (result) {
+            const d = result;
             setBio(d.bio || '');
             setWebsite(d.website || '');
             setTwitter(d.twitter || '');
@@ -365,7 +366,7 @@ export const InstructorAdminSettingsViews: React.FC<AdminSettingsViewsProps> = (
       
       // Save to database API
       if (currentUser?.id) {
-        const res = await saveInstructorPayoutApi({ userId: currentUser.id, ...details });
+        const res = await instructorService.savePayoutDetails({ userId: currentUser.id, ...details });
         if (res && res.success === false) {
           throw new Error(res.message || 'Failed to save payout settings to database.');
         }
@@ -404,10 +405,11 @@ export const InstructorAdminSettingsViews: React.FC<AdminSettingsViewsProps> = (
     return filename;
   };
 
-  const saveProfileData = async (newAvatarUrl?: string) => {
+  const saveProfileData = async (newAvatarUrl?: string, newSignature?: string) => {
     if (!currentUser?.id) return;
     
     const targetAvatarUrl = newAvatarUrl !== undefined ? newAvatarUrl : avatarUrl;
+    const targetSignature = newSignature !== undefined ? newSignature : signature;
 
     const payload = {
       id: currentUser.id,
@@ -419,6 +421,7 @@ export const InstructorAdminSettingsViews: React.FC<AdminSettingsViewsProps> = (
       instructor_title: instructorTitle,
       phone_number: phoneNumber,
       avatar_url: targetAvatarUrl,
+      signature: targetSignature,
       email: email || currentUser?.email || '',
       country_code: countryCode,
       preferred_language: preferredLanguage,
@@ -430,11 +433,8 @@ export const InstructorAdminSettingsViews: React.FC<AdminSettingsViewsProps> = (
     localStorage.setItem(fallbackKey, JSON.stringify(payload));
 
     try {
-      const result = await apiFetch('profile.php', {
-        method: 'POST',
-        body: JSON.stringify(payload)
-      });
-      if (result.success) {
+      const result = await instructorService.updateProfile(currentUser.id, payload);
+      if (result && (result.success || result.data)) {
         setProfileMsg(newAvatarUrl !== undefined ? 'Profile photo updated and saved successfully!' : 'Profile updated and saved to users table successfully!');
         if (typeof window !== 'undefined') {
           updateActiveSession({
@@ -1174,7 +1174,8 @@ export const InstructorAdminSettingsViews: React.FC<AdminSettingsViewsProps> = (
               <p className="text-xs text-slate-500 font-bold animate-pulse">Syncing instructor profile from secure MySQL database...</p>
             </div>
           ) : (
-            <form onSubmit={handleSaveProfile} className="space-y-6">
+            <div className="space-y-6">
+              <form onSubmit={handleSaveProfile} className="space-y-6">
               
               {/* SECTION 1: ACCOUNT INFORMATION */}
               <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/80 space-y-4">
@@ -1315,6 +1316,7 @@ export const InstructorAdminSettingsViews: React.FC<AdminSettingsViewsProps> = (
                     signerTitle={instructorTitle || 'COURSE INSTRUCTOR'}
                     onSave={(data) => {
                       setSignature(data);
+                      saveProfileData(undefined, data);
                       setProfileMsg('Instructor signature saved successfully!');
                       setTimeout(() => setProfileMsg(''), 4000);
                     }} 
@@ -1406,107 +1408,6 @@ export const InstructorAdminSettingsViews: React.FC<AdminSettingsViewsProps> = (
                 </div>
               </div>
 
-              {/* SECTION 3: SECURITY & PASSWORD SETTINGS */}
-              <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/80 space-y-4">
-                <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 border-b border-slate-200/60 dark:border-slate-700/60 pb-2 flex items-center space-x-2">
-                  <Lock className="w-4 h-4 text-indigo-500" />
-                  <span>3. Security & Password Settings</span>
-                </h3>
-
-                {authProvider === 'google' ? (
-                  <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900 text-indigo-800 dark:text-indigo-300 flex items-start space-x-2.5">
-                    <Key className="w-4 h-4 mt-0.5 shrink-0 text-indigo-500" />
-                    <div className="text-[11px] leading-relaxed">
-                      <p className="font-bold">Social Login Connected (Google)</p>
-                      <p className="font-medium opacity-90">You currently log in via Google Auth. You can set a password below to enable logging in via email & password as well, without needing to enter a current password.</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200/40 dark:border-slate-700/40 text-slate-600 dark:text-slate-400 flex items-start space-x-2.5">
-                    <ShieldCheck className="w-4 h-4 mt-0.5 shrink-0 text-indigo-500" />
-                    <div className="text-[11px] leading-relaxed">
-                      <p className="font-bold">Standard Password Protection</p>
-                      <p className="font-medium opacity-90">Please enter your current password along with your desired new password to safely update your login credentials.</p>
-                    </div>
-                  </div>
-                )}
-
-                <form onSubmit={changePassword} className="space-y-4">
-                  {authProvider !== 'google' && (
-                    <div>
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Current Password</label>
-                      <input
-                        type="password"
-                        placeholder="••••••••"
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPasswordState(e.target.value)}
-                        className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
-                        required
-                      />
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">New Password</label>
-                      <input
-                        type="password"
-                        placeholder="••••••••"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
-                        required
-                        minLength={6}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Confirm New Password</label>
-                      <input
-                        type="password"
-                        placeholder="••••••••"
-                        value={confirmNewPassword}
-                        onChange={(e) => setConfirmNewPassword(e.target.value)}
-                        className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
-                        required
-                        minLength={6}
-                      />
-                    </div>
-                  </div>
-
-                  {passwordErr && (
-                    <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40 text-rose-700 dark:text-rose-400 text-xs font-bold flex items-center space-x-2">
-                      <AlertTriangle className="w-4 h-4 shrink-0" />
-                      <span>{passwordErr}</span>
-                    </div>
-                  )}
-
-                  {passwordMsg && (
-                    <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-400 text-xs font-bold flex items-center space-x-2">
-                      <CheckCircle2 className="w-4 h-4 shrink-0" />
-                      <span>{passwordMsg}</span>
-                    </div>
-                  )}
-
-                  <div className="flex justify-end pt-2">
-                    <button
-                      type="submit"
-                      disabled={isSavingPassword}
-                      className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-300 disabled:dark:bg-slate-800 text-white font-bold rounded-xl text-xs flex items-center space-x-2 shadow-md transition-all cursor-pointer"
-                    >
-                      {isSavingPassword ? (
-                        <span>Saving...</span>
-                      ) : (
-                        <>
-                          <Save className="w-4 h-4" />
-                          <span>{authProvider === 'google' ? 'Set Login Password' : 'Update Password'}</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </form>
-              </div>
-
               <div className="pt-2 flex justify-end">
                 <button
                   type="submit"
@@ -1522,6 +1423,106 @@ export const InstructorAdminSettingsViews: React.FC<AdminSettingsViewsProps> = (
                 </button>
               </div>
             </form>
+
+              {/* SECTION 3: SECURITY & PASSWORD SETTINGS (INDEPENDENT FORM) */}
+              <form onSubmit={changePassword} className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/80 space-y-4">
+              <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 border-b border-slate-200/60 dark:border-slate-700/60 pb-2 flex items-center space-x-2">
+                <Lock className="w-4 h-4 text-indigo-500" />
+                <span>3. Security & Password Settings</span>
+              </h3>
+
+              {authProvider === 'google' ? (
+                <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900 text-indigo-800 dark:text-indigo-300 flex items-start space-x-2.5">
+                  <Key className="w-4 h-4 mt-0.5 shrink-0 text-indigo-500" />
+                  <div className="text-[11px] leading-relaxed">
+                    <p className="font-bold">Social Login Connected (Google)</p>
+                    <p className="font-medium opacity-90">You currently log in via Google Auth. You can set a password below to enable logging in via email & password as well, without needing to enter a current password.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200/40 dark:border-slate-700/40 text-slate-600 dark:text-slate-400 flex items-start space-x-2.5">
+                  <ShieldCheck className="w-4 h-4 mt-0.5 shrink-0 text-indigo-500" />
+                  <div className="text-[11px] leading-relaxed">
+                    <p className="font-bold">Standard Password Protection</p>
+                    <p className="font-medium opacity-90">Please enter your current password along with your desired new password to safely update your login credentials.</p>
+                  </div>
+                </div>
+              )}
+
+              {authProvider !== 'google' && (
+                <div>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Current Password</label>
+                  <input
+                    type="password"
+                    placeholder="••••••••"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPasswordState(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
+                    required
+                  />
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">New Password</label>
+                  <input
+                    type="password"
+                    placeholder="••••••••"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
+                    required
+                    minLength={6}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Confirm New Password</label>
+                  <input
+                    type="password"
+                    placeholder="••••••••"
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
+                    required
+                    minLength={6}
+                  />
+                </div>
+              </div>
+
+              {passwordErr && (
+                <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40 text-rose-700 dark:text-rose-400 text-xs font-bold flex items-center space-x-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>{passwordErr}</span>
+                </div>
+              )}
+
+              {passwordMsg && (
+                <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-400 text-xs font-bold flex items-center space-x-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>{passwordMsg}</span>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-2">
+                <button
+                  type="submit"
+                  disabled={isSavingPassword}
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-300 disabled:dark:bg-slate-800 text-white font-bold rounded-xl text-xs flex items-center space-x-2 shadow-md transition-all cursor-pointer"
+                >
+                  {isSavingPassword ? (
+                    <span>Saving...</span>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      <span>{authProvider === 'google' ? 'Set Login Password' : 'Update Password'}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+            </div>
           )}
         </div>
       )}

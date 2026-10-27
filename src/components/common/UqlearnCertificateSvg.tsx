@@ -1,5 +1,6 @@
 import React, { useId } from 'react';
 import { resolveCertificateLogo } from '../../lib/certificateLogo';
+import { instructorSignatureService } from '../../services/instructor-signature-service';
 
 export interface CertificateData {
   studentName: string;
@@ -38,15 +39,8 @@ export const UqlearnCertificateSvg: React.FC<UqlearnCertificateSvgProps> = ({
   const credentialId = data.credentialId || 'UQL-CERT-2026';
   const effectiveLogoUrl = resolveCertificateLogo(data.logoUrl);
 
-  const isValidSignatureImage = (sig?: string | null): boolean => {
-    if (!sig || typeof sig !== 'string') return false;
-    const s = sig.trim();
-    if (!s || s === 'null' || s === 'undefined' || s.length < 20) return false;
-    return s.startsWith('data:image/') || s.startsWith('http://') || s.startsWith('https://') || s.startsWith('/uploads/');
-  };
-
-  const hasCustomInstructorSig = isValidSignatureImage(data.instructorSignature);
-  const hasCustomCeoSig = isValidSignatureImage(data.ceoSignature);
+  const hasCustomInstructorSig = instructorSignatureService.isValidSignature(data.instructorSignature);
+  const hasCustomCeoSig = instructorSignatureService.isValidSignature(data.ceoSignature);
 
   // Responsive font sizing for long student names
   let studentFontSize = 62;
@@ -471,15 +465,28 @@ export const UqlearnCertificateSvg: React.FC<UqlearnCertificateSvgProps> = ({
 
       {/* --- LEFT: COURSE INSTRUCTOR --- */}
       <g id="instructor-signature-group">
-        {hasCustomInstructorSig && (
+        {hasCustomInstructorSig ? (
           <image
             href={data.instructorSignature}
-            x="240"
-            y="735"
-            width="280"
-            height="95"
+            x="210"
+            y="715"
+            width="340"
+            height="120"
             preserveAspectRatio="xMidYMid meet"
           />
+        ) : (
+          /* Text-based Script Signature Fallback */
+          <text
+            x="380"
+            y="810"
+            textAnchor="middle"
+            className="uql-script"
+            fontSize="32"
+            fill="#1e293b"
+            opacity="0.8"
+          >
+            {data.instructorName || 'Michael Kenyanya'}
+          </text>
         )}
 
         {/* Gold Separator Line with Diamond */}
@@ -487,7 +494,7 @@ export const UqlearnCertificateSvg: React.FC<UqlearnCertificateSvgProps> = ({
         <polygon points="380,829 386,835 380,841 374,835" fill="#d4af37" />
         <line x1="395" y1="835" x2="540" y2="835" stroke="#d4af37" strokeWidth="1.6" />
 
-        {/* Instructor Full Name */}
+        {/* Instructor Full Name - Always visible for professional clarity */}
         <text
           x="380"
           y="872"
@@ -584,15 +591,28 @@ export const UqlearnCertificateSvg: React.FC<UqlearnCertificateSvgProps> = ({
 
       {/* --- RIGHT: CEO UQLEARN SIGNATURE --- */}
       <g id="ceo-signature-group">
-        {hasCustomCeoSig && (
+        {hasCustomCeoSig ? (
           <image
             href={data.ceoSignature}
-            x="1080"
-            y="735"
-            width="280"
-            height="95"
+            x="1050"
+            y="715"
+            width="340"
+            height="120"
             preserveAspectRatio="xMidYMid meet"
           />
+        ) : (
+          /* Text-based Script Signature Fallback */
+          <text
+            x="1220"
+            y="810"
+            textAnchor="middle"
+            className="uql-script"
+            fontSize="32"
+            fill="#1e293b"
+            opacity="0.8"
+          >
+            {data.ceoName || 'Sir Rajab Wamuu'}
+          </text>
         )}
 
         {/* Gold Separator Line with Diamond */}
@@ -600,7 +620,7 @@ export const UqlearnCertificateSvg: React.FC<UqlearnCertificateSvgProps> = ({
         <polygon points="1220,829 1226,835 1220,841 1214,835" fill="#d4af37" />
         <line x1="1235" y1="835" x2="1380" y2="835" stroke="#d4af37" strokeWidth="1.6" />
 
-        {/* CEO Full Name */}
+        {/* CEO Full Name - Always visible */}
         <text
           x="1220"
           y="872"

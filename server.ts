@@ -40,10 +40,11 @@ app.use('/uploads', express.static(uploadsDir));
 
 // Proxy API requests to remote backend to avoid CORS and timeout issues in AI Studio
 const remoteProxy = createProxyMiddleware({
-  target: 'https://uqlearn.org/api/v1',
+  target: 'https://uqlearn.org',
   changeOrigin: true,
   pathRewrite: {
-    '^/api/proxy/v1': '',
+    '^/api/proxy/v1': '/api/v1',
+    '^/api/v1': '/api/v1',
   },
   timeout: 25000,
   proxyTimeout: 25000,

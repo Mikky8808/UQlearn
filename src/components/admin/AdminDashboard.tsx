@@ -53,11 +53,11 @@ import {
   uploadImageApi, 
   API_ENDPOINTS, 
   API_BASE_URL, 
-  getInstructorPayoutApi, 
   deleteUserApi,
-  apiFetch,
-  fetchSignatureApi
+  apiFetch
 } from '../../lib/apiConfig';
+import { instructorService } from '../../services/instructor-service';
+import { instructorSignatureService } from '../../services/instructor-signature-service';
 import { SignaturePad } from '../common/SignaturePad';
 import { resolveBrandingLogoUrl, DEFAULT_LOGO_URL } from '../../lib/branding';
 import { AdminCourseCategoriesTab } from './AdminCourseCategoriesTab';
@@ -86,6 +86,8 @@ import { AdminAssignCoursesTab } from './AdminAssignCoursesTab';
 import { AdminPromotionManagementTab } from './AdminPromotionManagementTab';
 import { AdminPromotionSubscribersTab } from './AdminPromotionSubscribersTab';
 import { AdminFlashSaleManager } from './AdminFlashSaleManager';
+import { AdminTopBannerConfigTab } from './AdminTopBannerConfigTab';
+import { AdminWithdrawalsTab } from './AdminWithdrawalsTab';
 
 interface AdminDashboardProps {
   courses: Course[];
@@ -107,11 +109,13 @@ const normalizeTabFromPath = (path: string): AdminTabKey => {
   if (p.includes('course-categories') || p.includes('categories')) return 'course-categories';
   if (p.includes('courses-config') || p.includes('config')) return 'courses-config';
   if (p.includes('top-adverts') || p.includes('top-advert') || p.includes('top-nav')) return 'top-adverts';
+  if (p.includes('top-banner-config')) return 'top-banner-config';
   if (p.includes('adverts-manager') || p.includes('section-adverts') || p.includes('adverts')) return 'adverts-manager';
   if (p.includes('sponsored') || p.includes('boost')) return 'sponsored-ads';
   if (p.includes('banner-manager') || p.includes('banners')) return 'banner-manager';
   if (p.includes('payment-integrations') || p.includes('payments')) return 'payment-integrations';
   if (p.includes('payout-countries') || p.includes('payouts') || p.includes('countries')) return 'payout-countries';
+  if (p.includes('withdrawals')) return 'withdrawals';
   if (p.includes('custom-mail') || p.includes('custom-mail-pricing')) return 'custom-mail-pricing';
   if (p.includes('email-settings') || p.includes('email') || p.includes('smtp')) return 'email-settings';
   if (p.includes('php-sync') || p.includes('remote-deploy') || p.includes('deploy')) return 'php-sync';
@@ -166,7 +170,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ courses, onRefre
 
   useEffect(() => {
     // Fetch stored official CEO signature from /api/v1/signatures.php on mount
-    fetchSignatureApi('ceo').then(res => {
+    instructorSignatureService.getInstructorSignature('ceo').then(res => {
       if (res && res.success && res.signatureData) {
         setCeoSignature(res.signatureData);
         updateCourseConfig({ ceoSignature: res.signatureData });
@@ -299,7 +303,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ courses, onRefre
     setIsLoadingPayout(true);
     setInstructorPayoutDetails(null);
     try {
-      const details = await getInstructorPayoutApi(user.id);
+      const details = await instructorService.getPayoutDetails(user.id);
       setInstructorPayoutDetails(details);
     } catch {
       setInstructorPayoutDetails(null);
@@ -648,6 +652,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ courses, onRefre
                 onNavigateToTab={(t) => setActiveTab(t as AdminTabKey)}
                 onManageCourse={(c) => openManageCourseModal(c)}
               />
+            )}
+
+            {/* Withdrawals TAB */}
+            {activeTab === 'withdrawals' && (
+              <AdminWithdrawalsTab onUserClick={(userId) => {
+                setSelectedUserIdForDetail(userId);
+                setActiveTab('users');
+              }} />
+            )}
+
+            {/* Top Banner Config TAB */}
+            {activeTab === 'top-banner-config' && (
+              <AdminTopBannerConfigTab />
             )}
 
             {/* 1b. COMMUNICATION REQUESTS TAB */}

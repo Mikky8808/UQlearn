@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { saveInstructorOnboardingApi } from '../../lib/apiConfig';
+import { instructorService } from '../../services/instructor-service';
 
 export const InstructorOnboardingWizard: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
   const { currentUser } = useApp();
@@ -18,7 +18,7 @@ export const InstructorOnboardingWizard: React.FC<{ onComplete: () => void }> = 
         setIsSubmitting(true);
         try {
           // Store to the database API
-          await saveInstructorOnboardingApi({ userId: currentUser.id, answers });
+          await instructorService.saveOnboardingStatus({ userId: currentUser.id, answers });
           
           // Save to local storage on final step
           localStorage.setItem(`uqlearn_instructor_onboarding_completed_${currentUser.id}`, 'true');

@@ -19,6 +19,7 @@ import { Course } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { Footer } from '../common/Footer';
 import { HeroBanner } from './HeroBanner';
+import { HeroContent } from './HeroContent';
 import { AdvertBanner } from '../common/AdvertBanner';
 import { KilimallCourseCardSkeleton } from '../common/CourseCardSkeleton';
 import { CourseCard } from '../common/CourseCard';
@@ -26,6 +27,7 @@ import { SponsoredLabel } from '../common/SponsoredLabel';
 import { 
   apiFetch, 
   getActiveSponsoredCoursesApi, 
+  extractSponsoredCourseIds,
   recordSponsoredImpressionApi, 
   recordSponsoredClickApi,
   fetchFlashSaleConfigApi
@@ -375,14 +377,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   useEffect(() => {
     getActiveSponsoredCoursesApi()
       .then(res => {
-        if (res && res.success) {
-          const ids = (res.courseIds && res.courseIds.length > 0)
-            ? res.courseIds
-            : (Array.isArray(res.data) && res.data.length > 0)
-              ? res.data
-              : (Array.isArray(res.sponsoredCourses) ? res.sponsoredCourses.map((c: any) => c.courseId || c.course_id || c.id) : []);
-          setSponsoredCourseIds(ids.filter(Boolean));
-        }
+        const ids = extractSponsoredCourseIds(res);
+        setSponsoredCourseIds(ids);
       })
       .catch(err => {
         console.warn('Sponsored courses query:', err);
@@ -433,7 +429,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   const processedCourses = courses.map(c => ({
     ...c,
-    isSponsored: Boolean(c.isSponsored || sponsoredCourseIds.includes(c.id))
+    isSponsored: Boolean(
+      c.isSponsored === true ||
+      (c as any).is_sponsored === true ||
+      c.isSponsored === 1 ||
+      (c as any).is_sponsored === 1 ||
+      c.isSponsored === '1' ||
+      (c as any).is_sponsored === '1' ||
+      sponsoredCourseIds.includes(String(c.id)) ||
+      sponsoredCourseIds.includes(String((c as any).course_id))
+    )
   }));
 
   const activeCategories = Array.from(new Set([
@@ -546,7 +551,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     <div className="min-h-screen bg-slate-100/70 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors pb-16">
       
       {/* Top Hero Banner */}
-      {!currentUser && <HeroBanner />}
+      {!currentUser && <HeroContent />}
 
       {/* Main Shelves / Showcase Containers with Jumia Stylish Cards in Purple */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-5 pb-4 space-y-4 sm:space-y-6">

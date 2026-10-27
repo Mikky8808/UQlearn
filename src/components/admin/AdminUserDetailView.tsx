@@ -21,7 +21,9 @@ import {
   PenTool,
   Award
 } from 'lucide-react';
-import { getInstructorPayoutApi, saveInstructorPayoutApi, deleteUserApi, API_BASE_URL, apiFetch } from '../../lib/apiConfig';
+import { deleteUserApi, API_BASE_URL, apiFetch } from '../../lib/apiConfig';
+import { instructorService } from '../../services/instructor-service';
+import { instructorSignatureService } from '../../services/instructor-signature-service';
 import { useApp } from '../../context/AppContext';
 import { SignaturePad } from '../common/SignaturePad';
 
@@ -40,6 +42,7 @@ export const AdminUserDetailView: React.FC<AdminUserDetailViewProps> = ({ userId
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [activeSubTab, setActiveSubTab] = useState<'payout' | 'history' | 'security' | 'signature'>(initialSubTab);
+  const [userSignature, setUserSignature] = useState('');
 
   // Editable payout form state
   const [selectedCountryId, setSelectedCountryId] = useState('');
@@ -74,7 +77,7 @@ export const AdminUserDetailView: React.FC<AdminUserDetailViewProps> = ({ userId
       }
 
       // Load payout details from database
-      const payout = await getInstructorPayoutApi(userId);
+      const payout = await instructorService.getPayoutDetails(userId);
       if (payout) {
         setPayoutDetails(payout);
         setSelectedCountryId(payout.countryId || '');
@@ -84,6 +87,12 @@ export const AdminUserDetailView: React.FC<AdminUserDetailViewProps> = ({ userId
         if (payout.fullName || payout.accountHolderName) setFullName(payout.fullName || payout.accountHolderName);
         if (payout.email) setEmail(payout.email);
         if (payout.phone || payout.phoneNumber) setPhone(payout.phone || payout.phoneNumber);
+      }
+
+      // Load instructor signature from profile
+      const sigRes = await instructorSignatureService.getInstructorSignature(userId);
+      if (sigRes && sigRes.success && sigRes.signatureData) {
+        setUserSignature(sigRes.signatureData);
       }
     } catch (e) {
       console.warn('Error loading user detail', e);
@@ -106,7 +115,7 @@ export const AdminUserDetailView: React.FC<AdminUserDetailViewProps> = ({ userId
         email: email.trim(),
         phone: phone.trim()
       };
-      const res = await saveInstructorPayoutApi({ userId, ...payload });
+      const res = await instructorService.savePayoutDetails({ userId, ...payload });
       if (res && res.success) {
         setPayoutDetails({ userId, ...payload });
         setMessage('Payout and bank details saved successfully to database!');
@@ -256,135 +265,20 @@ export const AdminUserDetailView: React.FC<AdminUserDetailViewProps> = ({ userId
 
       {/* TAB 1: PAYOUT & BANK DETAILS */}
       {activeSubTab === 'payout' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-6 shadow-xs">
-            <div>
-              <h3 className="text-base font-black text-slate-900 dark:text-slate-100 flex items-center space-x-2">
-                <Building2 className="w-5 h-5 text-indigo-500" />
-                <span>Configure User Bank & Payout Destination</span>
-              </h3>
-              <p className="text-xs text-slate-500 mt-1">
-                Set up or update bank account details for this user. This is where instructor earnings and platform payouts are disbursed. Available for all user accounts (students and instructors).
-              </p>
-            </div>
-
-            {message && (
-              <div className={`p-4 rounded-xl text-xs font-bold flex items-center space-x-2 ${
-                message.includes('success') ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200' : 'bg-red-50 text-red-800 dark:bg-red-950/60 dark:text-red-300 border border-red-200'
-              }`}>
-                {message.includes('success') ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />}
-                <span>{message}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSavePayout} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
+          {payoutDetails && payoutDetails.bankName ? (
+            <div className="space-y-6">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Payout Country</label>
-                  <select
-                    value={selectedCountryId}
-                    onChange={(e) => {
-                      const cid = e.target.value;
-                      setSelectedCountryId(cid);
-                      const cObj = activeCountries.find((c: any) => c.id === cid);
-                      if (cObj) setSelectedCountryName(cObj.name);
-                    }}
-                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:border-rose-500"
-                  >
-                    <option value="">Select Payout Country...</option>
-                    {activeCountries.map((c: any) => (
-                      <option key={c.id} value={c.id}>{c.flag || '🌍'} {c.name} ({c.currency})</option>
-                    ))}
-                  </select>
+                  <h3 className="text-base font-black text-slate-900 dark:text-slate-100 flex items-center space-x-2">
+                    <Building2 className="w-5 h-5 text-indigo-500" />
+                    <span>User Bank & Payout Destination</span>
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    These details are configured for this user.
+                  </p>
                 </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Bank Name / Mobile Wallet</label>
-                  <select
-                    value={selectedBankName}
-                    onChange={(e) => setSelectedBankName(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:border-rose-500"
-                  >
-                    <option value="">Select Bank / Network...</option>
-                    {availableBanks.map((b: any) => (
-                      <option key={b.id || b.name} value={b.name}>{b.name} {b.code ? `(${b.code})` : ''}</option>
-                    ))}
-                    {selectedBankName && !availableBanks.some((b: any) => b.name === selectedBankName) && (
-                      <option value={selectedBankName}>{selectedBankName}</option>
-                    )}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Account Number / Mobile Phone</label>
-                <input
-                  type="text"
-                  value={accountNumber}
-                  onChange={(e) => setAccountNumber(e.target.value)}
-                  placeholder="e.g. 011092839210 or 254712345678"
-                  className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-mono font-medium focus:outline-none focus:border-rose-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Account Holder Name</label>
-                  <input
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Full legal name"
-                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:border-rose-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Contact Email</label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="email@domain.com"
-                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:border-rose-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Phone Number</label>
-                  <input
-                    type="text"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+254..."
-                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:border-rose-500"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-2 flex justify-end">
-                <button
-                  type="submit"
-                  disabled={isSaving || !accountNumber.trim()}
-                  className="px-6 py-3 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center space-x-2 cursor-pointer"
-                >
-                  {isSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                  <span>Save Payout & Bank Details</span>
-                </button>
-              </div>
-            </form>
-          </div>
-
-          {/* Right Summary Card */}
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-6 shadow-xs">
-            <h4 className="text-sm font-black text-slate-900 dark:text-slate-100 flex items-center space-x-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-500" />
-              <span>Current Payout Status</span>
-            </h4>
-
-            {payoutDetails && payoutDetails.bankName ? (
-              <div className="space-y-3 text-xs">
-                <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2.5">
+                
+                <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2.5 text-xs">
                   <div className="flex justify-between">
                     <span className="text-slate-500">Bank / Provider:</span>
                     <span className="font-bold text-indigo-600 dark:text-indigo-400">{payoutDetails.bankName}</span>
@@ -402,20 +296,16 @@ export const AdminUserDetailView: React.FC<AdminUserDetailViewProps> = ({ userId
                     <span className="font-bold text-slate-900 dark:text-slate-100">{payoutDetails.country || 'Not specified'}</span>
                   </div>
                 </div>
-                <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-[11px] font-medium">
-                  ✓ Verified and stored in database. Ready for instant batch earnings disbursements.
-                </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200">
+                <AlertCircle className="w-5 h-5" />
               </div>
-            ) : (
-              <div className="text-center py-8 space-y-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200">
-                  <AlertCircle className="w-5 h-5" />
-                </div>
-                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">No Payout Details Saved Yet</p>
-                <p className="text-[11px] text-slate-500">Fill in the bank account details on the left to configure this user's payout destination.</p>
-              </div>
-            )}
-          </div>
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-300">No Configured User Bank</p>
+              <p className="text-[11px] text-slate-500">This user has not configured their payout destination details.</p>
+            </div>
+          )}
         </div>
       )}
 
@@ -485,10 +375,17 @@ export const AdminUserDetailView: React.FC<AdminUserDetailViewProps> = ({ userId
 
           <SignaturePad
             userId={user.id}
+            initialSignature={userSignature}
             signerName={user.name || fullName}
             signerTitle={user.role === 'admin' ? 'Administrator' : 'Course Instructor'}
             title={`Signature Pad for ${user.name}`}
-            onSave={() => {
+            onSave={async (data) => {
+              setUserSignature(data);
+              try {
+                await instructorService.updateProfile(user.id, {
+                  signature: data
+                });
+              } catch (e) {}
               setMessage('Digital signature saved successfully!');
               if (onUserUpdated) onUserUpdated();
             }}

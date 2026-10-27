@@ -26,7 +26,7 @@ interface LearnerCertificatesTabProps {
 }
 
 export const LearnerCertificatesTab: React.FC<LearnerCertificatesTabProps> = ({ currentUser }) => {
-  const { logoUrl } = useApp();
+  const { logoUrl, openShareCourseModal } = useApp();
   const [certificates, setCertificates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCertificate, setSelectedCertificate] = useState<any | null>(null);
@@ -57,6 +57,7 @@ export const LearnerCertificatesTab: React.FC<LearnerCertificatesTabProps> = ({ 
             studentName: currentUser?.name || currentUser?.displayName || 'Michael Kenyanya',
             completionDate: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
             instructorName: c.instructor?.name || (typeof c.instructor === 'string' ? c.instructor : 'Sir Rajab Wamuu'),
+            instructorId: c.createdBy || c.created_by || (typeof c.instructor === 'object' ? (c.instructor as any).id : null),
             instructorSignature: '',
             grade: 'Excellence (100%)',
             skills: c.category ? [c.category, 'Professional Mastery', 'Practical Application'] : ['Professional Mastery', 'Practical Application', 'Advanced Execution']
@@ -74,11 +75,12 @@ export const LearnerCertificatesTab: React.FC<LearnerCertificatesTabProps> = ({ 
   }, [currentUser]);
 
   const handleShareCertificate = (cert: any) => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(`https://uqlearn.co.ke/verify/${cert.credentialId}`);
-      setShowShareToast(true);
-      setTimeout(() => setShowShareToast(false), 3000);
-    }
+    const certUrl = `https://uqlearn.org/verify/${cert.credentialId}`;
+    openShareCourseModal(null, {
+      customUrl: certUrl,
+      customTitle: `Verified Certificate: ${cert.courseTitle}`,
+      customText: `I successfully earned an official accredited certificate for "${cert.courseTitle}" on UQlearn! Verify my credential here:`
+    });
   };
 
   return (
@@ -100,7 +102,7 @@ export const LearnerCertificatesTab: React.FC<LearnerCertificatesTabProps> = ({ 
               <span>Earned Course Certificates</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Accredited certificates with unique cryptographic credential IDs verifiable worldwide at uqlearn.co.ke.
+              Accredited certificates with unique cryptographic credential IDs verifiable worldwide at uqlearn.org.
             </p>
           </div>
         </div>
@@ -191,6 +193,7 @@ export const LearnerCertificatesTab: React.FC<LearnerCertificatesTabProps> = ({ 
             courseTitle: selectedCertificate.courseTitle || 'Professional Course',
             completionDate: selectedCertificate.completionDate || new Date().toLocaleDateString(),
             instructorName: selectedCertificate.instructorName || 'Sir Rajab Wamuu',
+            instructorId: selectedCertificate.instructorId,
             instructorSignature: selectedCertificate.instructorSignature || '',
             credentialId: selectedCertificate.credentialId || 'UQL-CERT-2026'
           }}

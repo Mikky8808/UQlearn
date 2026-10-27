@@ -597,93 +597,95 @@ export const AdminCoursesConfigTab: React.FC<AdminCoursesConfigTabProps> = ({
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Top Header Card with Submenu Tabs */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center space-x-2.5">
-              <div className="p-2.5 bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 rounded-2xl border border-rose-200 dark:border-rose-800">
-                <Sliders className="w-6 h-6" />
-              </div>
-              <div>
-                <h1 className="text-xl font-black text-slate-900 dark:text-slate-100">
-                  Courses Configuration
-                </h1>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Manage course taxonomy, category hierarchies, pricing thresholds, and publishing policies.
-                </p>
-              </div>
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center space-x-3">
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 rounded-2xl border border-rose-200 dark:border-rose-800 shrink-0">
+              <Sliders className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+                Courses Configuration
+              </h1>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Manage course taxonomy, category hierarchies, pricing thresholds, and publishing policies.
+              </p>
             </div>
           </div>
+        </div>
 
-          {/* Submenu Pills */}
-          <div className="flex items-center space-x-1.5 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700/80 shrink-0">
-            <button
-              onClick={() => setActiveSubTab('categories')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 cursor-pointer ${
-                activeSubTab === 'categories'
-                  ? 'bg-rose-600 text-white shadow-md'
-                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <Layers className="w-4 h-4" />
-              <span>Course Categories</span>
-              <span className={`px-1.5 py-0.2 text-[10px] rounded-md ${
-                activeSubTab === 'categories' ? 'bg-rose-700 text-rose-100' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-              }`}>
-                {categories.length}
+        {/* Submenu Pills Bar */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('categories')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 shrink-0 cursor-pointer ${
+              activeSubTab === 'categories'
+                ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
+                : 'bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80'
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            <span>Course Categories</span>
+            <span className={`px-2 py-0.5 text-[10px] font-extrabold rounded-md ${
+              activeSubTab === 'categories' ? 'bg-rose-700 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+            }`}>
+              {categories.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('catalog')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 shrink-0 cursor-pointer ${
+              activeSubTab === 'catalog'
+                ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
+                : 'bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80'
+            }`}
+          >
+            <BookOpen className="w-4 h-4" />
+            <span>Course Moderation</span>
+            <span className={`px-2 py-0.5 text-[10px] font-extrabold rounded-md ${
+              activeSubTab === 'catalog' ? 'bg-rose-700 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+            }`}>
+              {courses.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('rules')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 shrink-0 cursor-pointer ${
+              activeSubTab === 'rules'
+                ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
+                : 'bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80'
+            }`}
+          >
+            <Settings className="w-4 h-4" />
+            <span>Global Course Rules</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('notices')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 shrink-0 cursor-pointer ${
+              activeSubTab === 'notices'
+                ? 'bg-amber-600 text-white shadow-md shadow-amber-600/20'
+                : 'bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80'
+            }`}
+          >
+            <Tag className="w-4 h-4 text-amber-300" />
+            <span>Price Notices</span>
+            {pendingNoticesCount > 0 ? (
+              <span className="px-2 py-0.5 text-[10px] font-black rounded-md bg-amber-500 text-slate-950 animate-pulse">
+                {pendingNoticesCount}
               </span>
-            </button>
-
-            <button
-              onClick={() => setActiveSubTab('catalog')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 cursor-pointer ${
-                activeSubTab === 'catalog'
-                  ? 'bg-rose-600 text-white shadow-md'
-                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <BookOpen className="w-4 h-4" />
-              <span>Course Moderation</span>
-              <span className={`px-1.5 py-0.2 text-[10px] rounded-md ${
-                activeSubTab === 'catalog' ? 'bg-rose-700 text-rose-100' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-              }`}>
-                {courses.length}
+            ) : (
+              <span className="px-2 py-0.5 text-[10px] font-extrabold rounded-md bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                {(instructorNotifications || []).filter(n => n.type === 'price_adjustment').length}
               </span>
-            </button>
-
-            <button
-              onClick={() => setActiveSubTab('rules')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 cursor-pointer ${
-                activeSubTab === 'rules'
-                  ? 'bg-rose-600 text-white shadow-md'
-                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <Settings className="w-4 h-4" />
-              <span>Global Course Rules</span>
-            </button>
-
-            <button
-              onClick={() => setActiveSubTab('notices')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 cursor-pointer ${
-                activeSubTab === 'notices'
-                  ? 'bg-amber-600 text-white shadow-md'
-                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <Tag className="w-4 h-4 text-amber-300" />
-              <span>Price Notices</span>
-              {pendingNoticesCount > 0 ? (
-                <span className="px-1.5 py-0.2 text-[10px] font-black rounded-md bg-amber-500 text-slate-950 animate-pulse">
-                  {pendingNoticesCount}
-                </span>
-              ) : (
-                <span className="px-1.5 py-0.2 text-[10px] rounded-md bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
-                  {(instructorNotifications || []).filter(n => n.type === 'price_adjustment').length}
-                </span>
-              )}
-            </button>
-          </div>
+            )}
+          </button>
         </div>
       </div>
 

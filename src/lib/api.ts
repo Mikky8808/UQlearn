@@ -1,5 +1,5 @@
 // Frontend API Client utility for backend communication with uqlearn.org/api/v1/...
-import { API_BASE_URL, API_ENDPOINTS, apiFetch, uploadImageApi } from './apiConfig';
+import { API_BASE_URL, API_ENDPOINTS, apiFetch, uploadMediaApi } from './apiConfig';
 
 export const apiClient = {
   // Courses API (Connected directly to uqlearn.org/api/v1/courses.php)
@@ -219,8 +219,8 @@ export const apiClient = {
 
   // Media & Image Uploads (Stores in timestamped path under /uploads/courses/)
   upload: {
-    image: async (fileData: string, fileName?: string, folder: 'courses' | 'avatars' = 'courses') => {
-      return uploadImageApi(fileData, fileName, folder);
+    image: async (fileData: string, fileName?: string, folder: 'courses' | 'avatars' | 'assets' = 'courses') => {
+      return uploadMediaApi(fileData, fileName, folder);
     }
   },
 

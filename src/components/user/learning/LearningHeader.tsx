@@ -114,6 +114,19 @@ export const LearningHeader: React.FC<LearningHeaderProps> = ({
           </span>
         </div>
 
+        {/* Claim Certificate button in header when completed */}
+        {isCompleted && (
+          <button
+            type="button"
+            onClick={onOpenCertificate}
+            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/20 cursor-pointer animate-pulse shrink-0"
+            title="Claim Certificate of Completion"
+          >
+            <Award className="w-3.5 h-3.5 fill-current" />
+            <span className="hidden sm:inline">Claim Certificate</span>
+          </button>
+        )}
+
         {/* Theme Toggle (Light / Dark) */}
         {onToggleDarkMode && (
           <button

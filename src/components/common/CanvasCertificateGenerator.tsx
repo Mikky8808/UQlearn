@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Download, Printer, Award, X, FileText, Code2, CheckCircle2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { fetchSignatureApi, ROOT_URL } from '../../lib/apiConfig';
+import { ROOT_URL } from '../../lib/apiConfig';
+import { instructorSignatureService } from '../../services/instructor-signature-service';
 import { resolveCertificateLogo, convertImageUrlToDataUri } from '../../lib/certificateLogo';
 import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
@@ -40,6 +41,13 @@ export const CanvasCertificateGenerator: React.FC<CanvasCertificateGeneratorProp
   const [liveCeoSignature, setLiveCeoSignature] = useState<string>(courseConfig.ceoSignature || cachedCeoSig || '');
   const [liveInstructorSignature, setLiveInstructorSignature] = useState<string>(certificateData.instructorSignature || '');
 
+  // Reset live instructor signature if certificateData changes (important for modal reuse)
+  useEffect(() => {
+    if (certificateData.instructorSignature) {
+      setLiveInstructorSignature(certificateData.instructorSignature);
+    }
+  }, [certificateData.instructorSignature]);
+
   const CEO_NAME = courseConfig.ceoName || 'SIR, RAJAB WAMUU';
   const CEO_TITLE = courseConfig.ceoTitle || 'CEO UQLEARN';
   const CEO_SIGNATURE_URL = liveCeoSignature || courseConfig.ceoSignature || cachedCeoSig || '';
@@ -67,16 +75,16 @@ export const CanvasCertificateGenerator: React.FC<CanvasCertificateGeneratorProp
     });
 
     // 2. Fetch CEO signature dynamically
-    fetchSignatureApi('ceo').then((res) => {
-      if (res && res.signatureData) {
+    instructorSignatureService.getInstructorSignature('ceo').then((res) => {
+      if (res && res.success && res.signatureData) {
         setLiveCeoSignature(res.signatureData);
       }
     }).catch((e) => console.warn('Could not dynamically fetch CEO signature:', e));
 
     // 3. Fetch Instructor signature dynamically if instructorId provided
     if (certificateData.instructorId) {
-      fetchSignatureApi(certificateData.instructorId).then((res) => {
-        if (res && res.signatureData) {
+      instructorSignatureService.getInstructorSignature(certificateData.instructorId).then((res) => {
+        if (res && res.success && res.signatureData) {
           setLiveInstructorSignature(res.signatureData);
         }
       }).catch((e) => console.warn('Could not dynamically fetch instructor signature:', e));

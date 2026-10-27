@@ -11,7 +11,8 @@ import {
 } from 'lucide-react';
 import { Course } from '../../../types';
 import { useApp } from '../../../context/AppContext';
-import { ROOT_URL, fetchSignatureApi } from '../../../lib/apiConfig';
+import { ROOT_URL } from '../../../lib/apiConfig';
+import { instructorSignatureService } from '../../../services/instructor-signature-service';
 import { resolveCertificateLogo, convertImageUrlToDataUri } from '../../../lib/certificateLogo';
 import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
@@ -78,17 +79,22 @@ export const LearningCertificateModal: React.FC<LearningCertificateModalProps> =
     }).then(setQrDataUrl).catch(() => {});
 
     // 2. Load CEO Signature
-    fetchSignatureApi('ceo').then((res) => {
-      if (res && res.signatureData) setLiveCeoSignature(res.signatureData);
+    instructorSignatureService.getInstructorSignature('ceo').then((res) => {
+      if (res && res.success && res.signatureData) setLiveCeoSignature(res.signatureData);
     }).catch(() => {});
 
     // 3. Load Instructor Signature if available
     // Correctly resolve instructorId from various possible course property names
-    const instructorId = (course as any).createdBy || (course as any).created_by || (course as any).instructorId || (course as any).instructor_id;
+    const instructorId = 
+      (course as any).createdBy || 
+      (course as any).created_by || 
+      (course as any).instructorId || 
+      (course as any).instructor_id ||
+      (typeof course.instructor === 'object' ? (course.instructor as any).id : null);
     
     if (instructorId) {
-      fetchSignatureApi(instructorId).then((res) => {
-        if (res && res.signatureData) setLiveInstructorSignature(res.signatureData);
+      instructorSignatureService.getInstructorSignature(instructorId).then((res) => {
+        if (res && res.success && res.signatureData) setLiveInstructorSignature(res.signatureData);
       }).catch(() => {});
     }
 
@@ -264,23 +270,23 @@ export const LearningCertificateModal: React.FC<LearningCertificateModalProps> =
           </button>
         </div>
       ) : (
-        <div className="relative w-full max-w-6xl h-full flex flex-col items-center justify-center">
-          {/* Certificate Image Container */}
-          <div className="relative group max-h-[85vh] w-full flex items-center justify-center drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+        <div className="relative w-full max-w-4xl h-full flex flex-col items-center justify-center">
+          {/* Certificate Image Container - Reduced size for better visibility */}
+          <div className="relative group max-h-[70vh] w-full flex items-center justify-center drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
             <UqlearnCertificateSvg
               data={certData}
               svgRef={svgRef}
-              className="max-w-full max-h-full w-auto h-auto block rounded-lg overflow-hidden"
+              className="max-w-full max-h-full w-auto h-auto block rounded-lg overflow-hidden transition-transform duration-500"
             />
           </div>
 
-          {/* Floating Action Bar */}
-          <div className="fixed bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 p-2 rounded-2xl bg-white/10 border border-white/20 backdrop-blur-xl shadow-2xl z-[70] animate-slideUp">
+          {/* Floating Action Bar - Only PNG and PDF as requested */}
+          <div className="fixed bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-4 p-2.5 rounded-2xl bg-white/10 border border-white/20 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] z-[70] animate-slideUp">
             <button
               type="button"
               onClick={handleDownloadPNG}
               disabled={downloadingPng}
-              className="px-6 py-3 rounded-xl bg-teal-600 hover:bg-teal-500 disabled:bg-slate-600 text-white text-sm font-bold transition-all flex items-center gap-2 shadow-lg cursor-pointer min-w-[160px] justify-center"
+              className="px-8 py-3.5 rounded-xl bg-teal-600 hover:bg-teal-500 disabled:bg-slate-600 text-white text-sm font-black transition-all flex items-center gap-2.5 shadow-lg cursor-pointer min-w-[180px] justify-center"
             >
               <Download className="w-4 h-4" />
               <span>{downloadingPng ? 'Processing...' : 'Download PNG'}</span>
@@ -290,13 +296,11 @@ export const LearningCertificateModal: React.FC<LearningCertificateModalProps> =
               type="button"
               onClick={handleDownloadPDF}
               disabled={downloadingPdf}
-              className="px-6 py-3 rounded-xl bg-purple-700 hover:bg-purple-600 disabled:bg-slate-600 text-white text-sm font-bold transition-all flex items-center gap-2 shadow-lg cursor-pointer min-w-[160px] justify-center"
+              className="px-8 py-3.5 rounded-xl bg-purple-700 hover:bg-purple-600 disabled:bg-slate-600 text-white text-sm font-black transition-all flex items-center gap-2.5 shadow-lg cursor-pointer min-w-[180px] justify-center"
             >
               <FileText className="w-4 h-4" />
               <span>{downloadingPdf ? 'Processing...' : 'Download PDF'}</span>
             </button>
-
-            {/* Hidden Desktop Share/Print (accessible via context menu or keyboard if needed, but removed from UI as requested) */}
           </div>
         </div>
       )}

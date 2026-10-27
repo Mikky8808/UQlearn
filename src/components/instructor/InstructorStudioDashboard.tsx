@@ -6,7 +6,10 @@ import {
   ChevronRight, 
   Eye, 
   RefreshCw,
-  FolderOpen
+  FolderOpen,
+  Camera,
+  ArrowRight,
+  AlertTriangle
 } from 'lucide-react';
 import { Course, CourseSubscription } from '../../types';
 import { InstructorTabKey } from '../navigation/InstructorSidebar';
@@ -31,6 +34,16 @@ export const InstructorStudioDashboard: React.FC<InstructorStudioDashboardProps>
   const [loadingLearners, setLoadingLearners] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showAllLearners, setShowAllLearners] = useState(false);
+
+  // Check if instructor has a profile avatar set
+  const hasAvatar = Boolean(
+    currentUser?.avatar &&
+    typeof currentUser.avatar === 'string' &&
+    currentUser.avatar.trim() !== '' &&
+    !currentUser.avatar.includes('default') &&
+    !currentUser.avatar.includes('placeholder') &&
+    !currentUser.avatar.includes('ui-avatars.com')
+  );
 
   // Fetch real enrolled learners for this instructor's courses
   const fetchLearners = async (silent = false) => {
@@ -98,10 +111,54 @@ export const InstructorStudioDashboard: React.FC<InstructorStudioDashboardProps>
     return filteredLearners.slice(0, 5);
   }, [filteredLearners, showAllLearners]);
 
+  const handleCreateCourseClick = () => {
+    if (!hasAvatar) {
+      alert('Profile Image Required: Please set your profile avatar before creating any course. Your image is required so learners can identify you on course details pages.');
+      onSelectTab('profile');
+      return;
+    }
+    onSelectTab('add-course');
+  };
+
   return (
     <div className="space-y-8 pb-16">
       {/* 1. SECTION 1: COURSES */}
       <section className="space-y-5">
+        
+        {/* Profile Avatar Required Warning Banner (Show above My Courses) */}
+        {!hasAvatar && (
+          <div className="p-5 bg-amber-50 dark:bg-amber-950/70 border-2 border-amber-400 dark:border-amber-700/80 rounded-none shadow-md space-y-3.5 animate-fadeIn">
+            <div className="flex items-start space-x-3.5">
+              <div className="p-2.5 bg-amber-100 dark:bg-amber-900/80 text-amber-800 dark:text-amber-200 rounded-none shrink-0">
+                <Camera className="w-6 h-6" />
+              </div>
+              <div className="space-y-1 flex-1">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <h3 className="text-base font-extrabold text-amber-950 dark:text-amber-100">
+                    Profile Image Required
+                  </h3>
+                  <span className="px-2.5 py-0.5 bg-amber-200 dark:bg-amber-800 text-amber-950 dark:text-amber-100 text-[10px] font-black uppercase tracking-wider rounded-none">
+                    Required for Course Creation
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm text-amber-900 dark:text-amber-200 leading-relaxed font-medium">
+                  You have not set your profile avatar. Your profile image is required for learners so it appears on the course details page. Please set your avatar image before creating any course.
+                </p>
+              </div>
+            </div>
+            <div className="pt-2 border-t border-amber-200 dark:border-amber-800/80 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => onSelectTab('profile')}
+                className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs rounded-none shadow-xs hover:shadow transition-all flex items-center space-x-2 cursor-pointer"
+              >
+                <span>Click here to set your image in My Profile</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center space-x-2">
           <GraduationCap className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
           <h2 className="text-xl font-bold text-slate-900 dark:text-white">

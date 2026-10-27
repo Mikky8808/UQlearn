@@ -130,11 +130,11 @@ export const MainMultiLevelSidebar: React.FC<MainMultiLevelSidebarProps> = ({
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: '-100%', opacity: 0.95 }}
               transition={{ type: 'spring', damping: 30, stiffness: 320, mass: 0.8 }}
-              className="w-84 sm:w-96 bg-white dark:bg-slate-900 shadow-2xl flex flex-col justify-between overflow-y-auto border-r border-slate-200 dark:border-slate-800"
+              className="w-full max-w-[300px] sm:w-88 bg-white dark:bg-slate-900 shadow-2xl flex flex-col h-full overflow-y-auto custom-scrollbar border-r border-slate-200 dark:border-slate-800"
             >
               
               {/* Top Branding & Close Header */}
-              <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-950/50">
+              <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/90 dark:bg-slate-950/90 sticky top-0 z-20 backdrop-blur-md">
                 <Link 
                   to="/" 
                   onClick={onClose}
@@ -323,13 +323,6 @@ export const MainMultiLevelSidebar: React.FC<MainMultiLevelSidebarProps> = ({
                               >
                                 <ShoppingBag className="w-3 h-3 text-slate-400" />
                                 <span>Purchased</span>
-                              </button>
-                              <button
-                                onClick={() => handleNavigate('/dashboard?tab=learning&sub=certifications')}
-                                className="w-full flex items-center space-x-2.5 px-2.5 py-1.5 text-[11px] font-medium text-slate-600 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-md text-left transition-colors cursor-pointer"
-                              >
-                                <Award className="w-3 h-3 text-slate-400" />
-                                <span>Accredited Certificates</span>
                               </button>
                               <button
                                 onClick={() => handleNavigate('/dashboard?tab=learning&sub=assessments')}

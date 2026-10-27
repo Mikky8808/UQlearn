@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Star, X } from 'lucide-react';
-import { apiFetch, API_BASE_URL } from '../../../lib/apiConfig';
+import { apiFetch } from '../../../lib/apiConfig';
 import { Course } from '../../../types';
 
 interface CourseRatingModalProps {
@@ -12,13 +12,13 @@ interface CourseRatingModalProps {
   studentName: string;
 }
 
-const RATING_LABELS: Record<number, string> = {
-  1: 'Awful, not recommended',
-  2: 'Poor, not what I expected',
-  3: 'Average, could be better',
-  4: 'Good, what I expected',
-  5: 'Amazing, above expectation',
-};
+const RATING_DESCRIPTIONS = [
+  '1 Star - Poor',
+  '2 Stars - Fair',
+  '3 Stars - Good',
+  '4 Stars - Very Good',
+  '5 Stars - Outstanding & Masterclass!'
+];
 
 export const CourseRatingModal: React.FC<CourseRatingModalProps> = ({
   isOpen,
@@ -29,129 +29,195 @@ export const CourseRatingModal: React.FC<CourseRatingModalProps> = ({
   studentName,
 }) => {
   const [rating, setRating] = useState<number>(5);
-  const [hoverRating, setHoverRating] = useState<number>(0);
+  const [ratingHover, setRatingHover] = useState<number>(0);
+  const [reviewText, setReviewText] = useState<string>('');
+  const [isEditingReview, setIsEditingReview] = useState<boolean>(false);
+  const [hasExistingReview, setHasExistingReview] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (course?.id) {
+      try {
+        const savedRating = localStorage.getItem(`uqlearn_course_rating_${course.id}`);
+        const savedReview = localStorage.getItem(`uqlearn_course_review_${course.id}`);
+        if (savedRating) {
+          const val = parseInt(savedRating, 10);
+          if (!isNaN(val) && val >= 1 && val <= 5) {
+            setRating(val);
+            setHasExistingReview(true);
+          }
+        } else {
+          setRating(5);
+          setHasExistingReview(false);
+        }
+        if (savedReview) {
+          setReviewText(savedReview);
+          setHasExistingReview(true);
+        } else {
+          setReviewText('');
+        }
+        setIsEditingReview(false);
+      } catch {
+        setRating(5);
+      }
+    }
+  }, [course?.id, isOpen]);
 
   if (!isOpen) return null;
 
-  const currentDisplayRating = hoverRating || rating || 5;
-  const currentLabel = RATING_LABELS[currentDisplayRating] || 'Amazing, above expectation';
+  const currentDisplayRating = ratingHover || rating || 5;
 
   const handleSubmitRating = async () => {
     setIsSubmitting(true);
-    try {
-      // Save locally
-      localStorage.setItem(`uqlearn_course_rating_${course.id}`, String(rating));
+    const ratingValue = rating || 5;
 
-      // Post to backend
-      await apiFetch(`${API_BASE_URL}/course-ratings.php`, {
+    try {
+      // 1. Save locally for instant reactivity across dashboard & player
+      localStorage.setItem(`uqlearn_course_rating_${course.id}`, String(ratingValue));
+      if (reviewText) {
+        localStorage.setItem(`uqlearn_course_review_${course.id}`, reviewText);
+      }
+
+      // 2. Submit to the database via centralized API
+      await apiFetch('course-ratings.php', {
         method: 'POST',
         body: JSON.stringify({
-          studentId,
-          studentName,
+          studentId: studentId || 'current-user',
+          studentName: studentName || 'Learner',
           courseId: course.id,
-          rating
-        }),
-        silent: true
-      }, 0);
-    } catch (e) {
-      console.warn('Rating submit error:', e);
+          rating: ratingValue,
+          feedback: reviewText
+        })
+      });
+    } catch (err) {
+      console.warn('Could not submit rating via API:', err);
     } finally {
       setIsSubmitting(false);
       onSuccessNext();
     }
   };
 
+  const isReadOnly = hasExistingReview && !isEditingReview;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-[340px] sm:max-w-[380px] bg-[#1c1d1f] text-white rounded-2xl shadow-2xl p-6 sm:p-7 border border-slate-800/80 flex flex-col items-center text-center">
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors"
-          title="Close"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        {/* Title */}
-        <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white mb-6 pr-4 leading-snug">
-          Based on what you've seen so far, how would you rate this course?
-        </h2>
-
-        {/* Rating Sentiment text */}
-        <div className="text-xs sm:text-sm font-medium text-slate-300 mb-5 min-h-[20px] transition-all">
-          {currentLabel}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative space-y-5 text-left">
+        {/* Header matching dashboard */}
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+          <div>
+            <span className="text-[10px] font-black uppercase tracking-widest text-purple-600 dark:text-purple-400">
+              Course Rating & Feedback
+            </span>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white line-clamp-1">
+              {course.title}
+            </h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 transition-colors cursor-pointer"
+            title="Close"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
-        {/* Star Rating Group */}
-        <div className="flex items-center justify-center space-x-2 sm:space-x-2.5 mb-6">
-          {[1, 2, 3, 4, 5].map((star) => {
-            const isFilled = star <= currentDisplayRating;
-            return (
+        {/* Rating Content matching dashboard */}
+        <div className="text-center space-y-3 py-2">
+          <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+            How would you rate your experience with this course?
+          </p>
+
+          <div className="flex items-center justify-center space-x-2">
+            {[1, 2, 3, 4, 5].map((star) => (
               <button
                 key={star}
                 type="button"
+                onMouseEnter={() => setRatingHover(star)}
+                onMouseLeave={() => setRatingHover(0)}
                 onClick={() => setRating(star)}
-                onMouseEnter={() => setHoverRating(star)}
-                onMouseLeave={() => setHoverRating(0)}
-                className="p-1 focus:outline-none transition-transform hover:scale-110 cursor-pointer"
+                className="p-1 transition-transform hover:scale-125 cursor-pointer"
                 title={`${star} star`}
               >
                 <Star
-                  className={`w-9 h-9 sm:w-10 sm:h-10 transition-colors ${
-                    isFilled
-                      ? 'fill-[#d29033] text-[#d29033]'
-                      : 'text-slate-600 fill-transparent stroke-slate-500'
+                  className={`w-8 h-8 ${
+                    star <= currentDisplayRating
+                      ? 'fill-amber-400 text-amber-400'
+                      : 'text-slate-300 dark:text-slate-600'
                   }`}
                 />
               </button>
-            );
-          })}
-        </div>
-
-        {/* Track Slider / Indicator below stars matching design */}
-        <div className="w-full px-2 mb-8">
-          <div className="relative w-full h-3.5 bg-[#8b8422]/90 rounded-full flex items-center justify-between px-2.5 shadow-inner">
-            {[1, 2, 3, 4, 5].map((dot) => (
-              <div
-                key={dot}
-                className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                  dot <= currentDisplayRating ? 'bg-[#1c1d1f]/70' : 'bg-white/40'
-                }`}
-              />
             ))}
-            {/* End marker line */}
-            <div className="absolute right-0 top-[-3px] bottom-[-3px] w-1 bg-white/90 rounded-full shadow" />
+          </div>
+
+          <p className="text-xs text-amber-600 dark:text-amber-400 font-bold min-h-[1.25rem]">
+            {currentDisplayRating > 0
+              ? RATING_DESCRIPTIONS[currentDisplayRating - 1]
+              : 'Click stars to select rating'}
+          </p>
+
+          {/* Review Text Feedback Input */}
+          <div className="pt-2 text-left space-y-1">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                {isReadOnly
+                  ? 'Your Submitted Review (Read-only):'
+                  : 'Write your review comment (Optional):'}
+              </label>
+              {isReadOnly && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditingReview(true)}
+                  className="text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline cursor-pointer"
+                >
+                  Edit Review
+                </button>
+              )}
+            </div>
+            <textarea
+              value={reviewText}
+              readOnly={isReadOnly}
+              onChange={(e) => setReviewText(e.target.value)}
+              placeholder={
+                isReadOnly
+                  ? 'No written comment was provided.'
+                  : 'Share details of your experience with this course...'
+              }
+              rows={3}
+              className={`w-full p-2.5 text-xs rounded-xl border transition-colors ${
+                isReadOnly
+                  ? 'bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 font-medium cursor-not-allowed select-none'
+                  : 'bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-1 focus:ring-purple-500 placeholder-slate-400'
+              }`}
+            />
           </div>
         </div>
 
-        {/* Primary Action Button */}
-        <button
-          type="button"
-          onClick={handleSubmitRating}
-          disabled={isSubmitting}
-          className="w-full py-3 sm:py-3.5 px-4 bg-white hover:bg-slate-100 text-slate-950 font-bold rounded-lg transition-colors cursor-pointer text-sm sm:text-base shadow-md disabled:opacity-50 flex items-center justify-center space-x-2"
-        >
-          {isSubmitting ? (
-            <>
-              <span className="w-4 h-4 border-2 border-slate-950/30 border-t-slate-950 rounded-full animate-spin inline-block" />
-              <span>Submitting...</span>
-            </>
-          ) : (
-            <span>Submit</span>
-          )}
-        </button>
-
-        {/* Secondary "Maybe later" Button */}
-        <button
-          type="button"
-          onClick={onClose}
-          disabled={isSubmitting}
-          className="mt-4 text-xs sm:text-sm font-bold text-purple-400 hover:text-purple-300 transition-colors cursor-pointer hover:underline disabled:opacity-50"
-        >
-          Maybe later
-        </button>
+        {/* Actions matching dashboard */}
+        <div className="flex justify-end space-x-3 pt-2">
+          <button
+            type="button"
+            disabled={isSubmitting}
+            onClick={onClose}
+            className="px-5 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer disabled:opacity-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={isSubmitting}
+            onClick={handleSubmitRating}
+            className="px-6 py-2.5 bg-[#8a2be2] hover:bg-purple-600 text-white text-xs sm:text-sm font-bold rounded-xl shadow-md cursor-pointer transition-all disabled:opacity-50 flex items-center space-x-2"
+          >
+            {isSubmitting ? (
+              <>
+                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
+                <span>Submitting...</span>
+              </>
+            ) : (
+              <span>Submit Rating</span>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );

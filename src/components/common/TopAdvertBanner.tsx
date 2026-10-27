@@ -61,7 +61,7 @@ export const TopAdvertBanner: React.FC<TopAdvertBannerProps> = ({ className = ''
     const interval = setInterval(() => {
       setCurrentIdx((prev) => (prev + 1) % adverts.length);
       setImgError(false);
-    }, 8000);
+    }, 3000);
     return () => clearInterval(interval);
   }, [adverts.length]);
 

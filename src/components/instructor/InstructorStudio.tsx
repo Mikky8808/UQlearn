@@ -541,7 +541,23 @@ export const InstructorStudio: React.FC<InstructorStudioProps> = ({
               <InstructorCoursesTab 
                 courses={instructorCourses} 
                 onDeleteCourse={onDeleteCourse}
-                onNavigateToCreate={() => setActiveTab('add-course')}
+                onNavigateToCreate={() => {
+                  const hasAvatar = Boolean(
+                    effectiveInstructor?.avatar &&
+                    typeof effectiveInstructor.avatar === 'string' &&
+                    effectiveInstructor.avatar.trim() !== '' &&
+                    !effectiveInstructor.avatar.includes('default') &&
+                    !effectiveInstructor.avatar.includes('placeholder') &&
+                    !effectiveInstructor.avatar.includes('ui-avatars.com')
+                  );
+                  if (!hasAvatar) {
+                    alert('Profile Image Required: Please set your profile avatar before creating any course. Your image is required so learners can identify you on course details pages.');
+                    handleSelectTab('profile');
+                    return;
+                  }
+                  handleSelectTab('add-course');
+                }}
+                onNavigateToProfile={() => handleSelectTab('profile')}
                 onSelectCourseToBuild={handleSelectCourseToBuild}
               />
             )}

@@ -85,9 +85,9 @@ export const LearningLessonNav: React.FC<LearningLessonNavProps> = ({
         <div className="sm:hidden flex items-center gap-2">
           <button
             type="button"
-            onClick={onNextLesson}
+            onClick={hasNextLesson ? onNextLesson : onClaimCertificate}
             disabled={!hasNextLesson && !isAllCompleted}
-            title={nextLessonTitle ? `Next: ${nextLessonTitle}` : ''}
+            title={nextLessonTitle ? `Next: ${nextLessonTitle}` : isAllCompleted ? 'Claim Certificate' : ''}
             className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border cursor-pointer ${
               hasNextLesson
                 ? 'bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white border-emerald-500 shadow-md shadow-emerald-950/40'

@@ -1,4 +1,4 @@
-import { API_BASE_URL } from './apiConfig';
+import { API_BASE_URL, apiFetch } from './apiConfig';
 
 export interface ResumableUploadProgress {
   percentage: number;
@@ -156,7 +156,7 @@ export class ResumableChunkUploader {
   private async checkRemoteProgress(): Promise<void> {
     try {
       const url = `${this.endpoint}?upload_id=${encodeURIComponent(this.uploadId)}&user_id=${encodeURIComponent(this.userId)}`;
-      const res = await fetch(url, {
+      const res = await apiFetch(`${this.endpoint}?upload_id=${encodeURIComponent(this.uploadId)}&user_id=${encodeURIComponent(this.userId)}`, {
         method: 'GET',
         headers: {
           'X-Upload-Id': this.uploadId,

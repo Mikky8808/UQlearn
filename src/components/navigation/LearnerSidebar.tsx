@@ -168,8 +168,8 @@ export const LearnerSidebar: React.FC<LearnerSidebarProps> = ({
 
   return (
     <aside
-      className={`sticky top-20 h-[calc(100vh-6rem)] transition-all duration-300 ease-in-out bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between shrink-0 md:rounded-2xl overflow-hidden z-30 ${
-        isExpanded ? 'w-72 shadow-lg' : 'w-16'
+      className={`sticky top-14 sm:top-20 h-auto max-h-[calc(100vh-4rem)] md:h-[calc(100vh-6rem)] transition-all duration-300 ease-in-out bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between shrink-0 rounded-2xl overflow-hidden z-30 ${
+        isExpanded ? 'w-full md:w-72 shadow-lg' : 'w-16'
       }`}
       onMouseEnter={() => { if (isCollapsed) setIsHovered(true); }}
       onMouseLeave={() => setIsHovered(false)}

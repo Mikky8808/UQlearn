@@ -32,6 +32,7 @@ DirectoryIndex index.html rev.html
   # 3. If it is a missing static asset, do not rewrite to index.html (prevents MIME mismatch)
   RewriteRule ^assets/(.*)$ - [R=404,L]
   RewriteCond %{REQUEST_URI} \.(js|mjs|css|png|jpg|jpeg|gif|webp|svg|ico|woff|woff2|ttf|eot|json|map)$ [NC]
+  RewriteCond %{REQUEST_FILENAME} !-f
   RewriteRule ^ - [R=404,L]
 
   # 4. Fallback to index.html for Single Page Application routing

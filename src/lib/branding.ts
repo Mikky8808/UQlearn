@@ -4,7 +4,7 @@
  */
 import { ROOT_URL } from './apiConfig';
 
-export const DEFAULT_LOGO_URL = `${ROOT_URL}/logo/logo.svg`;
+export const DEFAULT_LOGO_URL = `${ROOT_URL}/logo/logo.png`;
 export const DEFAULT_LOGO_SVG_URL = `${ROOT_URL}/logo/logo.svg`;
 
 /**
@@ -21,8 +21,7 @@ export function resolveBrandingLogoUrl(url?: string | null): string {
     trimmed === '/logo/logo.png' ||
     trimmed === '/logo/logo.svg' ||
     trimmed.endsWith('/logo/logo.png') ||
-    trimmed.endsWith('/logo/logo.svg') ||
-    trimmed.includes('kalani_logo')
+    trimmed.endsWith('/logo/logo.svg')
   ) {
     return DEFAULT_LOGO_URL;
   }
@@ -32,16 +31,10 @@ export function resolveBrandingLogoUrl(url?: string | null): string {
     return trimmed;
   }
 
-  const cleanPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-
-  if (typeof window !== 'undefined' && window.location) {
-    const hostname = window.location.hostname;
-    const cleanRoot = ROOT_URL.replace('https://', '').replace('http://', '');
-    if (hostname.includes(cleanRoot) || hostname.includes('uqlearn.org') || hostname.includes('ais-dev') || hostname.includes('ais-pre')) {
-      if (cleanPath.startsWith('/logo/') || cleanPath.startsWith('/uploads/') || cleanPath.startsWith('/images/')) {
-        return `${ROOT_URL}${cleanPath}`;
-      }
-    }
+  // Always use absolute URL based on ROOT_URL to ensure consistency.
+  const cleanPath = trimmed;
+  if (cleanPath.startsWith('/')) {
+    return `${ROOT_URL}${cleanPath}`;
   }
 
   return cleanPath;
@@ -68,17 +61,8 @@ export function resolveImageUrl(url?: string | null, fallbackType: 'logo' | 'cou
 
   const cleanPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
 
-  if (typeof window !== 'undefined' && window.location) {
-    const hostname = window.location.hostname;
-    const cleanRoot = ROOT_URL.replace('https://', '').replace('http://', '');
-    if (hostname.includes(cleanRoot) || hostname.includes('ais-dev') || hostname.includes('ais-pre')) {
-      if (cleanPath.startsWith('/uploads/') || cleanPath.startsWith('/images/')) {
-        return `${ROOT_URL}${cleanPath}`;
-      }
-    }
-  }
-
-  return cleanPath;
+  // Always use absolute URL based on ROOT_URL to ensure consistency.
+  return `${ROOT_URL}${cleanPath}`;
 }
 
 /**

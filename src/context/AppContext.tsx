@@ -5,7 +5,6 @@ import {
   fetchCoursesApi, 
   apiFetch,
   normalizeCourse, 
-  logApiError,
   API_ENDPOINTS, 
   fetchLogoApi,
   getCourseDefaultThumbnailApi, 
@@ -33,6 +32,7 @@ import {
   ROOT_URL,
   API_BASE_URL
 } from '../lib/apiConfig';
+import { logApiError } from '../lib/errorLogger';
 import { updateDocumentFavicon, DEFAULT_LOGO_URL, resolveBrandingLogoUrl } from '../lib/branding';
 import { subscriptionService } from '../services/subscription-service';
 import { apiClient as api } from '../lib/api';

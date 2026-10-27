@@ -31,6 +31,7 @@ DirectoryIndex index.html admin.html
 
   # 3. Never rewrite static asset files to admin.html (prevents MIME mismatch / CORB)
   RewriteCond %{REQUEST_URI} \.(js|mjs|css|png|jpg|jpeg|gif|webp|svg|ico|woff|woff2|ttf|eot|json|map)$ [NC]
+  RewriteCond %{REQUEST_FILENAME} !-f
   RewriteRule ^ - [R=404,L]
 
   # 4. Fallback to admin.html for Single Page Application routes

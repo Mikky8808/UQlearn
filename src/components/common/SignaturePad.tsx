@@ -12,7 +12,8 @@ import {
   RefreshCw,
   Sparkles
 } from 'lucide-react';
-import { fetchSignatureApi, saveSignatureApi } from '../../lib/apiConfig';
+import { saveSignatureApi } from '../../lib/apiConfig';
+import { instructorSignatureService } from '../../services/instructor-signature-service';
 
 interface Point {
   x: number;
@@ -73,7 +74,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
 
       setIsLoading(true);
       try {
-        const res = await fetchSignatureApi(userId);
+        const res = await instructorSignatureService.getInstructorSignature(userId);
         if (isMounted && res && res.success && res.signatureData) {
           setCurrentSavedSignature(res.signatureData);
         }

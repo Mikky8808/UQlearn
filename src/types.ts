@@ -525,3 +525,8 @@ export interface SponsoredAd {
 
 
 
+
+export interface EnrollmentProofPricingConfig {
+  enabled: boolean;
+  price: number;
+}

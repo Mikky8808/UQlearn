@@ -5,7 +5,9 @@ import {
   Plus, 
   Search, 
   Trash2, 
-  RefreshCw
+  RefreshCw,
+  Camera,
+  ArrowRight
 } from 'lucide-react';
 import { Course } from '../../../types';
 import { useApp } from '../../../context/AppContext';
@@ -17,6 +19,7 @@ interface InstructorCoursesTabProps {
   courses: Course[];
   onDeleteCourse: (id: string) => void;
   onNavigateToCreate: () => void;
+  onNavigateToProfile?: () => void;
   onSelectCourseToBuild?: (courseId: string) => void;
 }
 
@@ -24,12 +27,23 @@ export const InstructorCoursesTab: React.FC<InstructorCoursesTabProps> = ({
   courses,
   onDeleteCourse,
   onNavigateToCreate,
+  onNavigateToProfile,
   onSelectCourseToBuild,
 }) => {
   const navigate = useNavigate();
   const { refreshCourses, isLoadingCourses, courseDefaultThumbnail, currentUser } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Check if instructor has a profile avatar set
+  const hasAvatar = Boolean(
+    currentUser?.avatar &&
+    typeof currentUser.avatar === 'string' &&
+    currentUser.avatar.trim() !== '' &&
+    !currentUser.avatar.includes('default') &&
+    !currentUser.avatar.includes('placeholder') &&
+    !currentUser.avatar.includes('ui-avatars.com')
+  );
 
   // Currency State
   const [systemCurrency, setSystemCurrency] = useState('KES');
@@ -69,6 +83,19 @@ export const InstructorCoursesTab: React.FC<InstructorCoursesTabProps> = ({
     }
   };
 
+  const handleCreateCourseClick = () => {
+    if (!hasAvatar) {
+      alert('Profile Image Required: Please set your profile avatar before creating any course. Your image is required so learners can identify you on course details pages.');
+      if (onNavigateToProfile) {
+        onNavigateToProfile();
+      } else {
+        navigate('/instructor/profile');
+      }
+      return;
+    }
+    onNavigateToCreate();
+  };
+
   const filteredCourses = useMemo(() => {
     const seen = new Set<string>();
     return courses.filter(c => {
@@ -85,6 +112,43 @@ export const InstructorCoursesTab: React.FC<InstructorCoursesTabProps> = ({
 
   return (
     <div className="space-y-4">
+      {/* Profile Avatar Required Warning Banner */}
+      {!hasAvatar && (
+        <div className="p-5 bg-amber-50 dark:bg-amber-950/70 border-2 border-amber-400 dark:border-amber-700/80 rounded-none shadow-md space-y-3.5 animate-fadeIn">
+          <div className="flex items-start space-x-3.5">
+            <div className="p-2.5 bg-amber-100 dark:bg-amber-900/80 text-amber-800 dark:text-amber-200 rounded-none shrink-0">
+              <Camera className="w-6 h-6" />
+            </div>
+            <div className="space-y-1 flex-1">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <h3 className="text-base font-extrabold text-amber-950 dark:text-amber-100">
+                  Profile Image Required
+                </h3>
+                <span className="px-2.5 py-0.5 bg-amber-200 dark:bg-amber-800 text-amber-950 dark:text-amber-100 text-[10px] font-black uppercase tracking-wider rounded-none">
+                  Required for Course Creation
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-amber-900 dark:text-amber-200 leading-relaxed font-medium">
+                You have not set your profile avatar. Your profile image is required for learners so it appears on the course details page. Please set your avatar image before creating any course.
+              </p>
+            </div>
+          </div>
+          <div className="pt-2 border-t border-amber-200 dark:border-amber-800/80 flex items-center justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                if (onNavigateToProfile) onNavigateToProfile();
+                else navigate('/instructor/profile');
+              }}
+              className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs rounded-none shadow-xs hover:shadow transition-all flex items-center space-x-2 cursor-pointer"
+            >
+              <span>Click here to set your image in My Profile</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Standalone Toolbar with Sharp-Edged Create New Course Button */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="relative w-full sm:w-80">
@@ -104,7 +168,7 @@ export const InstructorCoursesTab: React.FC<InstructorCoursesTabProps> = ({
           </span>
 
           <button
-            onClick={onNavigateToCreate}
+            onClick={handleCreateCourseClick}
             className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md text-xs font-bold shadow-xs hover:shadow transition-all flex items-center space-x-1.5 cursor-pointer"
           >
             <Plus className="w-4 h-4" />

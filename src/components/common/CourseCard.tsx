@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Star, BadgeCheck } from 'lucide-react';
+import { Star, BadgeCheck, Sparkles } from 'lucide-react';
 import { Course } from '../../types';
 import { SponsoredLabel } from './SponsoredLabel';
 import { recordSponsoredClickApi, recordRecentlyViewedApi } from '../../lib/apiConfig';
@@ -34,24 +34,68 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   const discountPercent = hasDiscount && course.originalPrice ? getDiscountPercentage(course.price, course.originalPrice) : 0;
 
   const isBestseller = Boolean(
-    course.bestSeller || 
-    (course as any).bestseller || 
-    (course as any).isBestseller
+    course.bestSeller === true ||
+    (course as any).bestseller === true ||
+    (course as any).isBestseller === true ||
+    (course as any).is_bestseller === true ||
+    course.bestSeller === 1 ||
+    (course as any).bestseller === 1 ||
+    (course as any).bestseller === '1' ||
+    course.bestSeller === '1' ||
+    (course as any).is_bestseller === '1' ||
+    (course as any).isBestseller === '1'
   );
 
-  const isPremiumCourse = Boolean(course.isPremium || (course as any).is_premium);
+  const isPremiumCourse = Boolean(
+    course.isPremium === true ||
+    (course as any).is_premium === true ||
+    (course as any).premium === true ||
+    course.isPremium === 1 ||
+    (course as any).is_premium === 1 ||
+    (course as any).premium === 1 ||
+    course.isPremium === '1' ||
+    (course as any).is_premium === '1' ||
+    (course as any).premium === '1'
+  );
+
+  const isSponsoredCourse = Boolean(
+    course.isSponsored === true ||
+    (course as any).is_sponsored === true ||
+    (course as any).sponsored === true ||
+    (course as any).isSponsoredAd === true ||
+    (course as any).is_sponsored_ad === true ||
+    (course as any).promoted === true ||
+    (course as any).is_ad === true ||
+    course.isSponsored === 1 ||
+    (course as any).is_sponsored === 1 ||
+    (course as any).sponsored === 1 ||
+    (course as any).isSponsoredAd === 1 ||
+    (course as any).is_sponsored_ad === 1 ||
+    (course as any).promoted === 1 ||
+    (course as any).is_ad === 1 ||
+    course.isSponsored === '1' ||
+    (course as any).is_sponsored === '1' ||
+    (course as any).sponsored === '1' ||
+    (course as any).isSponsoredAd === '1' ||
+    (course as any).is_sponsored_ad === '1' ||
+    (course as any).promoted === '1' ||
+    (course as any).is_ad === '1' ||
+    course.isSponsored === 'true' ||
+    (course as any).is_sponsored === 'true' ||
+    (course as any).sponsored === 'true'
+  );
 
   useEffect(() => {
-    if (course.isSponsored && trackImpression) {
+    if (isSponsoredCourse && trackImpression) {
       trackImpression(course.id);
     }
-  }, [course.id, course.isSponsored, trackImpression]);
+  }, [course.id, isSponsoredCourse, trackImpression]);
 
   const handleCardClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement)?.closest?.('[data-sponsored-label], [data-sponsored-modal], [data-action-btn]')) {
       return;
     }
-    if (course.isSponsored) {
+    if (isSponsoredCourse) {
       recordSponsoredClickApi(course.id).catch(() => {});
     }
     recordRecentlyViewedApi(course.id, currentUser?.id).catch(() => {});
@@ -138,6 +182,12 @@ export const CourseCard: React.FC<CourseCardProps> = ({
 
             {/* Badges & Rating Row */}
             <div className="flex items-center flex-wrap gap-1 pt-0.5">
+              {isSponsoredCourse && (
+                <span className="px-1.5 py-0.2 bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 font-extrabold text-[9px] rounded tracking-tight flex items-center gap-0.5 border border-amber-300/80 dark:border-amber-700/80 shadow-xs">
+                  <Sparkles className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400 fill-amber-500 shrink-0" />
+                  <span>Sponsored</span>
+                </span>
+              )}
               {isBestseller && (
                 <span className="px-1.5 py-0.2 bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-extrabold text-[9px] rounded tracking-tight">
                   Bestseller
@@ -193,7 +243,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
           </div>
 
           <div className="flex items-center space-x-2 shrink-0">
-            {course.isSponsored && (
+            {isSponsoredCourse && (
               <div data-sponsored-label="true">
                 <SponsoredLabel size="xs" />
               </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Check, Share2, BookOpen, User, Star } from 'lucide-react';
+import { X, Check, Share2, BookOpen, User, Star, Award } from 'lucide-react';
 import { Course } from '../../types';
 import { SocialShare } from './SocialShare';
 import { useApp } from '../../context/AppContext';
@@ -57,7 +57,9 @@ export const ShareCourseModal: React.FC<ShareCourseModalProps> = ({
                 {title}
               </h2>
               <p className="text-[11px] text-slate-500 font-mono">
-                Choose how you would like to share this course
+                {customUrl?.includes('/verify') || customTitle?.toLowerCase().includes('certificate') 
+                  ? 'Choose how you would like to share this verified credential'
+                  : 'Choose how you would like to share this course'}
               </p>
             </div>
           </div>
@@ -83,8 +85,8 @@ export const ShareCourseModal: React.FC<ShareCourseModalProps> = ({
             </div>
           )}
 
-          {/* Course Preview Card (If course is provided) */}
-          {course && (
+          {/* Course Preview Card or Certificate Preview Card */}
+          {course ? (
             <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 flex space-x-3 items-center">
               {course.image ? (
                 <img 
@@ -118,7 +120,24 @@ export const ShareCourseModal: React.FC<ShareCourseModalProps> = ({
                 </div>
               </div>
             </div>
-          )}
+          ) : (customUrl?.includes('/verify') || customTitle?.toLowerCase().includes('certificate')) ? (
+            <div className="p-3.5 bg-teal-50/80 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800/60 flex space-x-3 items-center">
+              <div className="w-12 h-12 rounded-xl bg-teal-600/10 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0 border border-teal-300 dark:border-teal-700">
+                <Award className="w-6 h-6" />
+              </div>
+              <div className="flex-1 min-w-0 space-y-0.5">
+                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-200 inline-block">
+                  Accredited Credential
+                </span>
+                <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
+                  {customTitle || 'Earned Course Certificate'}
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono truncate">
+                  {shareUrl}
+                </p>
+              </div>
+            </div>
+          ) : null}
 
           {/* SocialShare Component with Facebook, Gmail, WhatsApp, Instagram */}
           <SocialShare

@@ -36,9 +36,16 @@ export const AdminRequestsTab: React.FC = () => {
     setIsLoading(true);
     try {
       const data = await fetchRequestsApi({ recipientType: 'admin' });
-      setRequests(data);
+      if (Array.isArray(data)) {
+        setRequests(data);
+      } else if (data && typeof data === 'object' && Array.isArray(data.data)) {
+        setRequests(data.data);
+      } else {
+        setRequests([]);
+      }
     } catch (err) {
       console.error('Failed to load admin requests', err);
+      setRequests([]);
     } finally {
       setIsLoading(false);
     }
@@ -57,12 +64,18 @@ export const AdminRequestsTab: React.FC = () => {
     
     try {
       await updateRequestStatusApi(activeReq.id, newStatus, adminNote, 'Admin');
-      setRequests(prev => prev.map(r => r.id === activeReq.id ? {
-        ...r,
-        status: newStatus,
-        replyNote: adminNote || (newStatus === 'approved' ? 'Request approved by system admin.' : 'Request declined by admin.'),
-        repliedBy: 'Admin'
-      } : r));
+      setRequests(prev => {
+        if (!Array.isArray(prev)) {
+            console.error('prev is not an array in handleProcess', prev);
+            return [];
+        }
+        return prev.map(r => r.id === activeReq.id ? {
+          ...r,
+          status: newStatus,
+          replyNote: adminNote || (newStatus === 'approved' ? 'Request approved by system admin.' : 'Request declined by admin.'),
+          repliedBy: 'Admin'
+        } : r);
+      });
 
       setActionSuccessMsg(`Request from ${activeReq.senderName} successfully ${newStatus}!`);
       setActiveReq(null);
@@ -74,6 +87,11 @@ export const AdminRequestsTab: React.FC = () => {
       setIsSubmitting(false);
     }
   };
+
+  if (!Array.isArray(requests)) {
+      console.error('requests is not an array:', requests);
+      return <div className="p-4 text-rose-500">Error: Invalid request data format.</div>;
+  }
 
   const filteredRequests = requests.filter(req => {
     const matchesFilter = statusFilter === 'all' || req.status === statusFilter;

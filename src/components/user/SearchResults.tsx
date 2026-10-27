@@ -6,7 +6,7 @@ import { CatalogCourseCardSkeleton } from '../common/CourseCardSkeleton';
 import { CourseCard } from '../common/CourseCard';
 import { SponsoredBadge } from '../common/SponsoredBadge';
 import { SponsoredLabel } from '../common/SponsoredLabel';
-import { recordSponsoredClickApi, getActiveSponsoredCoursesApi } from '../../lib/apiConfig';
+import { recordSponsoredClickApi, getActiveSponsoredCoursesApi, extractSponsoredCourseIds } from '../../lib/apiConfig';
 import { Course } from '../../types';
 
 interface SearchResultsProps {
@@ -23,14 +23,8 @@ export const SearchResults: React.FC<SearchResultsProps> = () => {
   useEffect(() => {
     getActiveSponsoredCoursesApi()
       .then(res => {
-        if (res && res.success) {
-          const ids = (res.courseIds && res.courseIds.length > 0)
-            ? res.courseIds
-            : (Array.isArray(res.data) && res.data.length > 0)
-              ? res.data
-              : (Array.isArray(res.sponsoredCourses) ? res.sponsoredCourses.map((c: any) => c.courseId || c.course_id || c.id) : []);
-          setSponsoredCourseIds(ids.filter(Boolean));
-        }
+        const ids = extractSponsoredCourseIds(res);
+        setSponsoredCourseIds(ids);
       })
       .catch(err => {
         console.warn('Sponsored courses query:', err);
@@ -78,7 +72,16 @@ export const SearchResults: React.FC<SearchResultsProps> = () => {
       return matchesLevel && matchesQuery;
     }).map(c => ({
       ...c,
-      isSponsored: Boolean(c.isSponsored || sponsoredCourseIds.includes(c.id))
+      isSponsored: Boolean(
+        c.isSponsored === true ||
+        (c as any).is_sponsored === true ||
+        c.isSponsored === 1 ||
+        (c as any).is_sponsored === 1 ||
+        c.isSponsored === '1' ||
+        (c as any).is_sponsored === '1' ||
+        sponsoredCourseIds.includes(String(c.id)) ||
+        sponsoredCourseIds.includes(String((c as any).course_id))
+      )
     }));
   }, [courses, filterLevel, searchQuery, sponsoredCourseIds]);
 

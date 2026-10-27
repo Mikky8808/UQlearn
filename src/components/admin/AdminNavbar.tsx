@@ -52,7 +52,9 @@ export type AdminTabKey =
   | 'flash-sale'
   | 'php-sync'
   | 'htaccess-viewer'
-  | 'visitor-tracking';
+  | 'visitor-tracking'
+  | 'withdrawals'
+  | 'top-banner-config';
 
 interface AdminNavbarProps {
   activeTab: AdminTabKey;

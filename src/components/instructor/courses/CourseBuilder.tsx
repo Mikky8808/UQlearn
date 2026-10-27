@@ -970,6 +970,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
     }
     return 19.99;
   });
+  const hasOtherFreeCourse = useMemo(() => courses.some(c => Number(c.price) === 0 && c.id !== courseId), [courses, courseId]);
   const [originalPrice, setOriginalPrice] = useState<number>(() => {
     if (initialData?.originalPrice !== undefined && initialData.originalPrice !== null && !isNaN(Number(initialData.originalPrice))) {
       return Number(initialData.originalPrice);
@@ -8271,9 +8272,33 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
                 </div>
 
                 {/* Pricing settings heading */}
-                <div className="pt-2">
+                <div className="pt-2 flex items-center justify-between">
                   <h3 className="text-sm font-black text-slate-900 dark:text-slate-100">Set a price for your course</h3>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="isFree"
+                      checked={price === 0}
+                      disabled={hasOtherFreeCourse && price !== 0}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setPrice(0);
+                          setDisplayPriceInput('0');
+                        } else {
+                          setPrice(19.99);
+                          setDisplayPriceInput('19.99');
+                        }
+                      }}
+                      className="cursor-pointer"
+                    />
+                    <label htmlFor="isFree" className={`text-xs font-black ${hasOtherFreeCourse && price !== 0 ? 'text-slate-400' : 'text-slate-900 dark:text-slate-100'}`}>
+                      Set as Free Course
+                    </label>
+                  </div>
                 </div>
+                {hasOtherFreeCourse && (
+                  <p className="text-xs text-rose-500 font-bold">Only one course can be set free. You already have a free course.</p>
+                )}
 
                 {/* Inputs Row */}
                 <div className="space-y-4 pt-1">
@@ -8317,8 +8342,11 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
                           max={maxPriceInSelectedCurrency}
                           placeholder={`e.g. ${minPriceInSelectedCurrency}`}
                           value={displayPriceInput}
+                          disabled={price === 0}
                           onChange={(e) => handlePriceInputChange(e.target.value)}
                           className={`w-full pl-9 pr-3 py-2.5 bg-white dark:bg-slate-900 border rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 shadow-xs ${
+                            price === 0 ? 'opacity-50 cursor-not-allowed' : ''
+                          } ${
                             (price > 0 && price < MIN_PRICE_USD) || price > MAX_PRICE_USD
                               ? 'border-rose-400 dark:border-rose-700 focus:ring-rose-500'
                               : 'border-slate-200 dark:border-slate-800 focus:ring-indigo-500'

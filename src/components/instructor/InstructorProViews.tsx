@@ -44,11 +44,11 @@ import {
   ROOT_URL,
   apiFetch, 
   getCustomMailPricingApi,
-  getInstructorCustomMailStatusApi,
   subscribeCustomMailApi,
   getCustomMailTemplateApi,
   saveCustomMailTemplateApi
 } from '../../lib/apiConfig';
+import { instructorService } from '../../services/instructor-service';
 import { useApp } from '../../context/AppContext';
 import { MpesaPaymentModal } from '../user/MpesaPaymentModal';
 
@@ -140,7 +140,7 @@ export const InstructorProViews: React.FC<ProViewsProps> = ({
       }
 
       // Load instructor subscription status
-      const sRes = await getInstructorCustomMailStatusApi(instructorId).catch(() => null);
+      const sRes = await instructorService.getCustomMailStatus(instructorId).catch(() => null);
       if (sRes && sRes.success) {
         setIsSubscribed(sRes.isSubscribed);
         setSubscription(sRes.subscription || null);
