@@ -25,7 +25,7 @@ import {
   Sparkles,
   BadgeCheck
 } from 'lucide-react';
-import { fetchCourseModulesApi, normalizeCourse, getIntendedLearnersApi, recordRecentlyViewedApi } from '../../lib/apiConfig';
+import { fetchCourseModulesApi, normalizeCourse, getIntendedLearnersApi, recordRecentlyViewedApi, getCourseLearnersApi } from '../../lib/apiConfig';
 import { resolveImageUrl } from '../../lib/branding';
 import { subscriptionService } from '../../services/subscription-service';
 import { CourseSubscription } from '../../types';
@@ -38,10 +38,32 @@ export const CourseDetailPage: React.FC = () => {
   const [hasAttemptedLoadModules, setHasAttemptedLoadModules] = useState(false);
   const [studentSub, setStudentSub] = useState<CourseSubscription | null>(null);
   const [expandedModules, setExpandedModules] = useState<Record<number, boolean>>({ 0: true });
+  const [realLearnersCount, setRealLearnersCount] = useState<number | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
 
   const course = courses.find(c => c.id === courseId) || courses[0];
   const isEnrolled = enrolledCourses.some(e => e.id === course?.id) || studentSub?.status === 'active';
+
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchLearnersCount() {
+      if (!courseId) return;
+      try {
+        const res = await getCourseLearnersApi(courseId);
+        if (isMounted && res) {
+          const count = typeof res.data?.learners === 'number' ? res.data.learners : typeof res.learners === 'number' ? res.learners : null;
+          if (count !== null) {
+            setRealLearnersCount(count);
+            setCourses(prev => prev.map(c => c.id === courseId ? { ...c, learnersEnrolled: count, learners_enrolled: count, students_enrolled: count } : c));
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to fetch course learners:", err);
+      }
+    }
+    fetchLearnersCount();
+    return () => { isMounted = false; };
+  }, [courseId, setCourses]);
 
   useEffect(() => {
     async function checkSubscription() {
@@ -216,12 +238,6 @@ export const CourseDetailPage: React.FC = () => {
 
             {/* Badges & Stats */}
             <div className="flex flex-wrap items-center gap-3 text-sm text-white pt-1">
-              {(course.isSponsored || (course as any).is_sponsored || (course as any).sponsored) && (
-                <span className="px-2.5 py-1 bg-amber-400 text-slate-950 font-bold text-xs uppercase rounded-none flex items-center gap-1 shadow-xs">
-                  <Sparkles className="w-3.5 h-3.5 fill-slate-950 text-slate-950" />
-                  <span>Sponsored</span>
-                </span>
-              )}
               {course.bestSeller && (
                 <span className="px-2.5 py-1 bg-[#eceb98] text-[#3c3b00] font-bold text-xs uppercase rounded-none">
                   Bestseller
@@ -245,7 +261,7 @@ export const CourseDetailPage: React.FC = () => {
                 ({(course.reviewCount || 0).toLocaleString()} ratings)
               </span>
               <span className="text-slate-300">
-                {(course.learnersEnrolled || 0).toLocaleString()} students
+                {(realLearnersCount !== null ? realLearnersCount : (course.learnersEnrolled || 0)).toLocaleString()} students
               </span>
             </div>
 
@@ -283,12 +299,85 @@ export const CourseDetailPage: React.FC = () => {
       </div>
 
       {/* Main Single-Column Downward Content & Sticky Sidebar Grid */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 relative items-start">
           
           {/* Main Left Scrollable Area */}
-          <div className="lg:col-span-8 space-y-10">
-            
+          <div className="lg:col-span-8 space-y-8">
+
+            {/* Dynamic Course Summary Banner Card */}
+            {(() => {
+              const isPremiumCourse = Boolean(course.isPremium || (course as any).is_premium);
+              const isBestsellerCourse = Boolean(course.bestSeller || (course as any).isBestseller || (course as any).is_bestseller);
+              const isSponsoredCourse = Boolean(course.isSponsored || (course as any).is_sponsored || (course as any).sponsored);
+
+              let activeBadge: 'premium' | 'bestseller' | 'sponsored' = 'premium';
+              if (isPremiumCourse) {
+                activeBadge = 'premium';
+              } else if (isBestsellerCourse) {
+                activeBadge = 'bestseller';
+              } else if (isSponsoredCourse) {
+                activeBadge = 'sponsored';
+              } else {
+                activeBadge = 'premium';
+              }
+
+              const displayRatingVal = course.rating ? Number(course.rating).toFixed(1) : '4.7';
+              const displayReviewCountVal = (course.reviewCount || 0).toLocaleString();
+              const displayLearnersVal = (realLearnersCount !== null ? realLearnersCount : (course.learnersEnrolled || 0)).toLocaleString();
+
+              return (
+                <div className="border border-slate-200 rounded-xl bg-white shadow-xs overflow-hidden flex flex-col sm:flex-row items-stretch">
+                  {/* Left Badge Block */}
+                  <div className={`px-6 py-5 flex flex-col items-center justify-center shrink-0 min-w-[130px] font-bold ${
+                    activeBadge === 'premium'
+                      ? 'bg-[#5022c3] text-white'
+                      : activeBadge === 'bestseller'
+                      ? 'bg-[#137275] text-white'
+                      : 'bg-amber-500 text-slate-950'
+                  }`}>
+                    {activeBadge === 'premium' && <BadgeCheck className="w-7 h-7 mb-1 stroke-[2.2]" />}
+                    {activeBadge === 'bestseller' && <Award className="w-7 h-7 mb-1 stroke-[2.2]" />}
+                    {activeBadge === 'sponsored' && <Sparkles className="w-7 h-7 mb-1 stroke-[2.2]" />}
+                    <span className="text-sm font-extrabold tracking-wider capitalize">
+                      {activeBadge === 'premium' ? 'Premium' : activeBadge === 'bestseller' ? 'Bestseller' : 'Sponsored'}
+                    </span>
+                  </div>
+
+                  {/* Middle Plan Text */}
+                  <div className="flex-1 px-6 py-4 flex items-center text-xs sm:text-sm text-slate-800 font-medium leading-relaxed border-t sm:border-t-0 sm:border-l border-slate-100">
+                    <span>Access 28,000+ top-rated courses with <span className="text-[#5022c3] font-bold underline cursor-pointer hover:text-purple-800">UQ Learn Personal Plan</span>.</span>
+                  </div>
+
+                  {/* Rating Column */}
+                  <div className="border-t sm:border-t-0 sm:border-l border-slate-200 px-6 py-4 flex flex-col items-center justify-center shrink-0 min-w-[140px] bg-white">
+                    <span className="text-2xl font-black text-slate-900 leading-none">
+                      {displayRatingVal}
+                    </span>
+                    <div className="flex text-amber-400 gap-0.5 my-1.5">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                      ))}
+                    </div>
+                    <span className="text-xs text-[#5022c3] font-semibold underline cursor-pointer hover:text-purple-800">
+                      {displayReviewCountVal} ratings
+                    </span>
+                  </div>
+
+                  {/* Learners Column */}
+                  <div className="border-t sm:border-t-0 sm:border-l border-slate-200 px-6 py-4 flex flex-col items-center justify-center shrink-0 min-w-[140px] bg-white">
+                    <Users className="w-5 h-5 text-slate-700 mb-1" />
+                    <span className="text-lg font-black text-slate-900 leading-tight">
+                      {displayLearnersVal}
+                    </span>
+                    <span className="text-xs text-slate-500 font-medium">
+                      learners
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* 1. What You'll Learn Card (SHARP corners) */}
             <div id="what-you-will-learn" className="border border-slate-300 rounded-none p-6 sm:p-8 bg-white space-y-5">
               <h2 className="text-2xl font-bold text-slate-900">What you'll learn</h2>
@@ -415,7 +504,7 @@ export const CourseDetailPage: React.FC = () => {
                     </div>
                     <div className="flex items-center space-x-2">
                       <Users className="w-4 h-4 text-slate-500" />
-                      <span>{(course.learnersEnrolled || 0).toLocaleString()} Students</span>
+                      <span>{(realLearnersCount !== null ? realLearnersCount : (course.learnersEnrolled || 0)).toLocaleString()} Students</span>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Play className="w-4 h-4 text-slate-500" />

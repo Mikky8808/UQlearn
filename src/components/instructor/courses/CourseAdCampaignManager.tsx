@@ -117,7 +117,8 @@ export const CourseAdCampaignManager: React.FC<CourseAdCampaignManagerProps> = (
 
   // Format currency helper
   const formatMoney = (usd: number) => {
-    const converted = usd * currencyRate;
+    const safeUsd = typeof usd === 'number' && !isNaN(usd) ? usd : 0;
+    const converted = safeUsd * currencyRate;
     if (currencyRate >= 10) {
       return `${currencySymbol}${Math.round(converted).toLocaleString()}`;
     }
@@ -294,16 +295,24 @@ export const CourseAdCampaignManager: React.FC<CourseAdCampaignManagerProps> = (
   const step3Math = calculateEnrollmentBoostPrice(mockStudentsCount, enrollmentPricing);
   const enrollmentBoostFee = includeEnrollmentBoost ? step3Math.totalUsd : 0;
 
-  const sponsoredTier = promotionTiers.find(t => t.id === 'sponsored') || DEFAULT_PROMOTION_TIERS[0];
-  const bestsellerTier = promotionTiers.find(t => t.id === 'bestseller') || DEFAULT_PROMOTION_TIERS[1];
-  const premiumTier = promotionTiers.find(t => t.id === 'premium') || DEFAULT_PROMOTION_TIERS[2];
-  const tripleBundleTier = promotionTiers.find(t => t.id === 'triple-bundle') || DEFAULT_PROMOTION_TIERS[3];
+  const sponsoredTier = (promotionTiers && Array.isArray(promotionTiers) ? promotionTiers.find(t => t?.id === 'sponsored') : null) || DEFAULT_PROMOTION_TIERS[0] || {
+    id: 'sponsored', name: 'Sponsored Placement', badgeLabel: 'Sponsored', dailyRateUsd: 0.50, description: 'Feature your course in search results.', features: [], ctaText: 'Promote'
+  };
+  const bestsellerTier = (promotionTiers && Array.isArray(promotionTiers) ? promotionTiers.find(t => t?.id === 'bestseller') : null) || DEFAULT_PROMOTION_TIERS[1] || {
+    id: 'bestseller', name: 'Best Seller Boost', badgeLabel: 'Bestseller', dailyRateUsd: 1.00, description: 'Display an official Bestseller badge.', features: [], ctaText: 'Get Badge'
+  };
+  const premiumTier = (promotionTiers && Array.isArray(promotionTiers) ? promotionTiers.find(t => t?.id === 'premium') : null) || DEFAULT_PROMOTION_TIERS[2] || {
+    id: 'premium', name: 'Premium Spotlight', badgeLabel: 'Premium', dailyRateUsd: 1.50, description: 'Highlight your course in Premium header.', features: [], ctaText: 'Claim Spotlight'
+  };
+  const tripleBundleTier = (promotionTiers && Array.isArray(promotionTiers) ? promotionTiers.find(t => t?.id === 'triple-bundle') : null) || DEFAULT_PROMOTION_TIERS[3] || {
+    id: 'triple-bundle', name: 'Triple Power Bundle', badgeLabel: 'Triple Bundle', dailyRateUsd: 2.50, description: 'All 3 badges active together.', features: [], ctaText: 'Get Bundle'
+  };
 
   // Calculate default budget for given badges set using admin-configured rates
   const getRecommendedDailyBudget = (badges: AdBadgeType[]) => {
-    const sRate = sponsoredTier.dailyRateUsd;
-    const bRate = bestsellerTier.dailyRateUsd;
-    const pRate = premiumTier.dailyRateUsd;
+    const sRate = sponsoredTier?.dailyRateUsd ?? 0.50;
+    const bRate = bestsellerTier?.dailyRateUsd ?? 1.00;
+    const pRate = premiumTier?.dailyRateUsd ?? 1.50;
 
     let sum = 0;
     if (badges.includes('sponsored')) sum += sRate;
@@ -622,7 +631,7 @@ export const CourseAdCampaignManager: React.FC<CourseAdCampaignManagerProps> = (
               </div>
 
               <ul className="text-xs space-y-2 text-slate-600 dark:text-slate-400 pt-1">
-                {sponsoredTier.features.map((feat, i) => (
+                {(sponsoredTier?.features || []).map((feat, i) => (
                   <li key={i} className="flex items-start space-x-2">
                     <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                     <span>{feat}</span>
@@ -637,7 +646,7 @@ export const CourseAdCampaignManager: React.FC<CourseAdCampaignManagerProps> = (
                   Starting at
                 </span>
                 <p className="text-sm font-black text-slate-900 dark:text-slate-100">
-                  {formatMoney(sponsoredTier.dailyRateUsd)} <span className="text-[11px] font-normal text-slate-500">/day</span>
+                  {formatMoney(sponsoredTier?.dailyRateUsd ?? 0.50)} <span className="text-[11px] font-normal text-slate-500">/day</span>
                 </p>
               </div>
               <button
@@ -646,7 +655,7 @@ export const CourseAdCampaignManager: React.FC<CourseAdCampaignManagerProps> = (
                 className="w-full py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-colors cursor-pointer flex items-center justify-center space-x-1.5"
               >
                 <Zap className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">{sponsoredTier.ctaText}</span>
+                <span className="truncate">{sponsoredTier?.ctaText || 'Promote'}</span>
               </button>
             </div>
           </div>
@@ -665,15 +674,15 @@ export const CourseAdCampaignManager: React.FC<CourseAdCampaignManagerProps> = (
 
               <div>
                 <h4 className="text-base font-bold text-slate-900 dark:text-slate-100 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
-                  {bestsellerTier.name}
+                  {bestsellerTier?.name || 'Best Seller Boost'}
                 </h4>
                 <p className="text-xs text-slate-600 dark:text-slate-400 mt-1.5 leading-relaxed">
-                  {bestsellerTier.description}
+                  {bestsellerTier?.description}
                 </p>
               </div>
 
               <ul className="text-xs space-y-2 text-slate-600 dark:text-slate-400 pt-1">
-                {bestsellerTier.features.map((feat, i) => (
+                {(bestsellerTier?.features || []).map((feat, i) => (
                   <li key={i} className="flex items-start space-x-2">
                     <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                     <span>{feat}</span>
@@ -688,7 +697,7 @@ export const CourseAdCampaignManager: React.FC<CourseAdCampaignManagerProps> = (
                   Starting at
                 </span>
                 <p className="text-sm font-black text-slate-900 dark:text-slate-100">
-                  {formatMoney(bestsellerTier.dailyRateUsd)} <span className="text-[11px] font-normal text-slate-500">/day</span>
+                  {formatMoney(bestsellerTier?.dailyRateUsd ?? 1.00)} <span className="text-[11px] font-normal text-slate-500">/day</span>
                 </p>
               </div>
               <button
@@ -697,7 +706,7 @@ export const CourseAdCampaignManager: React.FC<CourseAdCampaignManagerProps> = (
                 className="w-full py-2.5 px-3 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-colors cursor-pointer flex items-center justify-center space-x-1.5"
               >
                 <Award className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">{bestsellerTier.ctaText}</span>
+                <span className="truncate">{bestsellerTier?.ctaText || 'Get Badge'}</span>
               </button>
             </div>
           </div>
@@ -717,15 +726,15 @@ export const CourseAdCampaignManager: React.FC<CourseAdCampaignManagerProps> = (
 
               <div>
                 <h4 className="text-base font-bold text-slate-900 dark:text-slate-100 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
-                  {premiumTier.name}
+                  {premiumTier?.name || 'Premium Spotlight'}
                 </h4>
                 <p className="text-xs text-slate-600 dark:text-slate-400 mt-1.5 leading-relaxed">
-                  {premiumTier.description}
+                  {premiumTier?.description}
                 </p>
               </div>
 
               <ul className="text-xs space-y-2 text-slate-600 dark:text-slate-400 pt-1">
-                {premiumTier.features.map((feat, i) => (
+                {(premiumTier?.features || []).map((feat, i) => (
                   <li key={i} className="flex items-start space-x-2">
                     <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                     <span>{feat}</span>
@@ -740,7 +749,7 @@ export const CourseAdCampaignManager: React.FC<CourseAdCampaignManagerProps> = (
                   Starting at
                 </span>
                 <p className="text-sm font-black text-slate-900 dark:text-slate-100">
-                  {formatMoney(premiumTier.dailyRateUsd)} <span className="text-[11px] font-normal text-slate-500">/day</span>
+                  {formatMoney(premiumTier?.dailyRateUsd ?? 1.50)} <span className="text-[11px] font-normal text-slate-500">/day</span>
                 </p>
               </div>
               <button
@@ -749,7 +758,7 @@ export const CourseAdCampaignManager: React.FC<CourseAdCampaignManagerProps> = (
                 className="w-full py-2.5 px-3 bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-colors cursor-pointer flex items-center justify-center space-x-1.5"
               >
                 <Crown className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">{premiumTier.ctaText}</span>
+                <span className="truncate">{premiumTier?.ctaText || 'Claim Spotlight'}</span>
               </button>
             </div>
           </div>
@@ -817,7 +826,7 @@ export const CourseAdCampaignManager: React.FC<CourseAdCampaignManagerProps> = (
                         : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-amber-400'
                     }`}
                   >
-                    {cnt.toLocaleString()} (${p.totalUsd.toFixed(2)})
+                    {cnt.toLocaleString()} (${(p?.totalUsd ?? 0).toFixed(2)})
                   </button>
                 );
               })}
@@ -892,7 +901,7 @@ export const CourseAdCampaignManager: React.FC<CourseAdCampaignManagerProps> = (
                 </div>
                 <div className="flex justify-between pt-2 border-t border-slate-200 dark:border-slate-700">
                   <span className="font-bold text-slate-700 dark:text-slate-300">Total Price:</span>
-                  <span className="font-black text-sm text-slate-900 dark:text-slate-100">${standAloneMath.totalUsd.toFixed(2)} USD (≈ {formatMoney(standAloneMath.totalUsd)})</span>
+                  <span className="font-black text-sm text-slate-900 dark:text-slate-100">${(standAloneMath?.totalUsd ?? 0).toFixed(2)} USD (≈ {formatMoney(standAloneMath?.totalUsd ?? 0)})</span>
                 </div>
               </div>
 
@@ -1305,7 +1314,7 @@ export const CourseAdCampaignManager: React.FC<CourseAdCampaignManagerProps> = (
                         </div>
 
                         <ul className="text-[11px] space-y-1.5 text-slate-600 dark:text-slate-400 pt-1">
-                          {sponsoredTier.features.map((feat, i) => (
+                          {(sponsoredTier?.features || []).map((feat, i) => (
                             <li key={i} className="flex items-start space-x-1.5">
                               <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
                               <span>{feat}</span>
@@ -1316,7 +1325,7 @@ export const CourseAdCampaignManager: React.FC<CourseAdCampaignManagerProps> = (
 
                       <div className="pt-3 mt-4 border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between text-xs">
                         <span className="font-bold text-indigo-600 dark:text-indigo-400">
-                          {formatMoney(sponsoredTier.dailyRateUsd)} / day
+                          {formatMoney(sponsoredTier?.dailyRateUsd ?? 0.50)} / day
                         </span>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                           selectedBadges.includes('sponsored')
@@ -1340,7 +1349,7 @@ export const CourseAdCampaignManager: React.FC<CourseAdCampaignManagerProps> = (
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
                           <span className="px-2 py-0.5 bg-amber-500 text-white font-bold text-[9px] rounded-xs uppercase tracking-wider">
-                            {bestsellerTier.badgeLabel}
+                            {bestsellerTier?.badgeLabel || 'Bestseller'}
                           </span>
                           <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors ${
                             selectedBadges.includes('bestseller')
@@ -1356,16 +1365,16 @@ export const CourseAdCampaignManager: React.FC<CourseAdCampaignManagerProps> = (
                         <div>
                           <div className="flex items-center justify-between">
                             <h5 className="font-bold text-slate-900 dark:text-slate-100 text-sm">
-                              {bestsellerTier.name}
+                              {bestsellerTier?.name || 'Best Seller Boost'}
                             </h5>
                           </div>
                           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-snug">
-                            {bestsellerTier.description}
+                            {bestsellerTier?.description}
                           </p>
                         </div>
 
                         <ul className="text-[11px] space-y-1.5 text-slate-600 dark:text-slate-400 pt-1">
-                          {bestsellerTier.features.map((feat, i) => (
+                          {(bestsellerTier?.features || []).map((feat, i) => (
                             <li key={i} className="flex items-start space-x-1.5">
                               <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
                               <span>{feat}</span>
@@ -1376,7 +1385,7 @@ export const CourseAdCampaignManager: React.FC<CourseAdCampaignManagerProps> = (
 
                       <div className="pt-3 mt-4 border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between text-xs">
                         <span className="font-bold text-amber-600 dark:text-amber-400">
-                          {formatMoney(bestsellerTier.dailyRateUsd)} / day
+                          {formatMoney(bestsellerTier?.dailyRateUsd ?? 1.00)} / day
                         </span>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                           selectedBadges.includes('bestseller')
@@ -1400,7 +1409,7 @@ export const CourseAdCampaignManager: React.FC<CourseAdCampaignManagerProps> = (
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
                           <span className="px-2 py-0.5 bg-purple-600 text-white font-bold text-[9px] rounded-xs uppercase tracking-wider flex items-center gap-1">
-                            <BadgeCheck className="w-3 h-3" /> {premiumTier.badgeLabel}
+                            <BadgeCheck className="w-3 h-3" /> {premiumTier?.badgeLabel || 'Premium'}
                           </span>
                           <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors ${
                             selectedBadges.includes('premium')
@@ -1416,16 +1425,16 @@ export const CourseAdCampaignManager: React.FC<CourseAdCampaignManagerProps> = (
                         <div>
                           <div className="flex items-center justify-between">
                             <h5 className="font-bold text-slate-900 dark:text-slate-100 text-sm">
-                              {premiumTier.name}
+                              {premiumTier?.name || 'Premium Spotlight'}
                             </h5>
                           </div>
                           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-snug">
-                            {premiumTier.description}
+                            {premiumTier?.description}
                           </p>
                         </div>
 
                         <ul className="text-[11px] space-y-1.5 text-slate-600 dark:text-slate-400 pt-1">
-                          {premiumTier.features.map((feat, i) => (
+                          {(premiumTier?.features || []).map((feat, i) => (
                             <li key={i} className="flex items-start space-x-1.5">
                               <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
                               <span>{feat}</span>
@@ -1436,7 +1445,7 @@ export const CourseAdCampaignManager: React.FC<CourseAdCampaignManagerProps> = (
 
                       <div className="pt-3 mt-4 border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between text-xs">
                         <span className="font-bold text-purple-600 dark:text-purple-400">
-                          {formatMoney(premiumTier.dailyRateUsd)} / day
+                          {formatMoney(premiumTier?.dailyRateUsd ?? 1.50)} / day
                         </span>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                           selectedBadges.includes('premium')
@@ -1789,7 +1798,7 @@ export const CourseAdCampaignManager: React.FC<CourseAdCampaignManagerProps> = (
                                 3-Month Fixed Social Proof Fee:
                               </span>
                               <span className="font-black text-amber-600 dark:text-amber-400">
-                                {formatMoney(step3Math.totalUsd)} (${step3Math.totalUsd.toFixed(2)} USD)
+                                {formatMoney(step3Math?.totalUsd ?? 0)} (${(step3Math?.totalUsd ?? 0).toFixed(2)} USD)
                               </span>
                             </div>
                           </div>
@@ -1802,12 +1811,12 @@ export const CourseAdCampaignManager: React.FC<CourseAdCampaignManagerProps> = (
                           <div>
                             <span className="text-[11px] font-bold text-indigo-900 dark:text-indigo-300">Total Campaign Budget</span>
                             <p className="text-[10px] text-indigo-700 dark:text-indigo-400">
-                              {durationDays} days ad (${dailyBudget.toFixed(2)}/day) {includeEnrollmentBoost ? `+ 3-Mo Enrollment Boost (${mockStudentsCount.toLocaleString()} students)` : ''}
+                              {durationDays} days ad (${(dailyBudget ?? 0).toFixed(2)}/day) {includeEnrollmentBoost ? `+ 3-Mo Enrollment Boost (${mockStudentsCount.toLocaleString()} students)` : ''}
                             </p>
                           </div>
                           <div className="text-right">
                             <p className="text-lg font-black text-indigo-600 dark:text-indigo-400">
-                              ${(dailyBudget * durationDays + enrollmentBoostFee).toFixed(2)} USD
+                              ${(((dailyBudget || 0) * (durationDays || 1)) + (enrollmentBoostFee || 0)).toFixed(2)} USD
                             </p>
                             <span className="text-[10px] text-slate-400 font-mono">
                               ≈ {formatMoney(dailyBudget * durationDays + enrollmentBoostFee)}

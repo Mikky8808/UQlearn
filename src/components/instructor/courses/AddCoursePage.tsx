@@ -35,8 +35,13 @@ export const AddCoursePage: React.FC<AddCoursePageProps> = ({
     if (step === 1 && !title.trim()) {
       newErrors.title = 'Course title is required';
     }
-    if (step === 2 && !subtitle.trim()) {
-      newErrors.subtitle = 'Subtitle is required';
+    if (step === 2) {
+      const wordCount = subtitle.trim().split(/\s+/).filter(Boolean).length;
+      if (!subtitle.trim()) {
+        newErrors.subtitle = 'Subtitle is required';
+      } else if (wordCount < 20) {
+        newErrors.subtitle = `Subtitle must be at least 20 words (currently ${wordCount} ${wordCount === 1 ? 'word' : 'words'}). Summarize what learners will achieve.`;
+      }
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -171,19 +176,24 @@ export const AddCoursePage: React.FC<AddCoursePageProps> = ({
                   <p className="text-slate-500 text-sm">Summarize what learners will achieve.</p>
                 </div>
                 
-                <div className="space-y-2">
-                  <input
-                    type="text"
-                    placeholder="e.g. Master generics, utility types, and strict mode."
+                <div className="space-y-3">
+                  <textarea
+                    rows={3}
+                    placeholder="e.g. Master generics, utility types, and strict mode to build scalable TypeScript applications with confidence and ease."
                     value={subtitle}
                     onChange={(e) => {
                       setSubtitle(e.target.value);
                       if (errors.subtitle) setErrors({});
                     }}
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleNext(); }}
                     autoFocus
-                    className="w-full px-5 py-4 text-center text-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-900 dark:text-slate-100 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all placeholder:text-slate-400"
+                    className="w-full px-5 py-4 text-center text-base bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-900 dark:text-slate-100 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all placeholder:text-slate-400 resize-none"
                   />
+                  <div className="flex items-center justify-between text-xs px-2 font-bold">
+                    <span className="text-slate-500">Requirement: at least 20 words</span>
+                    <span className={subtitle.trim().split(/\s+/).filter(Boolean).length >= 20 ? "text-emerald-600 dark:text-emerald-400 font-extrabold" : "text-amber-600 dark:text-amber-400 font-bold"}>
+                      {subtitle.trim().split(/\s+/).filter(Boolean).length} / 20 words {subtitle.trim().split(/\s+/).filter(Boolean).length >= 20 ? '✓' : ''}
+                    </span>
+                  </div>
                   {errors.subtitle && <p className="text-rose-500 text-xs font-bold text-center animate-shake">{errors.subtitle}</p>}
                 </div>
               </motion.div>

@@ -3317,7 +3317,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
       section: 'Course landing page page',
       items: [
         { id: 'desc_words', text: `Have a course description with at least 200 words (currently ${description.trim().split(/\s+/).filter(Boolean).length} words)`, done: description.trim().split(/\s+/).filter(Boolean).length >= 200, tab: 'landing-page' as BuilderTabKey },
-        { id: 'subtitle', text: 'Have a course subtitle', done: subtitle.trim().length > 0, tab: 'landing-page' as BuilderTabKey },
+        { id: 'subtitle', text: `Have a course subtitle with at least 20 words (currently ${subtitle.trim().split(/\s+/).filter(Boolean).length} words)`, done: subtitle.trim().split(/\s+/).filter(Boolean).length >= 20, tab: 'landing-page' as BuilderTabKey },
         { id: 'instructor_desc', text: `Have an instructor description with at least 50 words (currently ${instructorDescription.trim().split(/\s+/).filter(Boolean).length} words)`, done: instructorDescription.trim().split(/\s+/).filter(Boolean).length >= 50, tab: 'landing-page' as BuilderTabKey },
         { id: 'category', text: 'Select the category of your course', done: category.trim().length > 0, tab: 'landing-page' as BuilderTabKey },
         { id: 'level', text: 'Select the level of your course', done: level.trim().length > 0, tab: 'landing-page' as BuilderTabKey },
@@ -7488,25 +7488,28 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
                 {/* Course Subtitle Field Container */}
                 <div className="space-y-2">
                   <div className="flex justify-between items-end">
-                    <label className="text-xs font-black text-slate-900 dark:text-slate-200">Course subtitle</label>
+                    <label className="text-xs font-black text-slate-900 dark:text-slate-200">Course subtitle (Minimum 20 words)</label>
+                    <span className={`text-xs font-bold ${subtitle.trim().split(/\s+/).filter(Boolean).length >= 20 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                      {subtitle.trim().split(/\s+/).filter(Boolean).length} / 20 words {subtitle.trim().split(/\s+/).filter(Boolean).length >= 20 ? '✓' : ''}
+                    </span>
                   </div>
                   <div className="relative flex items-center">
                     <input
                       type="text"
-                      maxLength={120}
+                      maxLength={300}
                       value={subtitle}
                       onChange={(e) => {
                         setSubtitle(e.target.value);
                       }}
-                      placeholder="Insert your course subtitle."
-                      className="w-full pl-4 pr-12 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      placeholder="Insert your catchy course subtitle (at least 20 words summarizing what learners achieve)."
+                      className="w-full pl-4 pr-14 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                     />
-                    <span className="absolute right-4 text-xs font-bold text-slate-400">
-                      {120 - subtitle.length}
+                    <span className="absolute right-4 text-[10px] font-bold text-slate-400">
+                      {300 - subtitle.length}
                     </span>
                   </div>
                   <p className="text-[10px] text-slate-400 font-semibold">
-                    Use 1 or 2 related keywords, and mention 3-4 of the most important areas that you've covered during your course.
+                    Summarize what learners will achieve. Use 1 or 2 related keywords and mention 3-4 key skills covered. Minimum 20 words required.
                   </p>
                 </div>
 

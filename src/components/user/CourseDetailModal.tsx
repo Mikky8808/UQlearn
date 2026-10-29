@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Star, CheckCircle2, Clock, Users, ShieldCheck, Play, FileText, Award, BookOpen, ShoppingCart, Sparkles } from 'lucide-react';
 import { Course } from '../../types';
 import { useApp } from '../../context/AppContext';
+import { getCourseLearnersApi } from '../../lib/apiConfig';
 
 interface CourseDetailModalProps {
   course: Course;
@@ -22,7 +23,26 @@ export const CourseDetailModal: React.FC<CourseDetailModalProps> = ({
 }) => {
   const { formatPrice } = useApp();
   const [activeTab, setActiveTab] = useState<'overview' | 'syllabus' | 'instructor'>('overview');
+  const [realLearnersCount, setRealLearnersCount] = useState<number | null>(null);
   const isFree = !course.price || Number(course.price) === 0;
+
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchLearners() {
+      if (!course?.id) return;
+      try {
+        const res = await getCourseLearnersApi(course.id);
+        if (isMounted && res) {
+          const count = typeof res.data?.learners === 'number' ? res.data.learners : typeof res.learners === 'number' ? res.learners : null;
+          if (count !== null) setRealLearnersCount(count);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch course learners in modal:", err);
+      }
+    }
+    fetchLearners();
+    return () => { isMounted = false; };
+  }, [course?.id]);
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6">
@@ -65,7 +85,7 @@ export const CourseDetailModal: React.FC<CourseDetailModalProps> = ({
               </div>
               <div className="flex items-center">
                 <Users className="w-4 h-4 text-teal-400 mr-1.5" />
-                {course.learnersEnrolled.toLocaleString()} learners enrolled
+                {(realLearnersCount !== null ? realLearnersCount : (course.learnersEnrolled || 0)).toLocaleString()} learners enrolled
               </div>
               <div className="flex items-center">
                 <Clock className="w-4 h-4 text-teal-400 mr-1.5" />

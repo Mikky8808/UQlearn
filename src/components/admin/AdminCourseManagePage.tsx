@@ -26,12 +26,13 @@ import {
   ChevronRight,
   PlayCircle,
   FileText,
-  Code
+  Code,
+  RefreshCw
 } from 'lucide-react';
 import { Course } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { Link, useNavigate } from 'react-router-dom';
-import { API_BASE_URL, apiFetch, assignCourseToReviewerApi } from '../../lib/apiConfig';
+import { API_BASE_URL, apiFetch, assignCourseToReviewerApi, getCourseLearnersApi } from '../../lib/apiConfig';
 import { apiClient } from '../../lib/api';
 import { getReviewers, fetchReviewersFromApi, ReviewerAccount } from '../../lib/reviewerService';
 import { ResourcePreviewModal } from '../common/ResourcePreviewModal';
@@ -231,6 +232,42 @@ export const AdminCourseManagePage: React.FC<AdminCourseManagePageProps> = ({
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string>('');
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
+  // Learners API Sync States
+  const [isSyncingLearners, setIsSyncingLearners] = useState<boolean>(false);
+  const [learnersEnrolledCount, setLearnersEnrolledCount] = useState<number>(course.learnersEnrolled || (course as any).learners_enrolled || 0);
+
+  const handleSyncLearnersFromApi = async () => {
+    setIsSyncingLearners(true);
+    try {
+      const res = await getCourseLearnersApi(course.id);
+      let count: number | null = null;
+      if (res) {
+        if (typeof res.learners === 'number') count = res.learners;
+        else if (typeof res.total === 'number') count = res.total;
+        else if (res.data) {
+          if (typeof res.data.learners === 'number') count = res.data.learners;
+          else if (typeof res.data.total === 'number') count = res.data.total;
+          else if (typeof res.data === 'number') count = res.data;
+        }
+      }
+      if (count !== null) {
+        setLearnersEnrolledCount(count);
+        await updateCourse(course.id, { learnersEnrolled: count, learners_enrolled: count });
+        setSaveSuccessMsg(`Enrolled learners count updated from course_learners.php API: ${count}`);
+        if (onCourseUpdated) {
+          onCourseUpdated({ ...course, learnersEnrolled: count, learners_enrolled: count });
+        }
+      } else {
+        setSaveSuccessMsg(`course_learners.php API returned no valid count for course_id: ${course.id}`);
+      }
+      setTimeout(() => setSaveSuccessMsg(''), 5000);
+    } catch (err) {
+      console.error('Failed to sync learners count:', err);
+    } finally {
+      setIsSyncingLearners(false);
+    }
+  };
+
   // Sync state with course prop if it updates from parent
   useEffect(() => {
     if (course) {
@@ -243,6 +280,7 @@ export const AdminCourseManagePage: React.FC<AdminCourseManagePageProps> = ({
       setCourseInstructorName(course.instructor || '');
       setCourseInstructorEmail(course.creatorEmail || (course as any).creator_email || '');
       setCourseInstructorId(course.createdBy || course.created_by || '');
+      setLearnersEnrolledCount(course.learnersEnrolled || (course as any).learners_enrolled || 0);
     }
   }, [course]);
 
@@ -473,6 +511,18 @@ export const AdminCourseManagePage: React.FC<AdminCourseManagePageProps> = ({
             <span>{isPublished ? 'Unpublish Course' : 'Publish to Marketplace'}</span>
           </button>
 
+          {/* 3. Sync Enrolled Learners API Button */}
+          <button
+            type="button"
+            disabled={isSyncingLearners}
+            onClick={handleSyncLearnersFromApi}
+            className="px-3.5 py-2 bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 hover:bg-rose-100 border border-rose-200 dark:border-rose-800 text-xs font-bold rounded-xl transition-colors flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
+            title="Sync learners enrolled count using API https://uqlearn.org/api/v1/course_learners.php"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncingLearners ? 'animate-spin' : ''}`} />
+            <span>{isSyncingLearners ? 'Syncing...' : 'Sync Learners API'}</span>
+          </button>
+
           <button
             type="button"
             disabled={isSaving}
@@ -510,7 +560,6 @@ export const AdminCourseManagePage: React.FC<AdminCourseManagePageProps> = ({
               />
               <div className="space-y-2 flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  {/* Removed Category display */}
                   <span className="text-xs text-slate-400 font-mono">ID: {course.id}</span>
                 </div>
                 <h2 className="text-lg font-black text-slate-900 dark:text-slate-100 leading-snug">
@@ -523,6 +572,20 @@ export const AdminCourseManagePage: React.FC<AdminCourseManagePageProps> = ({
                   <span className="flex items-center space-x-1">
                     <Users className="w-3.5 h-3.5 text-slate-400" />
                     <span>Instructor: <strong className="text-slate-800 dark:text-slate-200">{course.instructor}</strong></span>
+                  </span>
+                  <span>•</span>
+                  <span className="flex items-center space-x-1.5 font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-md border border-rose-200/80 dark:border-rose-800/80">
+                    <Users className="w-3.5 h-3.5" />
+                    <span>{learnersEnrolledCount.toLocaleString()} Learners Enrolled</span>
+                    <button
+                      type="button"
+                      onClick={handleSyncLearnersFromApi}
+                      disabled={isSyncingLearners}
+                      className="ml-1 p-0.5 hover:bg-rose-200 dark:hover:bg-rose-900 rounded text-rose-700 dark:text-rose-300 transition-colors cursor-pointer"
+                      title="Update enrolled learners count using API https://uqlearn.org/api/v1/course_learners.php"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${isSyncingLearners ? 'animate-spin' : ''}`} />
+                    </button>
                   </span>
                   <span>•</span>
                   <span className="flex items-center space-x-1">

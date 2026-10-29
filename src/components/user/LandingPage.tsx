@@ -34,13 +34,14 @@ import {
 } from '../../lib/apiConfig';
 import { getStoredFlashSaleConfig, DEFAULT_FLASH_SALE_END, DEFAULT_FLASH_SALE_START } from '../admin/AdminFlashSaleManager';
 
-// Isolated Flash Sale Countdown component to avoid re-rendering entire LandingPage
+// Isolated Flash Sale Countdown component matching the Soft UI / Purple Capsule design
 interface FlashSaleCountdownProps {
   endTime?: string; // ISO date string or SQL datetime set by admin
   startTime?: string;
+  className?: string;
 }
 
-const FlashSaleCountdown: React.FC<FlashSaleCountdownProps> = ({ endTime }) => {
+export const FlashSaleCountdown: React.FC<FlashSaleCountdownProps> = ({ endTime, className = '' }) => {
   const getTargetTimestamp = useCallback(() => {
     if (endTime) {
       const parsed = new Date(endTime).getTime();
@@ -52,9 +53,9 @@ const FlashSaleCountdown: React.FC<FlashSaleCountdownProps> = ({ endTime }) => {
   const getTimeRemaining = useCallback(() => {
     const target = getTargetTimestamp();
     const difference = Math.max(0, target - Date.now());
+    const totalHours = Math.floor(difference / (1000 * 60 * 60));
     return {
-      days: Math.floor(difference / (1000 * 60 * 60 * 24)),
-      hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+      hours: totalHours,
       minutes: Math.floor((difference / 1000 / 60) % 60),
       seconds: Math.floor((difference / 1000) % 60)
     };
@@ -71,32 +72,67 @@ const FlashSaleCountdown: React.FC<FlashSaleCountdownProps> = ({ endTime }) => {
   }, [getTimeRemaining]);
 
   return (
-    <div className="flex items-center space-x-1 sm:space-x-1.5 bg-purple-950/70 dark:bg-purple-950/90 px-2 sm:px-3 py-1 rounded-lg border border-purple-400/40 shadow-xs">
-      <span className="text-[9px] sm:text-[10px] font-black text-amber-300 uppercase tracking-tight flex items-center gap-1 shrink-0">
-        <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-amber-300 animate-pulse" />
-        <span className="hidden xs:inline">Hurry up!</span> <span className="text-white/80 font-semibold">Sale end in:</span>
-      </span>
-      <div className="flex items-center space-x-1 font-mono font-black text-[10px] sm:text-xs text-white">
-        <div className="flex flex-col items-center px-1 py-0.5 bg-white/15 border border-white/30 rounded text-center min-w-[26px]">
-          <span className="text-amber-300">{String(timeLeft.days).padStart(3, '0')}</span>
-          <span className="text-[7px] text-white/70 uppercase tracking-tighter scale-90">Days</span>
+    <div className={`inline-flex items-center gap-2 sm:gap-2.5 bg-[#FFF0F2] dark:bg-[#2D161B] px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl border border-[#8B2B3B]/30 dark:border-[#8B2B3B]/50 shadow-sm ${className}`}>
+      {/* Left Icon & Label */}
+      <div className="flex items-center space-x-1.5 shrink-0">
+        <div className="w-5.5 h-5.5 sm:w-6 sm:h-6 rounded-lg bg-[#8B2B3B]/10 dark:bg-[#8B2B3B]/25 flex items-center justify-center shrink-0 border border-[#8B2B3B]/20">
+          <Clock className="w-3.5 h-3.5 text-[#8B2B3B] dark:text-[#FFA0B0]" />
         </div>
-        <span className="text-white/70 font-bold">:</span>
-        <div className="flex flex-col items-center px-1 py-0.5 bg-white/15 border border-white/30 rounded text-center min-w-[22px]">
-          <span className="text-white">{String(timeLeft.hours).padStart(2, '0')}</span>
-          <span className="text-[7px] text-white/70 uppercase tracking-tighter scale-90">Hours</span>
-        </div>
-        <span className="text-white/70 font-bold">:</span>
-        <div className="flex flex-col items-center px-1 py-0.5 bg-white/15 border border-white/30 rounded text-center min-w-[22px]">
-          <span className="text-white">{String(timeLeft.minutes).padStart(2, '0')}</span>
-          <span className="text-[7px] text-white/70 uppercase tracking-tighter scale-90">Mins</span>
-        </div>
-        <span className="text-white/70 font-bold">:</span>
-        <div className="flex flex-col items-center px-1 py-0.5 bg-white/15 border border-white/30 rounded text-center min-w-[22px]">
-          <span className="text-amber-300">{String(timeLeft.seconds).padStart(2, '0')}</span>
-          <span className="text-[7px] text-white/70 uppercase tracking-tighter scale-90">Secs</span>
+        <div className="flex flex-col justify-center text-left">
+          <span className="text-[11px] sm:text-xs font-black text-[#8B2B3B] dark:text-[#FFA0B0] uppercase tracking-wide leading-tight">
+            Hurry up!
+          </span>
+          <span className="text-[9px] sm:text-[10px] font-bold text-[#8B2B3B]/80 dark:text-[#FFA0B0]/80 uppercase tracking-wider leading-tight">
+            SALE END IN:
+          </span>
         </div>
       </div>
+
+      {/* Timer Cards Container (HOURS : MINS : SECS) */}
+      <div className="flex items-center space-x-1 font-sans">
+        {/* Hours Card */}
+        <div className="flex flex-col items-center justify-center px-2 sm:px-2.5 py-1 bg-white dark:bg-[#3D1E25] border border-[#8B2B3B]/25 dark:border-[#8B2B3B]/40 rounded-lg sm:rounded-xl text-center min-w-[36px] sm:min-w-[42px] shadow-xs">
+          <span className="text-[#8B2B3B] dark:text-[#FFA0B0] font-black text-xs sm:text-sm md:text-base leading-tight tabular-nums">
+            {String(timeLeft.hours).padStart(2, '0')}
+          </span>
+          <span className="text-[7px] sm:text-[8px] font-black text-[#8B2B3B]/90 dark:text-[#FFA0B0]/90 uppercase tracking-widest leading-none mt-0.5">
+            HOURS
+          </span>
+        </div>
+
+        <span className="text-[#8B2B3B] dark:text-[#FFA0B0] font-black text-xs sm:text-sm mx-0.5">:</span>
+
+        {/* Mins Card */}
+        <div className="flex flex-col items-center justify-center px-2 sm:px-2.5 py-1 bg-white dark:bg-[#3D1E25] border border-[#8B2B3B]/25 dark:border-[#8B2B3B]/40 rounded-lg sm:rounded-xl text-center min-w-[36px] sm:min-w-[42px] shadow-xs">
+          <span className="text-[#8B2B3B] dark:text-[#FFA0B0] font-black text-xs sm:text-sm md:text-base leading-tight tabular-nums">
+            {String(timeLeft.minutes).padStart(2, '0')}
+          </span>
+          <span className="text-[7px] sm:text-[8px] font-black text-[#8B2B3B]/90 dark:text-[#FFA0B0]/90 uppercase tracking-widest leading-none mt-0.5">
+            MINS
+          </span>
+        </div>
+
+        <span className="text-[#8B2B3B] dark:text-[#FFA0B0] font-black text-xs sm:text-sm mx-0.5">:</span>
+
+        {/* Secs Card */}
+        <div className="flex flex-col items-center justify-center px-2 sm:px-2.5 py-1 bg-white dark:bg-[#3D1E25] border border-[#8B2B3B]/25 dark:border-[#8B2B3B]/40 rounded-lg sm:rounded-xl text-center min-w-[36px] sm:min-w-[42px] shadow-xs">
+          <span className="text-[#8B2B3B] dark:text-[#FFA0B0] font-black text-xs sm:text-base md:text-lg leading-tight tabular-nums">
+            {String(timeLeft.seconds).padStart(2, '0')}
+          </span>
+          <span className="text-[7px] sm:text-[8px] font-black text-[#8B2B3B]/90 dark:text-[#FFA0B0]/90 uppercase tracking-widest leading-none mt-0.5">
+            SECS
+          </span>
+        </div>
+      </div>
+
+      {/* Action Arrow Button */}
+      <Link 
+        to="/courses?flash_sale=true"
+        className="ml-1 sm:ml-1.5 flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-[#8B2B3B] hover:bg-[#742230] text-white transition-all transform hover:scale-105 active:scale-95 shadow-sm shrink-0"
+        title="View Flash Sale Deals"
+      >
+        <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+      </Link>
     </div>
   );
 };
@@ -278,14 +314,16 @@ const JumiaShelfSection: React.FC<JumiaShelfSectionProps> = ({
           <div className="flex items-center space-x-2.5 shrink-0">
             {countdown && <FlashSaleCountdown endTime={endTime} startTime={startTime} />}
 
-            <Link
-              to={seeAllLink}
-              className="w-14 sm:w-16 h-7 sm:h-8 bg-purple-600 hover:bg-purple-700 rounded-full flex items-center justify-center text-white shadow-md hover:scale-105 active:scale-95 transition-all group shrink-0"
-              title="See all items"
-              aria-label={`See all ${title}`}
-            >
-              <ArrowRight className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.8] text-white group-hover:translate-x-0.5 transition-transform" />
-            </Link>
+            {!countdown && (
+              <Link
+                to={seeAllLink}
+                className="w-9 h-9 sm:w-11 sm:h-11 bg-[#9333ea] hover:bg-[#822ad2] rounded-full flex items-center justify-center text-white shadow-lg border border-purple-300/30 hover:scale-105 active:scale-95 transition-all group shrink-0"
+                title="See all items"
+                aria-label={`See all ${title}`}
+              >
+                <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3] text-white group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+            )}
           </div>
 
         </div>
@@ -471,12 +509,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     const loadServerConfig = async () => {
       try {
         const remote = await fetchFlashSaleConfigApi();
-        if (remote && typeof remote === 'object') {
+        if (remote && typeof remote === 'object' && remote.success !== false) {
           const merged = {
-            enabled: remote.enabled !== false,
+            enabled: Boolean(remote.enabled),
             title: remote.title || 'Top selling items',
-            startTime: remote.startTime || DEFAULT_FLASH_SALE_START,
-            endTime: remote.endTime || DEFAULT_FLASH_SALE_END,
+            startTime: remote.startTime || null,
+            endTime: remote.endTime || null,
             courseIds: Array.isArray(remote.courseIds) ? remote.courseIds : []
           };
           setFlashSaleConfig(merged);
@@ -562,7 +600,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <JumiaShelfSection
               cardTheme="purple"
               title={flashSaleConfig.title || "Top selling items"}
-              countdown={true}
+              countdown={Boolean(flashSaleConfig.enabled && flashSaleConfig.endTime)}
+              endTime={flashSaleConfig.endTime || undefined}
+              startTime={flashSaleConfig.startTime || undefined}
               discountDisplayMode="save"
               items={flashSaleCourses.length > 0 ? flashSaleCourses : trendingCourses}
               isLoading={isLoadingCourses}

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Course } from '../../types';
 import { fetchFlashSaleConfigApi, saveFlashSaleConfigApi } from '../../lib/apiConfig';
+import { FlashSaleCountdown } from '../user/LandingPage';
 
 interface FlashSaleConfig {
   enabled: boolean;
@@ -175,10 +176,19 @@ export const AdminFlashSaleManager: React.FC<AdminFlashSaleManagerProps> = ({ co
 
       {/* Configuration Form Card */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
-        <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-          <Clock className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-          <span>Countdown Schedule & Shelf Settings</span>
-        </h2>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 block mb-1">
+              Live Countdown Capsule Preview
+            </span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              This soft UI capsule bar appears in the homepage Top Selling shelf header
+            </span>
+          </div>
+          <div className="flex items-center space-x-2 shrink-0">
+            <FlashSaleCountdown endTime={config.endTime} startTime={config.startTime} />
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Shelf Title */}

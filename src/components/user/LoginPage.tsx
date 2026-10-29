@@ -173,7 +173,12 @@ export const LoginPage: React.FC = () => {
       await processGoogleUser(profile.email, profile.name, profile.picture);
     } catch (err: any) {
       if (err?.code !== 'auth/popup-closed-by-user') {
-        setErrorMsg(err.message || 'Google Sign-In popup could not be completed.');
+        const errMsg = err?.message || String(err);
+        if (errMsg.includes('origin_mismatch') || errMsg.includes('unauthorized domain') || errMsg.includes('auth/unauthorized-domain')) {
+          setErrorMsg('Google OAuth Origin Mismatch: Please add https://uqlearn.org and your preview URL to Authorized JavaScript Origins in Google Cloud Console. Alternatively, sign in using Email or Email Code.');
+        } else {
+          setErrorMsg(err.message || 'Google Sign-In popup could not be completed. Try Email Sign-In below.');
+        }
       }
     } finally {
       setFormLoading(false);

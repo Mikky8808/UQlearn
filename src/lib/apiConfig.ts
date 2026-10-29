@@ -60,6 +60,7 @@ export const API_ENDPOINTS = {
   SEND_LOGIN_OTP: 'send-login-otp.php',
   PAYSTACK: 'paystack.php',
   REVIEWERS: 'reviewers.php',
+  COURSE_LEARNERS: 'course_learners.php',
 };
 
 export interface PromotionTierConfig {
@@ -93,6 +94,7 @@ export interface InstructorDetailsData {
   [key: string]: any;
 }
 
+export const getCourseLearnersApi = async (courseId: string) => await apiFetch(`${API_ENDPOINTS.COURSE_LEARNERS}?course_id=${encodeURIComponent(courseId)}`, { silent: true });
 export const getStudyPlanApi = async (userId: string) => await apiFetch(`${API_ENDPOINTS.STUDY_PLAN}?userId=${encodeURIComponent(userId)}`, { silent: true });
 export const saveStudyPlanApi = async (data: any) => await apiFetch(API_ENDPOINTS.STUDY_PLAN, { method: 'POST', body: JSON.stringify(data), silent: true });
 export const sendStudyReminderEmailApi = async (data: any) => await apiFetch('send-study-reminder.php', { method: 'POST', body: JSON.stringify(data), silent: true });
@@ -107,9 +109,86 @@ export const upsertLessonApi = async (data: any) => await apiFetch(API_ENDPOINTS
 export const getPromotionTiersApi = async (isAdmin?: boolean) => await apiFetch(`${API_ENDPOINTS.PROMOTION_TIERS}${isAdmin ? '?admin=true' : ''}`);
 export const savePromotionTiersApi = async (data: any) => await apiFetch(API_ENDPOINTS.PROMOTION_TIERS, { method: 'POST', body: JSON.stringify(data) });
 export const resetPromotionTiersApi = async () => await apiFetch(API_ENDPOINTS.PROMOTION_TIERS, { method: 'DELETE' });
-export const getStoredPromotionTiers = () => {
+export const DEFAULT_PROMOTION_TIERS: PromotionTierConfig[] = [
+  {
+    id: 'sponsored',
+    name: 'Sponsored Placement',
+    badgeName: 'Sponsored',
+    badgeLabel: 'Sponsored',
+    dailyRateUsd: 0.50,
+    dailyRateKes: 65,
+    minDays: 3,
+    impressionsMultiplier: 1.5,
+    ctrMultiplier: 1.2,
+    badgeColor: '#10b981',
+    badgeText: 'Sponsored',
+    active: true,
+    description: 'Feature your course in search results and top category placement with a Sponsored badge.',
+    features: ['Top of category search results', 'High visibility placement', 'Promoted tag on thumbnail'],
+    ctaText: 'Promote with Sponsored'
+  },
+  {
+    id: 'bestseller',
+    name: 'Best Seller Boost',
+    badgeName: 'Best Seller',
+    badgeLabel: 'Bestseller',
+    dailyRateUsd: 1.00,
+    dailyRateKes: 130,
+    minDays: 3,
+    impressionsMultiplier: 2.0,
+    ctrMultiplier: 1.5,
+    badgeColor: '#f59e0b',
+    badgeText: 'Bestseller',
+    active: true,
+    description: 'Display an official Bestseller badge on your course card to boost credibility and conversion rates.',
+    features: ['Official Bestseller badge', 'Increased student conversion', 'Featured course ranking'],
+    ctaText: 'Get Best Seller Badge'
+  },
+  {
+    id: 'premium',
+    name: 'Premium Spotlight',
+    badgeName: 'Premium Spotlight',
+    badgeLabel: 'Premium',
+    dailyRateUsd: 1.50,
+    dailyRateKes: 195,
+    minDays: 3,
+    impressionsMultiplier: 3.0,
+    ctrMultiplier: 2.2,
+    badgeColor: '#8b5cf6',
+    badgeText: 'Premium',
+    active: true,
+    description: 'Highlight your course in the exclusive Premium header row with maximum visibility.',
+    features: ['Exclusive Premium spotlight header', '3x Impression boost', 'Top course card styling'],
+    ctaText: 'Claim Premium Spotlight'
+  },
+  {
+    id: 'triple-bundle',
+    name: 'Triple Power Bundle (All 3 Badges)',
+    badgeName: 'All 3 Badges',
+    badgeLabel: 'Triple Bundle',
+    dailyRateUsd: 2.50,
+    dailyRateKes: 325,
+    minDays: 3,
+    impressionsMultiplier: 5.0,
+    ctrMultiplier: 3.5,
+    badgeColor: '#ec4899',
+    badgeText: 'Triple Bundle',
+    active: true,
+    description: 'Unlock Sponsored + Best Seller + Premium Spotlight simultaneously for ultimate exposure.',
+    features: ['All 3 badges active together', 'Maximum organic reach', '5x Conversion boost'],
+    ctaText: 'Get Triple Bundle'
+  }
+];
+
+export const getStoredPromotionTiers = (): PromotionTierConfig[] => {
+  try {
     const stored = localStorage.getItem('promotion_tiers');
-    return stored ? JSON.parse(stored) : [];
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {}
+  return DEFAULT_PROMOTION_TIERS;
 };
 export const getStoredEnrollmentPricing = () => {
     const stored = localStorage.getItem('enrollment_pricing');
@@ -117,9 +196,51 @@ export const getStoredEnrollmentPricing = () => {
 };
 export const getEnrollmentPricingApi = async () => await apiFetch(API_ENDPOINTS.ENROLLMENT_PRICING);
 export const saveEnrollmentPricingApi = async (data: any) => await apiFetch(API_ENDPOINTS.ENROLLMENT_PRICING, { method: 'POST', body: JSON.stringify(data) });
-export const calculateEnrollmentBoostPrice = (price: number) => price * 0.1;
-export const DEFAULT_PROMOTION_TIERS = [];
-export const applySponsoredAdApi = async (data: any) => await apiFetch(API_ENDPOINTS.SPONSORED_ADS, { method: 'POST', body: JSON.stringify(data) });
+export const calculateEnrollmentBoostPrice = (count: number, config?: EnrollmentProofPricingConfig) => {
+  const safeCount = typeof count === 'number' && !isNaN(count) ? count : 100;
+  const baseRate = typeof config?.pricePerStudentUsd === 'number' ? config.pricePerStudentUsd : typeof config?.price === 'number' && config.price > 0 ? config.price : 0.10;
+  const totalUsd = Number((safeCount * baseRate).toFixed(2));
+  return {
+    totalUsd,
+    unitPrice: baseRate,
+    formulaText: `${safeCount.toLocaleString()} Students × $${baseRate.toFixed(2)} USD = $${totalUsd.toFixed(2)} USD`,
+  };
+};
+export const applySponsoredAdApi = async (data: any) => {
+  const payload = {
+    action: data?.action || 'create',
+    course_id: data?.courseId || data?.course_id || '',
+    courseId: data?.courseId || data?.course_id || '',
+    instructor_id: data?.instructorId || data?.instructor_id || '',
+    instructorId: data?.instructorId || data?.instructor_id || '',
+    instructor_name: data?.instructorName || data?.instructor_name || 'Instructor',
+    instructorName: data?.instructorName || data?.instructor_name || 'Instructor',
+    instructor_email: data?.instructorEmail || data?.instructor_email || '',
+    instructorEmail: data?.instructorEmail || data?.instructor_email || '',
+    course_title: data?.courseTitle || data?.course_title || '',
+    courseTitle: data?.courseTitle || data?.course_title || '',
+    course_thumbnail: data?.courseThumbnail || data?.course_thumbnail || '',
+    courseThumbnail: data?.courseThumbnail || data?.course_thumbnail || '',
+    course_price: typeof data?.coursePrice === 'number' ? data.coursePrice : (data?.course_price || 0),
+    coursePrice: typeof data?.coursePrice === 'number' ? data.coursePrice : (data?.course_price || 0),
+    plan_id: data?.planId || data?.plan_id || 'starter_7d',
+    planId: data?.planId || data?.plan_id || 'starter_7d',
+    plan_name: data?.planName || data?.plan_name || 'Starter Boost',
+    planName: data?.planName || data?.plan_name || 'Starter Boost',
+    duration_days: data?.durationDays || data?.duration_days || 7,
+    durationDays: data?.durationDays || data?.duration_days || 7,
+    amount_paid: typeof data?.amountPaid === 'number' ? data.amountPaid : (data?.amount_paid || 9.99),
+    amountPaid: typeof data?.amountPaid === 'number' ? data.amountPaid : (data?.amount_paid || 9.99),
+    currency: data?.currency || 'USD',
+    payment_method: data?.paymentMethod || data?.payment_method || 'wallet',
+    paymentMethod: data?.paymentMethod || data?.payment_method || 'wallet',
+    ...data,
+  };
+  return await apiFetch(API_ENDPOINTS.SPONSORED_ADS, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+};
 export const getCourseDescriptionChecklistApi = async (courseId: string) => await apiFetch(`${API_ENDPOINTS.COURSE_DESCRIPTION_CHECKLIST}?course_id=${encodeURIComponent(courseId)}`);
 export const saveCourseDescriptionChecklistApi = async (data: any) => await apiFetch(API_ENDPOINTS.COURSE_DESCRIPTION_CHECKLIST, { method: 'POST', body: JSON.stringify(data) });
 export const fetchVideoFoldersApi = async (courseId: string) => await apiFetch(`${API_ENDPOINTS.VIDEO_FOLDERS}?course_id=${encodeURIComponent(courseId)}`);
@@ -148,10 +269,37 @@ export const localApiFetch = async (endpoint: string, options: RequestInit = {})
 };
 export const getSponsoredAdsApi = async () => await apiFetch(API_ENDPOINTS.SPONSORED_ADS);
 export const deleteUserApi = async (id: string) => await apiFetch(`${API_ENDPOINTS.USERS}?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
-export const getSponsoredPlansApi = async () => await apiFetch(API_ENDPOINTS.SPONSORED_PLANS);
-export const saveSponsoredPlansApi = async (data: any) => await apiFetch(API_ENDPOINTS.SPONSORED_PLANS, { method: 'POST', body: JSON.stringify(data) });
-export const updateSponsoredAdStatusApi = async (id: string, status: string) => await apiFetch(API_ENDPOINTS.SPONSORED_ADS, { method: 'PUT', body: JSON.stringify({ id, status }) });
-export const deleteSponsoredAdApi = async (id: string) => await apiFetch(`${API_ENDPOINTS.SPONSORED_ADS}?id=${id}`, { method: 'DELETE' });
+export const getSponsoredPlansApi = async () => {
+  const res = await apiFetch(API_ENDPOINTS.SPONSORED_PLANS, { silent: true }).catch(() => null);
+  if (res && res.success) return res;
+  return await apiFetch(`${API_ENDPOINTS.SPONSORED_ADS}?action=plans`, { silent: true });
+};
+export const saveSponsoredPlansApi = async (data: any) => {
+  const plans = Array.isArray(data) ? data : (data?.plans || []);
+  const res = await apiFetch(API_ENDPOINTS.SPONSORED_PLANS, { method: 'POST', body: JSON.stringify(data), silent: true }).catch(() => null);
+  if (res && res.success) return res;
+  return await apiFetch(API_ENDPOINTS.SPONSORED_ADS, { method: 'POST', body: JSON.stringify({ action: 'save_plans', plans }) });
+};
+export const updateSponsoredAdStatusApi = async (id: string | number, status: string, durationDays?: number, adminNotes?: string) => {
+  return await apiFetch(API_ENDPOINTS.SPONSORED_ADS, {
+    method: 'POST', // Use POST instead of PUT to avoid 405 Method Not Allowed
+    body: JSON.stringify({
+      action: 'update_status',
+      id,
+      status,
+      duration_days: durationDays,
+      durationDays: durationDays,
+      admin_notes: adminNotes,
+      adminNotes: adminNotes
+    })
+  });
+};
+export const deleteSponsoredAdApi = async (id: string | number) => {
+  return await apiFetch(`${API_ENDPOINTS.SPONSORED_ADS}?id=${id}`, {
+    method: 'POST', // Send POST with action=delete for robust server handling
+    body: JSON.stringify({ action: 'delete', id })
+  });
+};
 export const saveTopAdvertApi = async (data: any) => await apiFetch(API_ENDPOINTS.TOP_ADVERTS, { method: 'POST', body: JSON.stringify(data) });
 export const toggleTopAdvertActiveApi = async (id: string, isActive: boolean) => await apiFetch(`${API_ENDPOINTS.TOP_ADVERTS}?id=${id}`, { method: 'PUT', body: JSON.stringify({ action: 'toggle', isActive }) });
 export const deleteTopAdvertApi = async (id: string) => await apiFetch(`${API_ENDPOINTS.TOP_ADVERTS}?id=${id}`, { method: 'DELETE' });
@@ -226,11 +374,17 @@ export const addToWishlistApi = async (userId: string, courseId: string) => awai
 export const removeFromWishlistApi = async (userId: string, courseId: string) => await apiFetch(`${API_ENDPOINTS.WISHLIST}?userId=${userId}&courseId=${courseId}`, { method: 'DELETE' });
 export const recordRecentlyViewedApi = async (userId: string, courseId: string) => await apiFetch(API_ENDPOINTS.RECENTLY_VIEWED, { method: 'POST', body: JSON.stringify({ userId, courseId }) });
 export const fetchRecentlyViewedApi = async (userId: string) => await apiFetch(`${API_ENDPOINTS.RECENTLY_VIEWED}?userId=${userId}`);
-export const recordSponsoredClickApi = async (adId: string) => await apiFetch(API_ENDPOINTS.SPONSORED_CLICKS, { method: 'POST', body: JSON.stringify({ adId }) });
+export const recordSponsoredClickApi = async (courseId: string) => {
+  return await apiFetch(API_ENDPOINTS.SPONSORED_ADS, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'record_click', course_id: courseId, courseId }),
+    silent: true
+  }).catch(() => null);
+};
 export const fetchFlashSaleConfigApi = async () => await apiFetch(API_ENDPOINTS.FLASH_SALE_CONFIG);
 export const saveFlashSaleConfigApi = async (data: any) => await apiFetch(API_ENDPOINTS.FLASH_SALE_CONFIG, { method: 'POST', body: JSON.stringify(data) });
 export const getActiveSponsoredCoursesApi = async () => {
-  // Primary: Fetch from sponsored_ads.php (active API on backend)
+  // Primary: Fetch from sponsored-ads.php (active API on backend)
   const res = await apiFetch(API_ENDPOINTS.SPONSORED_ADS, { silent: true }).catch(() => null);
   if (res && (res.success || Array.isArray(res) || Array.isArray(res?.data))) {
     return res;
@@ -238,7 +392,13 @@ export const getActiveSponsoredCoursesApi = async () => {
   // Secondary: Fallback to sponsored-courses.php endpoint
   return await apiFetch(API_ENDPOINTS.SPONSORED_COURSES, { silent: true }).catch(() => null);
 };
-export const recordSponsoredImpressionApi = async (adId: string) => await apiFetch(API_ENDPOINTS.SPONSORED_IMPRESSIONS, { method: 'POST', body: JSON.stringify({ adId }) });
+export const recordSponsoredImpressionApi = async (courseId: string) => {
+  return await apiFetch(API_ENDPOINTS.SPONSORED_ADS, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'record_impression', course_id: courseId, courseId }),
+    silent: true
+  }).catch(() => null);
+};
 
 export const getInstructorUrl = () => `${ROOT_URL}/instructor`;
 
@@ -290,6 +450,10 @@ export const normalizeCourse = (c: any): any => {
   const isPremium = isTruthyValue(c.isPremium ?? c.is_premium ?? c.premium);
   const bestSeller = isTruthyValue(c.bestSeller ?? c.bestseller ?? c.isBestseller ?? c.is_bestseller);
 
+  const rawLearners = c.learnersEnrolled ?? c.learners_enrolled ?? c.students_enrolled ?? c.learnersCount ?? c.students ?? c.learners ?? 0;
+  const parsedLearners = typeof rawLearners === 'string' ? parseInt(rawLearners, 10) : Number(rawLearners || 0);
+  const validLearners = isNaN(parsedLearners) ? 0 : parsedLearners;
+
   return {
     ...c,
     isSponsored,
@@ -301,8 +465,10 @@ export const normalizeCourse = (c: any): any => {
     price: typeof c.price === 'string' ? parseFloat(c.price) : (c.price || 0),
     originalPrice: typeof c.originalPrice === 'string' ? parseFloat(c.originalPrice) : (c.originalPrice || 0),
     rating: typeof c.rating === 'string' ? parseFloat(c.rating) : (c.rating || 0),
-    reviewCount: typeof c.reviewCount === 'string' ? parseInt(c.reviewCount) : (c.reviewCount || 0),
-    learnersEnrolled: typeof c.learnersEnrolled === 'string' ? parseInt(c.learnersEnrolled) : (c.learnersEnrolled || 0),
+    reviewCount: typeof c.reviewCount === 'string' ? parseInt(c.reviewCount, 10) : (c.reviewCount || 0),
+    learnersEnrolled: validLearners,
+    learners_enrolled: validLearners,
+    students_enrolled: validLearners,
     modules: Array.isArray(c.modules) ? c.modules : [],
   };
 };

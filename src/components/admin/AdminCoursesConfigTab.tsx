@@ -28,14 +28,15 @@ import {
   ArrowLeft,
   ChevronRight,
   Loader2,
-  Scale
+  Scale,
+  RefreshCw
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Course } from '../../types';
 import { AdminCourseCategoriesTab } from './AdminCourseCategoriesTab';
 import { AdminCourseManagePage } from './AdminCourseManagePage';
 import { AdminPriceAdjustmentNoticesTab } from './AdminPriceAdjustmentNoticesTab';
-import { apiFetch, API_BASE_URL } from '../../lib/apiConfig';
+import { apiFetch, API_BASE_URL, getCourseLearnersApi } from '../../lib/apiConfig';
 import { DataNotFound } from '../common/DataNotFound';
 import { SignaturePad } from '../common/SignaturePad';
 import { ReviewDetailModal } from '../reviews/ReviewDetailModal';
@@ -78,6 +79,76 @@ export const AdminCoursesConfigTab: React.FC<AdminCoursesConfigTabProps> = ({
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [reviewsList, setReviewsList] = useState<any[]>([]);
   const [isLoadingReviews, setIsLoadingReviews] = useState(false);
+
+  // Learners API sync states
+  const [syncingCourseIds, setSyncingCourseIds] = useState<Record<string, boolean>>({});
+  const [isBatchSyncingLearners, setIsBatchSyncingLearners] = useState<boolean>(false);
+  const [syncNoticeMsg, setSyncNoticeMsg] = useState<string>('');
+
+  const handleSyncCourseLearners = async (courseId: string) => {
+    setSyncingCourseIds(prev => ({ ...prev, [courseId]: true }));
+    try {
+      const res = await getCourseLearnersApi(courseId);
+      let count: number | null = null;
+      if (res) {
+        if (typeof res.learners === 'number') count = res.learners;
+        else if (typeof res.total === 'number') count = res.total;
+        else if (res.data) {
+          if (typeof res.data.learners === 'number') count = res.data.learners;
+          else if (typeof res.data.total === 'number') count = res.data.total;
+          else if (typeof res.data === 'number') count = res.data;
+        }
+      }
+      if (count !== null) {
+        await updateCourse(courseId, { learnersEnrolled: count, learners_enrolled: count });
+        setSyncNoticeMsg(`Enrolled learners count for course updated to ${count}`);
+        setTimeout(() => setSyncNoticeMsg(''), 4000);
+      } else {
+        setSyncNoticeMsg(`Could not retrieve count from course_learners.php API for course ID ${courseId}`);
+        setTimeout(() => setSyncNoticeMsg(''), 4000);
+      }
+    } catch (err) {
+      console.error('Failed to sync course learners:', err);
+    } finally {
+      setSyncingCourseIds(prev => ({ ...prev, [courseId]: false }));
+    }
+  };
+
+  const handleSyncAllCourseLearners = async () => {
+    setIsBatchSyncingLearners(true);
+    setSyncNoticeMsg('');
+    let syncedCount = 0;
+    try {
+      for (const c of filteredCourses) {
+        setSyncingCourseIds(prev => ({ ...prev, [c.id]: true }));
+        try {
+          const res = await getCourseLearnersApi(c.id);
+          let count: number | null = null;
+          if (res) {
+            if (typeof res.learners === 'number') count = res.learners;
+            else if (typeof res.total === 'number') count = res.total;
+            else if (res.data) {
+              if (typeof res.data.learners === 'number') count = res.data.learners;
+              else if (typeof res.data.total === 'number') count = res.data.total;
+              else if (typeof res.data === 'number') count = res.data;
+            }
+          }
+          if (count !== null) {
+            await updateCourse(c.id, { learnersEnrolled: count, learners_enrolled: count });
+            syncedCount++;
+          }
+        } catch (e) {
+          console.error(`Failed sync for course ${c.id}`, e);
+        } finally {
+          setSyncingCourseIds(prev => ({ ...prev, [c.id]: false }));
+        }
+      }
+      setSyncNoticeMsg(`Batch updated enrolled learners from course_learners.php for ${syncedCount} course(s).`);
+      setTimeout(() => setSyncNoticeMsg(''), 5000);
+    } finally {
+      setIsBatchSyncingLearners(false);
+    }
+  };
 
   // Fetch all reviews when learner-reviews subtab is opened
   useEffect(() => {
@@ -713,7 +784,18 @@ export const AdminCoursesConfigTab: React.FC<AdminCoursesConfigTabProps> = ({
               </p>
             </div>
 
-            <div className="flex items-center space-x-2.5">
+            <div className="flex flex-wrap items-center space-x-2.5 gap-y-2">
+              <button
+                type="button"
+                onClick={handleSyncAllCourseLearners}
+                disabled={isBatchSyncingLearners}
+                className="px-3.5 py-2 bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer shrink-0 disabled:opacity-50"
+                title="Fetch latest learner counts from https://uqlearn.org/api/v1/course_learners.php for all listed courses"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isBatchSyncingLearners ? 'animate-spin' : ''}`} />
+                <span>{isBatchSyncingLearners ? 'Syncing...' : 'Sync Learners API'}</span>
+              </button>
+
               <select
                 value={selectedCategoryFilter}
                 onChange={(e) => setSelectedCategoryFilter(e.target.value)}
@@ -736,6 +818,13 @@ export const AdminCoursesConfigTab: React.FC<AdminCoursesConfigTabProps> = ({
               />
             </div>
           </div>
+
+          {syncNoticeMsg && (
+            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/80 rounded-xl text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center space-x-2 animate-fadeIn">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+              <span>{syncNoticeMsg}</span>
+            </div>
+          )}
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
@@ -780,8 +869,21 @@ export const AdminCoursesConfigTab: React.FC<AdminCoursesConfigTabProps> = ({
                     <td className="py-3 px-4 font-bold text-slate-900 dark:text-slate-100">
                       ${c.price}
                     </td>
-                    <td className="py-3 px-4 text-slate-600 dark:text-slate-400 font-semibold">
-                      {(c.learnersEnrolled || 0).toLocaleString()}
+                    <td className="py-3 px-4">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-bold text-slate-800 dark:text-slate-200">
+                          {(c.learnersEnrolled || 0).toLocaleString()}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleSyncCourseLearners(c.id)}
+                          disabled={Boolean(syncingCourseIds[c.id])}
+                          className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+                          title={`Update enrolled learners count using API: https://uqlearn.org/api/v1/course_learners.php?course_id=${c.id}`}
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${syncingCourseIds[c.id] ? 'animate-spin text-rose-600 dark:text-rose-400' : ''}`} />
+                        </button>
+                      </div>
                     </td>
                     <td className="py-3 px-4 text-right">
                       <div className="flex items-center justify-end space-x-2">
