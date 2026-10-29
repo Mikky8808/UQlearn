@@ -57,6 +57,7 @@ export const UqlearnCertificateSvg: React.FC<UqlearnCertificateSvgProps> = ({
     <svg
       ref={svgRef}
       xmlns="http://www.w3.org/2000/svg"
+      xmlnsXlink="http://www.w3.org/1999/xlink"
       viewBox="0 0 1600 1131"
       width="100%"
       height="100%"
@@ -202,25 +203,29 @@ export const UqlearnCertificateSvg: React.FC<UqlearnCertificateSvgProps> = ({
 
       {/* --- TOP-LEFT CORNER: Circuit Board Tech Traces & Gold Matrix --- */}
       <g stroke="#044e54" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" fill="none">
-        <path d="M 44,110 L 130,44 L 280,44" />
-        <path d="M 44,155 L 165,44 L 240,44" />
-        <path d="M 44,215 L 180,80 L 260,80" />
-        <path d="M 44,270 L 150,165 L 220,165" />
-        <path d="M 75,295 L 160,210 L 195,210" />
-        <path d="M 44,330 L 115,260 L 150,260" />
+        <path d="M 44,100 L 80,64 L 280,64" />
+        <path d="M 44,140 L 90,94 L 240,94" />
+        <path d="M 44,180 L 100,124 L 260,124" />
+        <path d="M 44,220 L 110,154 L 220,154" />
+        <path d="M 44,260 L 120,184 L 195,184" />
+        <path d="M 44,300 L 130,214 L 165,214" />
       </g>
-      {/* Circuit Nodes (terminal dots) */}
+      {/* Circuit Nodes (terminal dots & bend rings) */}
       <g fill="#044e54">
-        <circle cx="280" cy="44" r="5" />
-        <circle cx="240" cy="44" r="4.5" />
-        <circle cx="260" cy="80" r="5" />
-        <circle cx="220" cy="165" r="4.5" />
-        <circle cx="195" cy="210" r="4" />
-        <circle cx="150" cy="260" r="4" />
-        {/* Ring nodes */}
-        <circle cx="130" cy="44" r="3.5" fill="#ffffff" stroke="#044e54" strokeWidth="2" />
-        <circle cx="180" cy="80" r="3.5" fill="#ffffff" stroke="#044e54" strokeWidth="2" />
-        <circle cx="150" cy="165" r="3.5" fill="#ffffff" stroke="#044e54" strokeWidth="2" />
+        {/* Terminal solid dots */}
+        <circle cx="280" cy="64" r="5" />
+        <circle cx="240" cy="94" r="4.5" />
+        <circle cx="260" cy="124" r="5" />
+        <circle cx="220" cy="154" r="4.5" />
+        <circle cx="195" cy="184" r="4" />
+        <circle cx="165" cy="214" r="4" />
+        {/* Bend ring nodes */}
+        <circle cx="80" cy="64" r="3.5" fill="#ffffff" stroke="#044e54" strokeWidth="2" />
+        <circle cx="90" cy="94" r="3.5" fill="#ffffff" stroke="#044e54" strokeWidth="2" />
+        <circle cx="100" cy="124" r="3.5" fill="#ffffff" stroke="#044e54" strokeWidth="2" />
+        <circle cx="110" cy="154" r="3.5" fill="#ffffff" stroke="#044e54" strokeWidth="2" />
+        <circle cx="120" cy="184" r="3.5" fill="#ffffff" stroke="#044e54" strokeWidth="2" />
+        <circle cx="130" cy="214" r="3.5" fill="#ffffff" stroke="#044e54" strokeWidth="2" />
       </g>
       {/* Top-Left Gold Dot Matrix */}
       <g fill="#d4af37" opacity="0.85">
@@ -235,87 +240,86 @@ export const UqlearnCertificateSvg: React.FC<UqlearnCertificateSvgProps> = ({
       {/* Top-Right Gold Dot Matrix */}
       <g fill="#d4af37" opacity="0.85">
         {[0, 1, 2, 3].map((row) =>
-          [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((col) => (
-            <circle key={`tr-dot-${row}-${col}`} cx={1090 + col * 20} cy={60 + row * 18} r="2.2" />
-          ))
+          [0, 1, 2, 3, 4, 5, 6, 7, 8].map((col) => {
+            if (row === 1 && col > 7) return null;
+            if (row === 2 && col > 5) return null;
+            if (row === 3 && col > 3) return null;
+            return (
+              <circle key={`tr-dot-${row}-${col}`} cx={1060 + col * 20} cy={60 + row * 18} r="2.2" />
+            );
+          })
         )}
       </g>
 
-      {/* Top-Right Honeycomb Hexagons */}
-      <g stroke="#d4af37" strokeWidth="1.8" fill="none" opacity="0.9">
-        {/* Hex 1 */}
-        <polygon points="1370,105 1400,88 1430,105 1430,140 1400,157 1370,140" />
-        {/* Hex 2 (above) */}
-        <polygon points="1430,70 1460,53 1490,70 1490,105 1460,122 1430,105" />
-        {/* Hex 3 (right) */}
-        <polygon points="1490,105 1520,88 1550,105 1550,140 1520,157 1490,140" />
-        {/* Hex 4 (below) */}
-        <polygon points="1430,140 1460,122 1490,140 1490,175 1460,192 1430,175" />
-        {/* Hex 5 (left lower) */}
-        <polygon points="1370,175 1400,158 1430,175 1430,210 1400,227 1370,210" />
-        {/* Hex 6 (far right) */}
-        <polygon points="1490,175 1520,158 1550,175 1550,210 1520,227 1490,210" />
-        {/* Accent circle nodes */}
-        <circle cx="1400" cy="122" r="5" stroke="#d4af37" strokeWidth="1.8" fill="none" />
-        <circle cx="1520" cy="122" r="5" stroke="#d4af37" strokeWidth="1.8" fill="none" />
-        <circle cx="1460" cy="157" r="4" fill="#d4af37" />
+      {/* Top-Right Geometric Ribbon Layers (Exact layer design from Bottom-Left: Teal -> Gold -> White -> Purple) */}
+      <g>
+        {/* Outer Deep Teal Corner Polygon at (1556, 44) */}
+        <polygon points="1430,44 1556,44 1556,170" fill={`url(#tealGrad-${uid})`} />
+        {/* Gold Stripe */}
+        <polygon points="1415,44 1430,44 1556,170 1556,185" fill="#d4af37" />
+        {/* Crisp White Separator Stripe */}
+        <polygon points="1403,44 1415,44 1556,185 1556,197" fill="#ffffff" />
+        {/* Royal Purple Diagonal Stripe */}
+        <polygon points="1345,44 1403,44 1556,197 1556,255" fill={`url(#purpleGrad-${uid})`} />
+        {/* Inner Gold Accent Stroke */}
+        <line x1="1345" y1="44" x2="1556" y2="255" stroke="#d4af37" strokeWidth="2.5" />
+        <line x1="1335" y1="44" x2="1556" y2="265" stroke="#ffffff" strokeWidth="1" opacity="0.6" />
       </g>
 
-      {/* Top-Right Bold Diagonal Polygonal Ribbons */}
+      {/* --- BOTTOM-LEFT CORNER: Geometric Ribbons + Matrix --- */}
+      {/* Bottom-Left Geometric Ribbon Layers */}
       <g>
-        {/* Deep Teal Polygon */}
-        <polygon points="1380,44 1556,44 1556,220 1480,220 1350,90" fill={`url(#tealGrad-${uid})`} />
-        {/* Crisp White Separator */}
-        <polygon points="1420,44 1432,44 1556,168 1556,156" fill="#ffffff" />
-        {/* Vivid Royal Purple Polygon */}
-        <polygon points="1435,44 1556,44 1556,165" fill={`url(#purpleGrad-${uid})`} />
-        {/* Gold Accent Line */}
-        <line x1="1350" y1="90" x2="1480" y2="220" stroke="#d4af37" strokeWidth="3" />
-        <line x1="1340" y1="100" x2="1470" y2="230" stroke="#ffffff" strokeWidth="1.2" opacity="0.6" />
+        {/* Outer Deep Teal Corner Polygon at (44, 1087) */}
+        <polygon points="44,970 44,1087 161,1087" fill={`url(#tealGrad-${uid})`} />
+        {/* Gold Stripe */}
+        <polygon points="44,955 44,970 161,1087 176,1087" fill="#d4af37" />
+        {/* Crisp White Separator Stripe */}
+        <polygon points="44,943 44,955 176,1087 188,1087" fill="#ffffff" />
+        {/* Royal Purple Diagonal Stripe */}
+        <polygon points="44,885 44,943 188,1087 246,1087" fill={`url(#purpleGrad-${uid})`} />
+        {/* Inner Gold Accent Stroke */}
+        <line x1="44" y1="885" x2="246" y2="1087" stroke="#d4af37" strokeWidth="2.5" />
+        <line x1="44" y1="875" x2="256" y2="1087" stroke="#ffffff" strokeWidth="1" opacity="0.6" />
       </g>
 
-      {/* --- BOTTOM-LEFT CORNER: Geometric Ribbons + Honeycomb + Nodes --- */}
-      <g>
-        {/* Vivid Royal Purple Base Polygon */}
-        <polygon points="44,910 44,1087 220,1087 220,1010 90,880" fill={`url(#purpleGrad-${uid})`} />
-        {/* Deep Teal Sub-polygon */}
-        <polygon points="44,990 44,1087 140,1087 44,990" fill={`url(#tealGrad-${uid})`} />
-        {/* White Separator */}
-        <polygon points="44,930 44,942 168,1066 156,1066" fill="#ffffff" />
-        {/* Gold Border Line */}
-        <line x1="90" y1="880" x2="220" y2="1010" stroke="#d4af37" strokeWidth="3" />
-        <line x1="100" y1="870" x2="230" y2="1000" stroke="#ffffff" strokeWidth="1.2" opacity="0.6" />
-      </g>
-      {/* Bottom-Left Honeycomb Outlines */}
-      <g stroke="#d4af37" strokeWidth="1.8" fill="none" opacity="0.9">
-        <polygon points="60,860 90,843 120,860 120,895 90,912 60,895" />
-        <polygon points="120,825 150,808 180,825 180,860 150,877 120,860" />
-        <polygon points="180,860 210,843 240,860 240,895 210,912 180,895" />
-        <polygon points="120,895 150,878 180,895 180,930 150,947 120,930" />
-        <polygon points="180,930 210,913 240,930 240,965 210,982 180,965" />
-        <circle cx="150" cy="843" r="5" stroke="#d4af37" strokeWidth="1.8" fill="none" />
-        <circle cx="210" cy="878" r="5" stroke="#d4af37" strokeWidth="1.8" fill="none" />
+      {/* Bottom-Left Gold Dot Matrix */}
+      <g fill="#d4af37" opacity="0.85">
+        {[0, 1, 2, 3].map((row) =>
+          [0, 1, 2, 3, 4, 5, 6].map((col) => {
+            if (row === 0 && col < 3) return null;
+            if (row === 1 && col < 2) return null;
+            return (
+              <circle key={`bl-dot-${row}-${col}`} cx={270 + col * 20} cy={1000 + row * 18} r="2.2" />
+            );
+          })
+        )}
       </g>
 
       {/* --- BOTTOM-RIGHT CORNER: Circuit Board Tech Traces & Gold Matrix --- */}
       <g stroke="#044e54" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" fill="none">
-        <path d="M 1556,1020 L 1470,1087 L 1320,1087" />
-        <path d="M 1556,975 L 1445,1087 L 1370,1087" />
-        <path d="M 1556,915 L 1420,1051 L 1340,1051" />
-        <path d="M 1556,860 L 1450,966 L 1380,966" />
-        <path d="M 1525,835 L 1440,920 L 1405,920" />
-        <path d="M 1556,800 L 1485,870 L 1450,870" />
+        <path d="M 1556,1031 L 1520,1067 L 1320,1067" />
+        <path d="M 1556,991 L 1510,1037 L 1360,1037" />
+        <path d="M 1556,951 L 1500,1007 L 1340,1007" />
+        <path d="M 1556,911 L 1490,977 L 1380,977" />
+        <path d="M 1556,871 L 1480,947 L 1405,947" />
+        <path d="M 1556,831 L 1470,917 L 1435,917" />
       </g>
-      {/* Terminal Nodes */}
+      {/* Terminal Nodes & Bend Rings */}
       <g fill="#044e54">
-        <circle cx="1320" cy="1087" r="5" />
-        <circle cx="1370" cy="1087" r="4.5" />
-        <circle cx="1340" cy="1051" r="5" />
-        <circle cx="1380" cy="966" r="4.5" />
-        <circle cx="1405" cy="920" r="4" />
-        <circle cx="1450" cy="870" r="4" />
-        <circle cx="1470" cy="1087" r="3.5" fill="#ffffff" stroke="#044e54" strokeWidth="2" />
-        <circle cx="1420" cy="1051" r="3.5" fill="#ffffff" stroke="#044e54" strokeWidth="2" />
+        {/* Terminal solid dots */}
+        <circle cx="1320" cy="1067" r="5" />
+        <circle cx="1360" cy="1037" r="4.5" />
+        <circle cx="1340" cy="1007" r="5" />
+        <circle cx="1380" cy="977" r="4.5" />
+        <circle cx="1405" cy="947" r="4" />
+        <circle cx="1435" cy="917" r="4" />
+        {/* Bend ring nodes */}
+        <circle cx="1520" cy="1067" r="3.5" fill="#ffffff" stroke="#044e54" strokeWidth="2" />
+        <circle cx="1510" cy="1037" r="3.5" fill="#ffffff" stroke="#044e54" strokeWidth="2" />
+        <circle cx="1500" cy="1007" r="3.5" fill="#ffffff" stroke="#044e54" strokeWidth="2" />
+        <circle cx="1490" cy="977" r="3.5" fill="#ffffff" stroke="#044e54" strokeWidth="2" />
+        <circle cx="1480" cy="947" r="3.5" fill="#ffffff" stroke="#044e54" strokeWidth="2" />
+        <circle cx="1470" cy="917" r="3.5" fill="#ffffff" stroke="#044e54" strokeWidth="2" />
       </g>
       {/* Bottom-Right Gold Dot Matrix */}
       <g fill="#d4af37" opacity="0.85">
@@ -335,9 +339,10 @@ export const UqlearnCertificateSvg: React.FC<UqlearnCertificateSvgProps> = ({
       {/* 4. TOP LOGO EMBLEM (UQLEARN OFFICIAL SITE LOGO)         */}
       {/* ======================================================== */}
       <g id="uql-crest-emblem">
-        {/* Render the site's official logo directly (matches website & reference certificate) */}
+        {/* Render the site's official logo directly with dual href and xlinkHref attributes */}
         <image
           href={effectiveLogoUrl}
+          xlinkHref={effectiveLogoUrl}
           x="730"
           y="72"
           width="140"
@@ -468,6 +473,7 @@ export const UqlearnCertificateSvg: React.FC<UqlearnCertificateSvgProps> = ({
         {hasCustomInstructorSig ? (
           <image
             href={data.instructorSignature}
+            xlinkHref={data.instructorSignature}
             x="210"
             y="715"
             width="340"
@@ -542,6 +548,7 @@ export const UqlearnCertificateSvg: React.FC<UqlearnCertificateSvgProps> = ({
         {data.qrDataUrl && (
           <image
             href={data.qrDataUrl}
+            xlinkHref={data.qrDataUrl}
             x="745"
             y="748"
             width="110"
@@ -554,6 +561,7 @@ export const UqlearnCertificateSvg: React.FC<UqlearnCertificateSvgProps> = ({
         <circle cx="800" cy="803" r="16" fill="#ffffff" stroke={`url(#purpleGrad-${uid})`} strokeWidth="1.5" />
         <image
           href={effectiveLogoUrl}
+          xlinkHref={effectiveLogoUrl}
           x="786"
           y="789"
           width="28"
@@ -594,6 +602,7 @@ export const UqlearnCertificateSvg: React.FC<UqlearnCertificateSvgProps> = ({
         {hasCustomCeoSig ? (
           <image
             href={data.ceoSignature}
+            xlinkHref={data.ceoSignature}
             x="1050"
             y="715"
             width="340"

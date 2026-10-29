@@ -255,7 +255,20 @@ export const CanvasCertificateGenerator: React.FC<CanvasCertificateGeneratorProp
             </style>
           </head>
           <body>
-            <img src="${dataUrl}" onload="window.print();" />
+            <img id="certPrintImg" src="${dataUrl}" />
+            <script>
+              const img = document.getElementById('certPrintImg');
+              function doPrint() {
+                setTimeout(() => {
+                  window.print();
+                }, 250);
+              }
+              if (img && img.complete && img.naturalWidth > 0) {
+                doPrint();
+              } else if (img) {
+                img.onload = doPrint;
+              }
+            </script>
           </body>
         </html>
       `);
@@ -307,11 +320,11 @@ export const CanvasCertificateGenerator: React.FC<CanvasCertificateGeneratorProp
 
         {/* Certificate SVG Canvas Container */}
         <div className="p-4 sm:p-6 overflow-auto flex-1 flex items-center justify-center bg-slate-100 dark:bg-slate-950/80">
-          <div className="w-full max-w-5xl shadow-2xl rounded-2xl overflow-hidden border border-slate-300 dark:border-slate-800 bg-white">
+          <div className="w-full max-w-2xl sm:max-w-3xl max-h-[62vh] shadow-2xl rounded-2xl overflow-hidden border border-slate-300 dark:border-slate-800 bg-white flex items-center justify-center">
             <UqlearnCertificateSvg
               data={certData}
               svgRef={svgRef}
-              className="w-full h-auto block"
+              className="max-w-full max-h-[62vh] w-auto h-auto block"
             />
           </div>
         </div>

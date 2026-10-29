@@ -611,8 +611,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               getDiscountPercentage={getDiscountPercentage}
               trackImpression={trackImpression}
               navigate={navigate}
-              endTime={flashSaleConfig.endTime}
-              startTime={flashSaleConfig.startTime}
             />
             <AdvertBanner slot="super_deals" />
           </div>

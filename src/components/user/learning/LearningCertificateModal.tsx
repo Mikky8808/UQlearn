@@ -221,7 +221,20 @@ export const LearningCertificateModal: React.FC<LearningCertificateModalProps> =
             </style>
           </head>
           <body>
-            <img src="${dataUrl}" onload="window.print();" />
+            <img id="certPrintImg" src="${dataUrl}" />
+            <script>
+              const img = document.getElementById('certPrintImg');
+              function doPrint() {
+                setTimeout(() => {
+                  window.print();
+                }, 250);
+              }
+              if (img && img.complete && img.naturalWidth > 0) {
+                doPrint();
+              } else if (img) {
+                img.onload = doPrint;
+              }
+            </script>
           </body>
         </html>
       `);
@@ -270,23 +283,31 @@ export const LearningCertificateModal: React.FC<LearningCertificateModalProps> =
           </button>
         </div>
       ) : (
-        <div className="relative w-full max-w-4xl h-full flex flex-col items-center justify-center">
-          {/* Certificate Image Container - Reduced size for better visibility */}
-          <div className="relative group max-h-[70vh] w-full flex items-center justify-center drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+        <div className="relative w-full max-w-2xl sm:max-w-3xl h-full flex flex-col items-center justify-center pb-20">
+          {/* Header Title */}
+          <div className="mb-4 text-center">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/20 text-purple-200 border border-purple-400/30 text-xs font-semibold">
+              <Award className="w-3.5 h-3.5 text-purple-300" />
+              <span>Official Certificate Preview</span>
+            </span>
+          </div>
+
+          {/* Certificate Image Container - Optimally scaled for full viewport visibility */}
+          <div className="relative group max-h-[58vh] w-full flex items-center justify-center drop-shadow-[0_20px_50px_rgba(0,0,0,0.6)]">
             <UqlearnCertificateSvg
               data={certData}
               svgRef={svgRef}
-              className="max-w-full max-h-full w-auto h-auto block rounded-lg overflow-hidden transition-transform duration-500"
+              className="max-w-full max-h-[58vh] w-auto h-auto block rounded-xl overflow-hidden shadow-2xl border border-white/20 transition-transform duration-500"
             />
           </div>
 
-          {/* Floating Action Bar - Only PNG and PDF as requested */}
-          <div className="fixed bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-4 p-2.5 rounded-2xl bg-white/10 border border-white/20 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] z-[70] animate-slideUp">
+          {/* Floating Action Bar - Download PNG and PDF */}
+          <div className="fixed bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 sm:gap-4 p-2 sm:p-2.5 rounded-2xl bg-slate-900/90 border border-white/20 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[70] animate-slideUp">
             <button
               type="button"
               onClick={handleDownloadPNG}
               disabled={downloadingPng}
-              className="px-8 py-3.5 rounded-xl bg-teal-600 hover:bg-teal-500 disabled:bg-slate-600 text-white text-sm font-black transition-all flex items-center gap-2.5 shadow-lg cursor-pointer min-w-[180px] justify-center"
+              className="px-5 sm:px-8 py-2.5 sm:py-3.5 rounded-xl bg-teal-600 hover:bg-teal-500 disabled:bg-slate-700 text-white text-xs sm:text-sm font-black transition-all flex items-center gap-2 shadow-lg cursor-pointer min-w-[150px] sm:min-w-[180px] justify-center"
             >
               <Download className="w-4 h-4" />
               <span>{downloadingPng ? 'Processing...' : 'Download PNG'}</span>
@@ -296,7 +317,7 @@ export const LearningCertificateModal: React.FC<LearningCertificateModalProps> =
               type="button"
               onClick={handleDownloadPDF}
               disabled={downloadingPdf}
-              className="px-8 py-3.5 rounded-xl bg-purple-700 hover:bg-purple-600 disabled:bg-slate-600 text-white text-sm font-black transition-all flex items-center gap-2.5 shadow-lg cursor-pointer min-w-[180px] justify-center"
+              className="px-5 sm:px-8 py-2.5 sm:py-3.5 rounded-xl bg-purple-700 hover:bg-purple-600 disabled:bg-slate-700 text-white text-xs sm:text-sm font-black transition-all flex items-center gap-2 shadow-lg cursor-pointer min-w-[150px] sm:min-w-[180px] justify-center"
             >
               <FileText className="w-4 h-4" />
               <span>{downloadingPdf ? 'Processing...' : 'Download PDF'}</span>

@@ -8708,7 +8708,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
                 </div>
 
                 {/* Certificate Live Vector Preview */}
-                <div className="max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 bg-white">
+                <div className="max-w-2xl sm:max-w-3xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 bg-white">
                   <UqlearnCertificateSvg
                     data={{
                       studentName: 'ALBRIGHT JUMA',
