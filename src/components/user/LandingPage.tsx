@@ -55,7 +55,8 @@ export const FlashSaleCountdown: React.FC<FlashSaleCountdownProps> = ({ endTime,
     const difference = Math.max(0, target - Date.now());
     const totalHours = Math.floor(difference / (1000 * 60 * 60));
     return {
-      hours: totalHours,
+      hours: totalHours % 10, // Show only the last digit (0-9 loop: 602 -> 2, 600 -> 0, 599 -> 9)
+      rawHours: totalHours,
       minutes: Math.floor((difference / 1000 / 60) % 60),
       seconds: Math.floor((difference / 1000) % 60)
     };
