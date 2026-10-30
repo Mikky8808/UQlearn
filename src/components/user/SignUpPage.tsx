@@ -20,7 +20,7 @@ import {
 import { useApp } from '../../context/AppContext';
 import { UserRole } from '../../types';
 import { API_ENDPOINTS, apiFetch, GOOGLE_CLIENT_ID, ROOT_URL } from '../../lib/apiConfig';
-import { decodeGoogleJwt, signInWithGoogleFirebase } from '../../lib/googleAuth';
+import { decodeGoogleJwt, signInWithGoogleUniversal } from '../../lib/googleAuth';
 
 export const SignUpPage: React.FC = () => {
   const navigate = useNavigate();
@@ -416,7 +416,7 @@ export const SignUpPage: React.FC = () => {
     setSuccessMsg('');
     setFormLoading(true);
     try {
-      const profile = await signInWithGoogleFirebase();
+      const profile = await signInWithGoogleUniversal();
       await processGoogleSignUpUser(profile.email, profile.name, profile.picture);
     } catch (err: any) {
       if (err?.code !== 'auth/popup-closed-by-user') {

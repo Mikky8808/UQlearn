@@ -20,7 +20,7 @@ import { useApp } from '../../context/AppContext';
 import { ROOT_URL } from '../../lib/apiConfig';
 import { resolveBrandingLogoUrl, DEFAULT_LOGO_URL } from '../../lib/branding';
 import { API_ENDPOINTS, apiFetch, GOOGLE_CLIENT_ID } from '../../lib/apiConfig';
-import { decodeGoogleJwt, signInWithGoogleFirebase } from '../../lib/googleAuth';
+import { decodeGoogleJwt, signInWithGoogleUniversal } from '../../lib/googleAuth';
 
 const ALLOWED_ADMIN_EMAILS = [
   'michaelomare045@gmail.com',
@@ -161,7 +161,7 @@ export const AdminLoginPage: React.FC = () => {
     setErrorMsg('');
     setSuccessMsg('');
     try {
-      const profile = await signInWithGoogleFirebase();
+      const profile = await signInWithGoogleUniversal();
       await processGoogleAdminUser(profile.email, profile.name, profile.picture);
     } catch (err: any) {
       if (err?.code !== 'auth/popup-closed-by-user') {

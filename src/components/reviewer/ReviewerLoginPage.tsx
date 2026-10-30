@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { resolveBrandingLogoUrl, DEFAULT_LOGO_URL } from '../../lib/branding';
 import { verifyReviewerAuthorization, authenticateReviewerApi } from '../../lib/reviewerService';
 import { GOOGLE_CLIENT_ID } from '../../lib/apiConfig';
-import { decodeGoogleJwt, signInWithGoogleFirebase } from '../../lib/googleAuth';
+import { decodeGoogleJwt, signInWithGoogleUniversal } from '../../lib/googleAuth';
 import { 
   Mail, 
   ArrowRight, 
@@ -147,7 +147,7 @@ export const ReviewerLoginPage: React.FC = () => {
     setSuccessMsg('');
     setLoading(true);
     try {
-      const profile = await signInWithGoogleFirebase();
+      const profile = await signInWithGoogleUniversal();
       await processGoogleReviewerUser(profile.email, profile.name, profile.picture);
     } catch (err: any) {
       if (err?.code !== 'auth/popup-closed-by-user') {

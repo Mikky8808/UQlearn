@@ -14,7 +14,7 @@ import {
 import { useApp } from '../../context/AppContext';
 import { resolveBrandingLogoUrl, DEFAULT_LOGO_URL } from '../../lib/branding';
 import { API_ENDPOINTS, apiFetch, GOOGLE_CLIENT_ID } from '../../lib/apiConfig';
-import { decodeGoogleJwt, signInWithGoogleFirebase } from '../../lib/googleAuth';
+import { decodeGoogleJwt, signInWithGoogleUniversal } from '../../lib/googleAuth';
 
 declare global {
   interface Window {
@@ -172,7 +172,7 @@ export const InstructorLoginPage: React.FC = () => {
     setSuccessMsg('');
     setFormLoading(true);
     try {
-      const profile = await signInWithGoogleFirebase();
+      const profile = await signInWithGoogleUniversal();
       await processGoogleInstructorUser(profile.email, profile.name, profile.picture);
     } catch (err: any) {
       if (err?.code !== 'auth/popup-closed-by-user') {

@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { API_ENDPOINTS, apiFetch, GOOGLE_CLIENT_ID } from '../../lib/apiConfig';
-import { decodeGoogleJwt, signInWithGoogleFirebase } from '../../lib/googleAuth';
+import { decodeGoogleJwt, signInWithGoogleUniversal } from '../../lib/googleAuth';
 import { BrandLogo } from '../common/BrandLogo';
 
 export const LoginPage: React.FC = () => {
@@ -169,16 +169,12 @@ export const LoginPage: React.FC = () => {
     setSuccessMsg('');
     setFormLoading(true);
     try {
-      const profile = await signInWithGoogleFirebase();
+      const profile = await signInWithGoogleUniversal();
       await processGoogleUser(profile.email, profile.name, profile.picture);
     } catch (err: any) {
       if (err?.code !== 'auth/popup-closed-by-user') {
         const errMsg = err?.message || String(err);
-        if (errMsg.includes('origin_mismatch') || errMsg.includes('unauthorized domain') || errMsg.includes('auth/unauthorized-domain')) {
-          setErrorMsg('Google OAuth Origin Mismatch: Please add https://uqlearn.org and your preview URL to Authorized JavaScript Origins in Google Cloud Console. Alternatively, sign in using Email or Email Code.');
-        } else {
-          setErrorMsg(err.message || 'Google Sign-In popup could not be completed. Try Email Sign-In below.');
-        }
+        setErrorMsg(errMsg || 'Google Sign-In popup could not be completed.');
       }
     } finally {
       setFormLoading(false);
