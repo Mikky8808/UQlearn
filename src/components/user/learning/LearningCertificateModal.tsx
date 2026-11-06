@@ -58,7 +58,7 @@ export const LearningCertificateModal: React.FC<LearningCertificateModalProps> =
     year: 'numeric'
   });
 
-  const CEO_NAME = courseConfig.ceoName || 'SIR, RAJAB WAMUU';
+  const CEO_NAME = courseConfig.ceoName || 'Sir, rajab wamuu';
   const CEO_TITLE = courseConfig.ceoTitle || 'CEO UQLEARN';
   const CEO_SIGNATURE_URL = liveCeoSignature || courseConfig.ceoSignature || cachedCeoSig || '';
   const INSTRUCTOR_NAME = (course.instructor || 'Michael Kenyanya').toUpperCase();
@@ -264,8 +264,8 @@ export const LearningCertificateModal: React.FC<LearningCertificateModalProps> =
 
       {/* Main Content Area */}
       {!isEligible ? (
-        <div className="text-center space-y-6 max-w-md bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800">
-          <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 mx-auto">
+        <div className="text-center space-y-6 max-w-md bg-white dark:bg-slate-900 p-8 rounded-none shadow-2xl border border-slate-300 dark:border-slate-700">
+          <div className="w-16 h-16 rounded-none bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 mx-auto border border-slate-200 dark:border-slate-700">
             <Lock className="w-8 h-8" />
           </div>
           <div className="space-y-2">
@@ -277,7 +277,7 @@ export const LearningCertificateModal: React.FC<LearningCertificateModalProps> =
           <button
             type="button"
             onClick={onClose}
-            className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-xl transition-all"
+            className="w-full py-3 bg-[#a435f0] hover:bg-[#8710d8] text-white text-sm font-bold rounded-none transition-colors"
           >
             Back to Course
           </button>
@@ -286,7 +286,7 @@ export const LearningCertificateModal: React.FC<LearningCertificateModalProps> =
         <div className="relative w-full max-w-2xl sm:max-w-3xl h-full flex flex-col items-center justify-center pb-20">
           {/* Header Title */}
           <div className="mb-4 text-center">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/20 text-purple-200 border border-purple-400/30 text-xs font-semibold">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-none bg-purple-500/20 text-purple-200 border border-purple-400/30 text-xs font-semibold">
               <Award className="w-3.5 h-3.5 text-purple-300" />
               <span>Official Certificate Preview</span>
             </span>
@@ -297,17 +297,17 @@ export const LearningCertificateModal: React.FC<LearningCertificateModalProps> =
             <UqlearnCertificateSvg
               data={certData}
               svgRef={svgRef}
-              className="max-w-full max-h-[58vh] w-auto h-auto block rounded-xl overflow-hidden shadow-2xl border border-white/20 transition-transform duration-500"
+              className="max-w-full max-h-[58vh] w-auto h-auto block rounded-none overflow-hidden shadow-2xl border border-white/20 transition-transform duration-500"
             />
           </div>
 
           {/* Floating Action Bar - Download PNG and PDF */}
-          <div className="fixed bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 sm:gap-4 p-2 sm:p-2.5 rounded-2xl bg-slate-900/90 border border-white/20 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[70] animate-slideUp">
+          <div className="fixed bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 sm:gap-4 p-2 sm:p-2.5 rounded-none bg-slate-900/95 border border-white/20 backdrop-blur-2xl shadow-2xl z-[70] animate-slideUp">
             <button
               type="button"
               onClick={handleDownloadPNG}
               disabled={downloadingPng}
-              className="px-5 sm:px-8 py-2.5 sm:py-3.5 rounded-xl bg-teal-600 hover:bg-teal-500 disabled:bg-slate-700 text-white text-xs sm:text-sm font-black transition-all flex items-center gap-2 shadow-lg cursor-pointer min-w-[150px] sm:min-w-[180px] justify-center"
+              className="px-5 sm:px-8 py-2.5 sm:py-3.5 rounded-none bg-teal-600 hover:bg-teal-500 disabled:bg-slate-700 text-white text-xs sm:text-sm font-bold transition-colors flex items-center gap-2 shadow-lg cursor-pointer min-w-[150px] sm:min-w-[180px] justify-center"
             >
               <Download className="w-4 h-4" />
               <span>{downloadingPng ? 'Processing...' : 'Download PNG'}</span>
@@ -317,7 +317,7 @@ export const LearningCertificateModal: React.FC<LearningCertificateModalProps> =
               type="button"
               onClick={handleDownloadPDF}
               disabled={downloadingPdf}
-              className="px-5 sm:px-8 py-2.5 sm:py-3.5 rounded-xl bg-purple-700 hover:bg-purple-600 disabled:bg-slate-700 text-white text-xs sm:text-sm font-black transition-all flex items-center gap-2 shadow-lg cursor-pointer min-w-[150px] sm:min-w-[180px] justify-center"
+              className="px-5 sm:px-8 py-2.5 sm:py-3.5 rounded-none bg-[#a435f0] hover:bg-[#8710d8] disabled:bg-slate-700 text-white text-xs sm:text-sm font-bold transition-colors flex items-center gap-2 shadow-lg cursor-pointer min-w-[150px] sm:min-w-[180px] justify-center"
             >
               <FileText className="w-4 h-4" />
               <span>{downloadingPdf ? 'Processing...' : 'Download PDF'}</span>

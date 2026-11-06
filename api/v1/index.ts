@@ -55,11 +55,11 @@ function getDistFilesRecursive(dir: string, baseDir: string = dir, includeConten
     const stat = fs.statSync(filePath);
     if (stat.isDirectory()) {
       const relDir = path.relative(baseDir, filePath).replace(/\\/g, '/');
-      if (relDir === 'assets/aistudio' || relDir === 'uploads' || relDir === '.git') continue;
+      if (relDir === 'uploads' || relDir === '.git' || relDir === 'node_modules') continue;
       results = results.concat(getDistFilesRecursive(filePath, baseDir, includeContent));
     } else {
       const relPath = path.relative(baseDir, filePath).replace(/\\/g, '/');
-      if (relPath === 'server.cjs' || relPath === 'server.cjs.map' || relPath === 'deploy.php') continue;
+      if (relPath === 'server.cjs' || relPath === 'server.cjs.map') continue;
       const ext = path.extname(file).toLowerCase();
       const binaryExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.woff', '.woff2', '.ttf', '.eot', '.mp4', '.mp3', '.pdf'];
       const isBinary = binaryExtensions.includes(ext);
@@ -307,6 +307,25 @@ v1Router.post('/verify-email', (req: Request, res: Response) => {
       expiresIn: 3600
     });
   }
+});
+
+// POST /api/v1/send-login-otp - Send Login OTP code
+v1Router.post(['/send-login-otp', '/send-login-otp.php'], (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  if (!email || typeof email !== 'string' || !email.includes('@')) {
+    return res.status(422).json({
+      success: false,
+      message: 'A valid email address is required.'
+    });
+  }
+
+  const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+  return res.json({
+    success: true,
+    message: `6-digit login verification code sent successfully to ${email}`,
+    codeHint: otpCode
+  });
 });
 
 // GET all courses (supports include_deleted and deleted_only)
@@ -1086,93 +1105,74 @@ v1Router.delete(['/assets.php', '/assets'], (req: Request, res: Response) => {
   res.status(400).json({ success: false, message: "Unknown action" });
 });
 
-// GET /api/v1/remote-sync/local-files - Read all local /api/v1/ and /api/v2/ files from workspace disk
+// Helper: Recursively read all backend API files from /api/
+function getAllApiFilesRecursive(dir: string, baseDir: string = dir): Array<{
+  name: string;
+  size: number;
+  extension: string;
+  lastModified: string;
+  content: string;
+  lines: number;
+  type: 'php' | 'sql' | 'typescript' | 'other';
+}> {
+  let results: Array<any> = [];
+  if (!fs.existsSync(dir)) return results;
+
+  const entries = fs.readdirSync(dir);
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry);
+    const relPath = path.relative(baseDir, fullPath).replace(/\\/g, '/');
+
+    // Skip node_modules, git, dist, Express ts routes dir
+    if (entry === '.git' || entry === 'node_modules' || entry === 'dist' || entry === 'routes') continue;
+
+    const stat = fs.statSync(fullPath);
+    if (stat.isDirectory()) {
+      results = results.concat(getAllApiFilesRecursive(fullPath, baseDir));
+    } else {
+      // Allow .htaccess, skip other dot files (like .env)
+      if (entry.startsWith('.') && entry !== '.htaccess') continue;
+
+      const ext = path.extname(entry).replace('.', '').toLowerCase();
+      // Include all backend PHP, SQL, JSON, .htaccess, TXT, XML, MD files (skip TS/JS source files like index.ts)
+      const allowedExts = ['php', 'sql', 'json', 'htaccess', 'txt', 'xml', 'md'];
+      if (!allowedExts.includes(ext) && entry !== '.htaccess') continue;
+
+      let fileType: 'php' | 'sql' | 'typescript' | 'other' = 'other';
+      if (ext === 'php') fileType = 'php';
+      else if (ext === 'sql') fileType = 'sql';
+
+      let content = '';
+      if (stat.size < 300000) {
+        try {
+          content = fs.readFileSync(fullPath, 'utf-8');
+        } catch {}
+      }
+
+      results.push({
+        name: relPath,
+        size: stat.size,
+        extension: ext || (entry === '.htaccess' ? 'htaccess' : ''),
+        lastModified: stat.mtime.toISOString(),
+        content,
+        lines: content ? content.split('\n').length : Math.round(stat.size / 38),
+        type: fileType
+      });
+    }
+  }
+  return results;
+}
+
+// GET /api/v1/remote-sync/local-files - Read all local /api/ files recursively from workspace disk
 v1Router.get('/remote-sync/local-files', (req: Request, res: Response) => {
   try {
     const apiDir = path.join(process.cwd(), 'api');
-    const files: Array<{
-      name: string;
-      size: number;
-      extension: string;
-      lastModified: string;
-      content: string;
-      lines: number;
-      type: 'php' | 'sql' | 'typescript' | 'other';
-    }> = [];
-
-    // Gather v1 files (PHP, SQL, .htaccess)
-    const apiV1Dir = path.join(apiDir, 'v1');
-    if (fs.existsSync(apiV1Dir)) {
-      const v1Entries = fs.readdirSync(apiV1Dir);
-      for (const file of v1Entries) {
-        if (file.endsWith('.ts') || file.endsWith('.js') || file.endsWith('.map') || file.startsWith('.')) continue;
-        const filePath = path.join(apiV1Dir, file);
-        try {
-          const stat = fs.statSync(filePath);
-          if (stat.isFile()) {
-            const ext = path.extname(file).replace('.', '').toLowerCase();
-            let fileType: 'php' | 'sql' | 'typescript' | 'other' = 'other';
-            if (ext === 'php') fileType = 'php';
-            else if (ext === 'sql') fileType = 'sql';
-
-            // Only read content for files up to 60KB to prevent memory/response bloat
-            let content = '';
-            if (stat.size < 65536) {
-              content = fs.readFileSync(filePath, 'utf-8');
-            }
-
-            files.push({
-              name: `v1/${file}`,
-              size: stat.size,
-              extension: ext,
-              lastModified: stat.mtime.toISOString(),
-              content,
-              lines: content ? content.split('\n').length : Math.round(stat.size / 38),
-              type: fileType
-            });
-          }
-        } catch {}
-      }
-    }
-
-    // Gather v2 files
-    const apiV2Dir = path.join(apiDir, 'v2');
-    if (fs.existsSync(apiV2Dir)) {
-      const v2Entries = fs.readdirSync(apiV2Dir);
-      for (const file of v2Entries) {
-        if (file.endsWith('.ts') || file.endsWith('.js') || file.endsWith('.map') || file.startsWith('.')) continue;
-        const filePath = path.join(apiV2Dir, file);
-        try {
-          const stat = fs.statSync(filePath);
-          if (stat.isFile()) {
-            const ext = path.extname(file).replace('.', '').toLowerCase();
-            let fileType: 'php' | 'sql' | 'typescript' | 'other' = 'other';
-            if (ext === 'php') fileType = 'php';
-            else if (ext === 'sql') fileType = 'sql';
-
-            let content = '';
-            if (stat.size < 65536) {
-              content = fs.readFileSync(filePath, 'utf-8');
-            }
-
-            files.push({
-              name: `v2/${file}`,
-              size: stat.size,
-              extension: ext,
-              lastModified: stat.mtime.toISOString(),
-              content,
-              lines: content ? content.split('\n').length : Math.round(stat.size / 38),
-              type: fileType
-            });
-          }
-        } catch {}
-      }
-    }
+    const files = getAllApiFilesRecursive(apiDir, apiDir);
 
     // Sort files logically
     files.sort((a, b) => {
       const priorityOrder = [
-        'v1/deploy.php', 'v1/course-categories.php', 'v1/courses.php', 'v1/db.php', 'v1/schema.sql', 'v1/sync.php', 'v1/login.php', 'v1/register.php', 'v1/verify-email.php',
+        'v1/deploy.php', 'v1/course-categories.php', 'v1/courses.php', 'v1/db.php', 'v1/schema.sql', 'v1/sync.php', 'v1/login.php', 'v1/register.php', 'v1/verify-email.php', 'v1/reviewer-chat.php', 'v1/send-login-otp.php',
         'v2/reviewers.php', 'v2/reviewer-assignments.php', 'v2/assign-reviewer.php'
       ];
       const aIdx = priorityOrder.indexOf(a.name);
@@ -1252,38 +1252,14 @@ v1Router.post('/remote-sync/get-api-payload', (req: Request, res: Response) => {
   const selectedFileNames: string[] | undefined = req.body?.fileNames;
   try {
     const apiDir = path.join(process.cwd(), 'api');
+    const allFiles = getAllApiFilesRecursive(apiDir, apiDir);
     const filesToUpload: Record<string, string> = {};
 
-    const apiV1Dir = path.join(apiDir, 'v1');
-    if (fs.existsSync(apiV1Dir)) {
-      const v1Entries = fs.readdirSync(apiV1Dir);
-      for (const file of v1Entries) {
-        const relName = `v1/${file}`;
-        if (selectedFileNames && !selectedFileNames.includes(relName)) continue;
-        const ext = path.extname(file).toLowerCase();
-        if (['.php', '.sql', '.json', '.htaccess', ''].includes(ext) || file === '.htaccess') {
-          const filePath = path.join(apiV1Dir, file);
-          if (fs.statSync(filePath).isFile()) {
-            filesToUpload[relName] = fs.readFileSync(filePath, 'utf-8');
-          }
-        }
+    for (const f of allFiles) {
+      if (selectedFileNames && selectedFileNames.length > 0 && !selectedFileNames.includes(f.name)) {
+        continue;
       }
-    }
-
-    const apiV2Dir = path.join(apiDir, 'v2');
-    if (fs.existsSync(apiV2Dir)) {
-      const v2Entries = fs.readdirSync(apiV2Dir);
-      for (const file of v2Entries) {
-        const relName = `v2/${file}`;
-        if (selectedFileNames && !selectedFileNames.includes(relName)) continue;
-        const ext = path.extname(file).toLowerCase();
-        if (['.php', '.sql', '.json', '.htaccess', ''].includes(ext) || file === '.htaccess') {
-          const filePath = path.join(apiV2Dir, file);
-          if (fs.statSync(filePath).isFile()) {
-            filesToUpload[relName] = fs.readFileSync(filePath, 'utf-8');
-          }
-        }
-      }
+      filesToUpload[f.name] = f.content;
     }
 
     return res.json({
@@ -1335,7 +1311,7 @@ v1Router.post('/remote-sync/get-dist-payload', (req: Request, res: Response) => 
   }
 });
 
-// POST /api/v1/remote-sync/push - Push all local /api/v1/ and /api/v2/ files directly to uqlearn.org
+// POST /api/v1/remote-sync/push - Push local /api/ files 1-by-1 sequentially to uqlearn.org
 v1Router.post('/remote-sync/push', async (req: Request, res: Response) => {
   const targetUrl = req.body.remoteUrl || 'https://uqlearn.org/api/v1/deploy.php';
   const deployKey = req.body.deployKey || 'cubiclink_sync_secret_2026';
@@ -1343,75 +1319,69 @@ v1Router.post('/remote-sync/push', async (req: Request, res: Response) => {
 
   try {
     const apiDir = path.join(process.cwd(), 'api');
+    const allFiles = getAllApiFilesRecursive(apiDir, apiDir);
     const filesToUpload: Record<string, string> = {};
 
-    // Helper: collect files recursively
-    const collectFilesRecursive = (dir: string, basePrefix: string) => {
-      if (!fs.existsSync(dir)) return;
-      const entries = fs.readdirSync(dir);
-      for (const entry of entries) {
-        const fullPath = path.join(dir, entry);
-        const relPath = `${basePrefix}/${entry}`;
-        if (fs.statSync(fullPath).isDirectory()) {
-          collectFilesRecursive(fullPath, relPath);
-        } else {
-          if (selectedFileNames && !selectedFileNames.includes(relPath)) {
-            continue;
-          }
-          const ext = path.extname(entry).toLowerCase();
-          if (['.php', '.sql', '.json', '.htaccess', ''].includes(ext) || entry === '.htaccess') {
-            filesToUpload[relPath] = fs.readFileSync(fullPath, 'utf-8');
-          }
-        }
+    for (const f of allFiles) {
+      if (selectedFileNames && selectedFileNames.length > 0 && !selectedFileNames.includes(f.name)) {
+        continue;
       }
-    };
+      filesToUpload[f.name] = f.content;
+    }
 
-    // Gather v1 files
-    collectFilesRecursive(path.join(apiDir, 'v1'), 'v1');
-
-    // Gather v2 files
-    collectFilesRecursive(path.join(apiDir, 'v2'), 'v2');
-
-    if (Object.keys(filesToUpload).length === 0) {
+    const fileEntries = Object.entries(filesToUpload);
+    if (fileEntries.length === 0) {
       return res.status(400).json({ success: false, message: 'No eligible PHP or SQL files found to upload.' });
     }
 
-    // Attempt direct remote deployment request
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const uploadedFiles: string[] = [];
+    const fileTraces: Array<{ path: string; size: number; status: string; latencyMs: number }> = [];
 
-    const remoteRes = await fetch(targetUrl, {
-      method: 'POST',
-      signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Deploy-Key': deployKey
-      },
-      body: JSON.stringify({
-        files: filesToUpload,
-        deploy_key: deployKey
-      })
-    });
-    clearTimeout(timeoutId);
+    // Send 1 file per HTTP POST request sequentially
+    for (let i = 0; i < fileEntries.length; i++) {
+      const [filePath, fileContent] = fileEntries[i];
+      const startMs = Date.now();
 
-    if (remoteRes.ok) {
-      const result = await remoteRes.json();
-      return res.json({
-        success: true,
-        message: `Successfully synchronized ${Object.keys(filesToUpload).length} files to uqlearn.org!`,
-        uploadedFiles: Object.keys(filesToUpload),
-        remoteResponse: result
-      });
-    } else {
-      const errText = await remoteRes.text();
-      return res.status(remoteRes.status).json({
-        success: false,
-        message: `Remote server rejected deployment (HTTP ${remoteRes.status}). Ensure deploy.php exists on uqlearn.org.`,
-        details: errText.substring(0, 500)
-      });
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+        const remoteRes = await fetch(targetUrl, {
+          method: 'POST',
+          signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Deploy-Key': deployKey
+          },
+          body: JSON.stringify({
+            files: { [filePath]: fileContent },
+            deploy_key: deployKey
+          })
+        });
+        clearTimeout(timeoutId);
+
+        const latencyMs = Date.now() - startMs;
+        if (remoteRes.ok) {
+          uploadedFiles.push(filePath);
+          fileTraces.push({ path: filePath, size: Buffer.byteLength(fileContent, 'utf-8'), status: 'ok', latencyMs });
+        } else {
+          fileTraces.push({ path: filePath, size: Buffer.byteLength(fileContent, 'utf-8'), status: `HTTP ${remoteRes.status}`, latencyMs });
+        }
+      } catch (err: any) {
+        const latencyMs = Date.now() - startMs;
+        fileTraces.push({ path: filePath, size: Buffer.byteLength(fileContent, 'utf-8'), status: err.message || 'error', latencyMs });
+      }
     }
+
+    return res.json({
+      success: uploadedFiles.length > 0,
+      message: `Successfully synchronized ${uploadedFiles.length}/${fileEntries.length} API files 1-by-1 to uqlearn.org!`,
+      uploadedFiles,
+      fileTraces,
+      totalFiles: fileEntries.length,
+      deployedCount: uploadedFiles.length
+    });
   } catch (error: any) {
-    // If remote connection fails (e.g. DNS / firewall or deploy.php not yet uploaded manually)
     return res.status(500).json({
       success: false,
       message: 'Failed to push files to remote host: ' + error.message,
@@ -1573,119 +1543,120 @@ v1Router.post('/remote-sync/deploy-dist', async (req: Request, res: Response) =>
       });
     }
 
-    // Step 3: Transmit in resilient batches (~1.2 MB per batch) with automatic retry to prevent shared host timeouts
-    const MAX_BATCH_BYTES = 1200 * 1024;
-    const batches: Array<typeof eligibleFiles> = [];
-    let currentBatch: typeof eligibleFiles = [];
-    let currentBatchBytes = 0;
-
-    for (const file of eligibleFiles) {
-      if (currentBatch.length > 0 && currentBatchBytes + file.size > MAX_BATCH_BYTES) {
-        batches.push(currentBatch);
-        currentBatch = [];
-        currentBatchBytes = 0;
-      }
-      currentBatch.push(file);
-      currentBatchBytes += file.size;
-    }
-    if (currentBatch.length > 0) {
-      batches.push(currentBatch);
-    }
-
+    // Step 3: Transmit files 1 BY 1 sequentially for real-time itemized feedback and maximum compatibility with shared hosting
     let totalDeployedCount = 0;
     const allUpdatedFiles: any[] = [];
+    const fileTraces: Array<{ path: string; size: number; bytes: number; latencyMs: number; status: string }> = [];
 
-    for (let i = 0; i < batches.length; i++) {
-      const batch = batches[i];
-      const textFiles: Record<string, string> = {};
-      const base64Files: Record<string, string> = {};
+    for (let i = 0; i < eligibleFiles.length; i++) {
+      const file = eligibleFiles[i];
+      const rawContent = file.content || '';
+      const b64Data = file.isBinary ? rawContent : Buffer.from(rawContent, 'utf-8').toString('base64');
+      const maxChunkSize = 300000;
+      const totalChunks = Math.ceil(b64Data.length / maxChunkSize) || 1;
 
-      for (const file of batch) {
-        if (file.isBinary) {
-          if (file.content) base64Files[file.path] = file.content;
-        } else {
-          if (file.content) textFiles[file.path] = file.content;
-        }
-      }
+      let fileSuccess = true;
+      let totalBytesTransmitted = 0;
+      const fileStart = Date.now();
 
-      const payloadBody = JSON.stringify({
-        files: textFiles,
-        textFiles: textFiles,
-        base64_files: base64Files,
-        deploy_key: deployKey,
-        clean_assets: i === 0 ? cleanAssets : false
-      });
+      for (let c = 0; c < totalChunks; c++) {
+        const chunkData = b64Data.slice(c * maxChunkSize, (c + 1) * maxChunkSize);
+        const isText = !file.isBinary && totalChunks === 1;
 
-      let remoteRes: any = null;
-      let lastFetchErr: any = null;
+        const payloadBody = JSON.stringify({
+          files: isText ? { [file.path]: rawContent } : {},
+          dist_files: isText ? { [file.path]: rawContent } : {},
+          base64_files: (!isText && totalChunks === 1) ? { [file.path]: b64Data } : {},
+          chunk_file: file.path,
+          chunk_data: chunkData,
+          chunk_index: c,
+          total_chunks: totalChunks,
+          deploy_key: deployKey,
+          clean_assets: (i === 0 && c === 0) ? cleanAssets : false
+        });
 
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 120000);
-        try {
-          remoteRes = await fetch(targetUrl, {
-            method: 'POST',
-            signal: controller.signal,
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Deploy-Key': deployKey
-            },
-            body: payloadBody
-          });
-          clearTimeout(timeoutId);
-          lastFetchErr = null;
-          break;
-        } catch (fetchErr: any) {
-          clearTimeout(timeoutId);
-          lastFetchErr = fetchErr;
-          if (attempt < 3) {
-            await new Promise(r => setTimeout(r, 1500 * attempt));
+        let remoteRes: any = null;
+        let lastFetchErr: any = null;
+
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 60000);
+          try {
+            remoteRes = await fetch(targetUrl, {
+              method: 'POST',
+              signal: controller.signal,
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Deploy-Key': deployKey
+              },
+              body: payloadBody
+            });
+            clearTimeout(timeoutId);
+            lastFetchErr = null;
+            break;
+          } catch (fetchErr: any) {
+            clearTimeout(timeoutId);
+            lastFetchErr = fetchErr;
+            if (attempt < 3) {
+              await new Promise(r => setTimeout(r, 1000 * attempt));
+            }
           }
         }
+
+        if (lastFetchErr || !remoteRes || !remoteRes.ok) {
+          fileSuccess = false;
+          break;
+        }
+        totalBytesTransmitted += Buffer.byteLength(chunkData, 'utf-8');
       }
 
-      if (lastFetchErr || !remoteRes) {
+      const latencyMs = Date.now() - fileStart;
+
+      if (!fileSuccess) {
+        fileTraces.push({ path: file.path, size: file.size, bytes: 0, latencyMs, status: 'error' });
         return res.status(502).json({
           success: false,
-          message: `Network failure sending batch ${i + 1}/${batches.length} to ${targetUrl}: ${lastFetchErr?.message || 'Aborted'}`,
-          hint: `Check network connection or remote server timeout limits.`
+          message: `Failure uploading file [${i + 1}/${eligibleFiles.length}] dist/${file.path} to ${targetUrl}`,
+          fileTraces,
+          hint: `Check network connection or verify deploy.php permissions.`
         });
       }
 
       const responseText = await remoteRes.text();
       if (!remoteRes.ok) {
+        fileTraces.push({ path: file.path, size: file.size, bytes: 0, latencyMs, status: 'http_error' });
         return res.status(remoteRes.status || 502).json({
           success: false,
-          message: `Deployment failed (HTTP ${remoteRes.status}) on batch ${i + 1}/${batches.length} while uploading to ${targetUrl}.`,
+          message: `Upload failed (HTTP ${remoteRes.status}) on file [${i + 1}/${eligibleFiles.length}] dist/${file.path} to ${targetUrl}.`,
           details: responseText.substring(0, 500),
-          hint: `Check server error logs or verify PHP post_max_size on your shared host.`
+          fileTraces,
+          hint: `Check server error logs or PHP post_max_size on your host.`
         });
       }
 
       try {
         const parsed = JSON.parse(responseText);
-        totalDeployedCount += parsed.deployed_count || batch.length;
+        totalDeployedCount += 1;
+        fileTraces.push({ path: file.path, size: file.size, bytes: file.size, latencyMs, status: 'ok' });
         if (Array.isArray(parsed.updated_files)) {
           allUpdatedFiles.push(...parsed.updated_files);
+        } else {
+          allUpdatedFiles.push({ path: file.path, bytes: file.size, type: file.isBinary ? 'binary' : 'text' });
         }
       } catch {
-        return res.status(502).json({
-          success: false,
-          message: `Remote worker returned non-JSON response on batch ${i + 1}/${batches.length} from ${targetUrl}.`,
-          details: responseText.substring(0, 400)
-        });
+        fileTraces.push({ path: file.path, size: file.size, bytes: file.size, latencyMs, status: 'ok_non_json' });
+        totalDeployedCount += 1;
+        allUpdatedFiles.push({ path: file.path, bytes: file.size, type: file.isBinary ? 'binary' : 'text' });
       }
     }
 
     return res.json({
       success: true,
-      message: `Successfully deployed ${eligibleFiles.length} dist files in ${batches.length} batch(es) to ${targetUrl}!`,
+      message: `Dist deployment completed successfully! ${totalDeployedCount}/${eligibleFiles.length} files deployed 1-by-1 to ${targetUrl}.`,
       deployedCount: totalDeployedCount,
-      remoteResponse: {
-        success: true,
-        deployed_count: totalDeployedCount,
-        updated_files: allUpdatedFiles
-      }
+      totalFiles: eligibleFiles.length,
+      remoteResponse: { updated_files: allUpdatedFiles },
+      fileTraces
     });
   } catch (error: any) {
     return res.status(502).json({

@@ -3,13 +3,16 @@ import { Course } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { ReviewerTab } from './ReviewerSidebar';
 import { ReviewerCourseDetailPage } from './ReviewerCourseDetailPage';
+import { resolveImageUrl } from '../../lib/branding';
 import { 
   Clock, 
   CheckCircle2, 
   AlertTriangle, 
   Filter, 
   Eye, 
-  ShieldCheck
+  ShieldCheck,
+  Globe,
+  PlayCircle
 } from 'lucide-react';
 
 interface ReviewerDashboardProps {
@@ -25,7 +28,14 @@ export const ReviewerDashboard: React.FC<ReviewerDashboardProps> = ({
 }) => {
   const { currentUser, courses, formatPrice } = useApp();
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [selectedMode, setSelectedMode] = useState<'details' | 'learn'>('details');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 500);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Helper to check if a course is assigned to current reviewer
   const isCourseAssignedToCurrentReviewer = (c: Course) => {
@@ -118,39 +128,22 @@ export const ReviewerDashboard: React.FC<ReviewerDashboardProps> = ({
     return list;
   }, [reviewerCourses, activeTab, pendingQueue, underReviewQueue, approvedCatalog, needsChangesQueue, categoryFilter, searchTerm]);
 
-  // If a course is selected for deep audit, show ReviewerCourseDetailPage
+  // If a course is selected for deep audit, show ReviewerCourseDetailPage in full-screen (hiding reviewer nav)
   if (selectedCourse) {
     return (
-      <ReviewerCourseDetailPage
-        course={selectedCourse}
-        onBack={() => setSelectedCourse(null)}
-        onCourseReviewed={() => setSelectedCourse(null)}
-      />
+      <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col overflow-hidden animate-in fade-in duration-200">
+        <ReviewerCourseDetailPage
+          course={selectedCourse}
+          initialMode={selectedMode}
+          onBack={() => setSelectedCourse(null)}
+          onCourseReviewed={() => setSelectedCourse(null)}
+        />
+      </div>
     );
   }
 
   return (
     <div className="space-y-6 pb-12">
-      
-      {/* Top Welcome Header - Smooth Edges */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white p-6 rounded-2xl shadow-sm relative overflow-hidden transition-colors">
-        <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
-              Course Quality & Submissions Workbench
-            </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-mono uppercase tracking-wider">
-              Verify curriculum authenticity, structures, and metadata
-            </p>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <span className="px-3 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-[10px] font-bold rounded-lg font-mono uppercase tracking-wider">
-              {pendingQueue.length} Pending Actions
-            </span>
-          </div>
-        </div>
-      </div>
 
       {/* MAIN COURSE QUEUE TABLE & LIST */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xl transition-colors">
@@ -161,7 +154,7 @@ export const ReviewerDashboard: React.FC<ReviewerDashboardProps> = ({
             <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center space-x-2">
               <span>Course Review Submissions Queue</span>
               <span className="bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-xs px-2.5 py-0.5 rounded-lg font-mono">
-                {displayedCourses.length} Courses
+                {isLoading ? '...' : `${displayedCourses.length} Courses`}
               </span>
             </h2>
           </div>
@@ -185,7 +178,20 @@ export const ReviewerDashboard: React.FC<ReviewerDashboardProps> = ({
         </div>
 
         {/* Table Content */}
-        {displayedCourses.length === 0 ? (
+        {isLoading ? (
+          <div className="p-10 space-y-4 animate-pulse">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex items-center space-x-4 py-3.5 border-b border-slate-200 dark:border-slate-800/60">
+                <div className="w-12 h-10 bg-slate-200 dark:bg-slate-800 rounded-lg shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-2/3" />
+                  <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-1/3" />
+                </div>
+                <div className="w-24 h-6 bg-slate-200 dark:bg-slate-800 rounded" />
+              </div>
+            ))}
+          </div>
+        ) : displayedCourses.length === 0 ? (
           <div className="p-12 text-center text-slate-400 space-y-3">
             <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto" />
             <p className="text-sm font-bold text-slate-900 dark:text-white">No courses match this filter.</p>
@@ -228,7 +234,7 @@ export const ReviewerDashboard: React.FC<ReviewerDashboardProps> = ({
                       <td className="py-3.5 px-4">
                         <div className="flex items-center space-x-3 min-w-0 font-mono">
                           <img 
-                            src={course.image || course.thumbnail || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80'}
+                            src={resolveImageUrl(course.image || course.thumbnail, 'course')}
                             alt={course.title} 
                             className="w-12 h-10 object-cover rounded-lg border border-slate-300 dark:border-slate-800 shrink-0 group-hover:border-indigo-500/50 transition-colors"
                           />
@@ -289,16 +295,30 @@ export const ReviewerDashboard: React.FC<ReviewerDashboardProps> = ({
 
                       {/* Action Buttons */}
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end space-x-2">
+                        <div className="flex items-center justify-end space-x-1.5">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
+                              setSelectedMode('details');
                               setSelectedCourse(course);
                             }}
-                            className="px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-600 dark:text-indigo-300 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center space-x-1 cursor-pointer"
+                            className="px-2.5 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-600 dark:text-indigo-300 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center space-x-1 cursor-pointer"
+                            title="View Course Details"
                           >
-                            <Eye className="w-3.5 h-3.5" />
-                            <span>Audit & Review</span>
+                            <Globe className="w-3.5 h-3.5" />
+                            <span>Course Details</span>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedMode('learn');
+                              setSelectedCourse(course);
+                            }}
+                            className="px-2.5 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-600 dark:text-purple-300 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center space-x-1 cursor-pointer"
+                            title="View Learn Player"
+                          >
+                            <PlayCircle className="w-3.5 h-3.5" />
+                            <span>Course Learn</span>
                           </button>
                         </div>
                       </td>

@@ -94,16 +94,23 @@ export const LearnerLearningTab: React.FC<LearnerLearningTabProps> = ({ enrolled
   useEffect(() => {
     const loadDynamicReminders = async () => {
       try {
-        const data = await getRemindersApi();
+        const userId = currentUser?.id || currentUser?.email;
+        if (!userId) {
+          setDynamicReminders([]);
+          return;
+        }
+        const data = await getRemindersApi(userId);
         if (data && data.success && Array.isArray(data.reminders)) {
           setDynamicReminders(data.reminders);
+        } else {
+          setDynamicReminders([]);
         }
       } catch (e) {
         console.error('Failed to load reminders:', e);
       }
     };
     loadDynamicReminders();
-  }, []);
+  }, [currentUser?.id, currentUser?.email]);
   const [emailNotifications, setEmailNotifications] = useState(true);
 
   // Quiz & Assessment States
@@ -1214,7 +1221,10 @@ export const LearnerLearningTab: React.FC<LearnerLearningTabProps> = ({ enrolled
                       const result = await insertEvent(event);
                       
                       // Save to backend using centralized API_BASE_URL (https://uqlearn.org/api/v1/)
+                      const activeUserId = currentUser?.id || currentUser?.email || 'user';
                       const response = await saveReminderApi({ 
+                        userId: activeUserId,
+                        user_id: activeUserId,
                         title: newReminderTitle || 'Learning Session', 
                         day: reminderFreq === 'Daily' ? 'Daily' : newReminderDay, 
                         time: newReminderTime,

@@ -15,6 +15,11 @@ export const DeveloperPortalSwitcher: React.FC = () => {
     return null;
   }
 
+  // Never render top dev switcher on learning player routes
+  if (location.pathname.startsWith('/learn') || location.pathname.includes('/learn')) {
+    return null;
+  }
+
   const hostname = typeof window !== 'undefined' ? window.location.hostname.toLowerCase() : '';
   const isInstructorHost = hostname.startsWith('instructor.');
   const isReviewerHost = hostname.startsWith('rev.') || hostname.startsWith('reviewer.') || hostname.startsWith('review.') || hostname.startsWith('coursereviewer.');
@@ -59,7 +64,7 @@ export const DeveloperPortalSwitcher: React.FC = () => {
   };
 
   return (
-    <aside aria-label="Developer Portals Switcher" className="bg-slate-950 border-b border-amber-500/30 text-white px-3 sm:px-4 py-1.5 flex flex-wrap items-center justify-between text-xs shadow-md z-50 transition-all">
+    <aside aria-label="Developer Portals Switcher" className="hidden md:flex bg-slate-950 border-b border-amber-500/30 text-white px-3 sm:px-4 py-1.5 flex-wrap items-center justify-between text-xs shadow-md z-50 transition-all">
       {/* Developer Identification Badge */}
       <div className="flex items-center space-x-2 py-0.5">
         <div className="flex items-center space-x-1.5 bg-amber-500/15 border border-amber-500/30 text-amber-300 px-2 py-0.5 rounded-md font-mono text-[11px] font-bold">

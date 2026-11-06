@@ -11,11 +11,20 @@ import {
   Sparkles,
   Award,
   CheckCircle2,
-  Share2
+  Share2,
+  Search,
+  SidebarOpen
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Lesson, Module, Course } from '../../types';
-import { fetchCourseModulesApi, normalizeCourse, fetchCoursesApi } from '../../lib/apiConfig';
+import { 
+  fetchCourseModulesApi, 
+  normalizeCourse, 
+  fetchCoursesApi,
+  getIntendedLearnersApi,
+  getCourseLearnersApi,
+  getCourseRatingsApi
+} from '../../lib/apiConfig';
 import { progressTrackingService } from '../../services/progress-tracking-service';
 import { studentProgressService } from '../../services/student-progress-service';
 import { markCourseCompletedApi } from '../../services/certificateService';
@@ -28,6 +37,9 @@ import { LearningOverviewTab } from './learning/LearningOverviewTab';
 import { LearningNotesTab } from './learning/LearningNotesTab';
 import { LearningQnATab } from './learning/LearningQnATab';
 import { LearningResourcesTab } from './learning/LearningResourcesTab';
+import { LearningAnnouncementsTab } from './learning/LearningAnnouncementsTab';
+import { LearningReviewsTab } from './learning/LearningReviewsTab';
+import { LearningToolsTab } from './learning/LearningToolsTab';
 import { LearningCertificateModal } from './learning/LearningCertificateModal';
 import { LearningShortcutsModal } from './learning/LearningShortcutsModal';
 import { CourseRatingModal } from './learning/CourseRatingModal';
@@ -96,15 +108,105 @@ const getInitialModulesForCourse = (courseId: string, courseTitle?: string): Mod
   }
 ];
 
-export const LearningPlayer: React.FC = () => {
-  const { courseId } = useParams<{ courseId: string }>();
+const LearningPlayerSkeleton: React.FC = () => {
+  return (
+    <div className="min-h-screen bg-[#1c1d1f] text-white font-sans animate-pulse flex flex-col">
+      {/* Top Header Skeleton */}
+      <div className="h-14 border-b border-slate-800 px-5 flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <div className="w-8 h-8 rounded-full bg-slate-800" />
+          <div className="h-4 w-48 bg-slate-800 rounded" />
+        </div>
+        <div className="flex items-center space-x-4">
+          <div className="h-8 w-24 bg-slate-800 rounded" />
+          <div className="h-8 w-8 rounded bg-slate-800" />
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 min-h-[calc(100vh-3.5rem)]">
+        {/* Left Video + Tab Content */}
+        <div className="lg:col-span-8 xl:col-span-9 flex flex-col bg-[#0f1012]">
+          {/* Video Player Skeleton */}
+          <div className="w-full aspect-video bg-slate-900 flex items-center justify-center">
+            <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center">
+              <div className="w-8 h-8 rounded bg-slate-700" />
+            </div>
+          </div>
+          {/* Lesson Nav Bar Skeleton */}
+          <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+            <div className="space-y-2">
+              <div className="h-3 w-20 bg-slate-800 rounded" />
+              <div className="h-5 w-64 bg-slate-800 rounded" />
+            </div>
+            <div className="flex space-x-3">
+              <div className="h-9 w-24 bg-slate-800 rounded" />
+              <div className="h-9 w-24 bg-slate-800 rounded" />
+            </div>
+          </div>
+          {/* Tabs & Overview Skeleton */}
+          <div className="p-6 space-y-6">
+            <div className="flex space-x-6 border-b border-slate-800 pb-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="h-4 w-20 bg-slate-800 rounded" />
+              ))}
+            </div>
+            <div className="space-y-4 pt-4">
+              <div className="h-7 w-3/4 bg-slate-800 rounded" />
+              <div className="h-4 w-1/2 bg-slate-800 rounded" />
+              <div className="space-y-2 pt-4">
+                <div className="h-4 w-full bg-slate-800 rounded" />
+                <div className="h-4 w-11/12 bg-slate-800 rounded" />
+                <div className="h-4 w-4/5 bg-slate-800 rounded" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Sidebar Curriculum Skeleton */}
+        <div className="lg:col-span-4 xl:col-span-3 border-l border-slate-800 bg-[#1c1d1f] flex flex-col">
+          <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+            <div className="h-5 w-32 bg-slate-800 rounded" />
+            <div className="h-4 w-12 bg-slate-800 rounded" />
+          </div>
+          <div className="divide-y divide-slate-800 flex-1">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="h-4 w-3/4 bg-slate-800 rounded" />
+                  <div className="h-3 w-10 bg-slate-800 rounded" />
+                </div>
+                <div className="space-y-2 pl-4">
+                  <div className="h-3 w-5/6 bg-slate-800/80 rounded" />
+                  <div className="h-3 w-4/5 bg-slate-800/80 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const LearningPlayer: React.FC<{ courseProp?: Course; onClosePreview?: () => void }> = ({ courseProp, onClosePreview }) => {
+  const { courseId: routeCourseId } = useParams<{ courseId: string }>();
+  const courseId = courseProp?.id || routeCourseId;
   const navigate = useNavigate();
   const { courses, enrolledCourses, setCourses, currentUser, darkMode, toggleDarkMode } = useApp();
   const userId = currentUser?.id || 'guest_learner';
   const userName = currentUser?.name || 'Learner';
+  const [isLoading, setIsLoading] = useState<boolean>(!courseProp);
 
   // State: Local course object
   const [course, setLocalCourse] = useState<Course | undefined>(() => {
+    if (courseProp) {
+      const hasModules = courseProp.modules && courseProp.modules.length > 0 && courseProp.modules.some(m => m.lessons && m.lessons.length > 0);
+      return {
+        ...courseProp,
+        modules: hasModules ? courseProp.modules : getInitialModulesForCourse(courseProp.id, courseProp.title)
+      };
+    }
     const found = enrolledCourses.find(c => c.id === courseId) || courses.find(c => c.id === courseId);
     if (found) {
       const hasModules = found.modules && found.modules.length > 0 && found.modules.some(m => m.lessons && m.lessons.length > 0);
@@ -181,30 +283,107 @@ export const LearningPlayer: React.FC = () => {
     initCourse();
   }, [courseId, enrolledCourses, courses]);
 
-  // Fetch full modules/lessons if missing
+  // Real learners, rating, and review count state mirroring backend API
+  const [realLearnersCount, setRealLearnersCount] = useState<number | null>(null);
+  const [realRating, setRealRating] = useState<number | null>(null);
+  const [realReviewCount, setRealReviewCount] = useState<number | null>(null);
+
+  // Fetch full modules/lessons, intended learners, learners count, and reviews in parallel matching CourseDetailPage
   useEffect(() => {
+    let isMounted = true;
     async function loadFullCourse() {
       if (!courseId) return;
       try {
-        const modulesData = await fetchCourseModulesApi(courseId);
-        if (modulesData && modulesData.length > 0) {
-          setLocalCourse(prev => {
-            if (!prev) return prev;
-            return normalizeCourse({ ...prev, modules: modulesData });
-          });
-          setCourses(prev => {
-            const exists = prev.some(c => c.id === courseId);
-            if (exists) {
-              return prev.map(c => c.id === courseId ? { ...c, modules: modulesData } : c);
+        await Promise.allSettled([
+          fetchCourseModulesApi(courseId).then(res => {
+            if (!isMounted) return;
+            const modulesData = Array.isArray(res) ? res : (res && Array.isArray((res as any).data) ? (res as any).data : null);
+            if (modulesData && modulesData.length > 0) {
+              setLocalCourse(prev => {
+                if (!prev) return prev;
+                return normalizeCourse({ ...prev, modules: modulesData });
+              });
+              setCourses(prev => {
+                const exists = prev.some(c => c.id === courseId);
+                if (exists) {
+                  return prev.map(c => c.id === courseId ? { ...c, modules: modulesData } : c);
+                }
+                return prev;
+              });
             }
-            return prev;
-          });
-        }
+          }),
+          getIntendedLearnersApi(courseId).then(res => {
+            if (!isMounted) return;
+            const data = (res && res.data) ? res.data : null;
+            if (data) {
+              const objectives = data.learning_objectives || data.learningObjectives || [];
+              const reqs = data.requirements || [];
+              if ((Array.isArray(objectives) && objectives.length > 0) || (Array.isArray(reqs) && reqs.length > 0)) {
+                setLocalCourse(prev => {
+                  if (!prev) return prev;
+                  return { 
+                    ...prev, 
+                    learningObjectives: Array.isArray(objectives) && objectives.length > 0 ? objectives : prev.learningObjectives, 
+                    requirements: Array.isArray(reqs) && reqs.length > 0 ? reqs : prev.requirements,
+                    whatYouWillLearn: Array.isArray(objectives) && objectives.length > 0 ? objectives : (prev.whatYouWillLearn || objectives)
+                  };
+                });
+                setCourses(prev => prev.map(c => c.id === courseId ? { 
+                  ...c, 
+                  learningObjectives: Array.isArray(objectives) && objectives.length > 0 ? objectives : c.learningObjectives, 
+                  requirements: Array.isArray(reqs) && reqs.length > 0 ? reqs : c.requirements,
+                  whatYouWillLearn: Array.isArray(objectives) && objectives.length > 0 ? objectives : (c.whatYouWillLearn || objectives)
+                } : c));
+              }
+            }
+          }),
+          getCourseLearnersApi(courseId).then(res => {
+            if (!isMounted) return;
+            const count = typeof res?.data?.learners === 'number' 
+              ? res.data.learners 
+              : typeof res?.learners === 'number' 
+              ? res.learners 
+              : typeof res?.count === 'number' 
+              ? res.count 
+              : null;
+            if (count !== null) {
+              setRealLearnersCount(count);
+              setLocalCourse(prev => {
+                if (!prev) return prev;
+                return { ...prev, learnersEnrolled: count, learners_enrolled: count, students_enrolled: count } as any;
+              });
+              setCourses(prev => prev.map(c => c.id === courseId ? { 
+                ...c, 
+                learnersEnrolled: count, 
+                learners_enrolled: count, 
+                students_enrolled: count 
+              } : c));
+            }
+          }),
+          getCourseRatingsApi(courseId).then(res => {
+            if (!isMounted) return;
+            const ratingList = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+            if (ratingList.length > 0) {
+              const sum = ratingList.reduce((acc: number, curr: any) => acc + (Number(curr.rating) || 0), 0);
+              const avg = Number((sum / ratingList.length).toFixed(1));
+              const count = ratingList.length;
+              setRealRating(avg);
+              setRealReviewCount(count);
+              setLocalCourse(prev => prev ? ({ ...prev, rating: avg, reviewCount: count }) : prev);
+              setCourses(prev => prev.map(c => c.id === courseId ? { ...c, rating: avg, reviewCount: count } : c));
+            } else {
+              setRealReviewCount(0);
+            }
+          })
+        ]);
       } catch (err) {
-        console.error("Failed to fetch modules", err);
+        console.error("Failed to load full course learning data", err);
+      } finally {
+        if (isMounted) setIsLoading(false);
       }
     }
     loadFullCourse();
+    return () => { isMounted = false; };
   }, [courseId, setCourses]);
 
   const effectiveModules: Module[] = useMemo(() => {
@@ -220,16 +399,16 @@ export const LearningPlayer: React.FC = () => {
 
   // Player & UI States
   const [searchParams] = useSearchParams();
-  const initialTab = searchParams.get('tab') as 'overview' | 'curriculum' | 'notes' | 'qna' | 'resources';
+  const initialTab = searchParams.get('tab') as 'overview' | 'qna' | 'notes' | 'announcements' | 'reviews' | 'tools' | 'curriculum';
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
   const [completedLessons, setCompletedLessons] = useState<Record<string, boolean>>({});
-  const [activeTab, setActiveTab] = useState<'overview' | 'curriculum' | 'notes' | 'qna' | 'resources'>(
-    initialTab && ['overview', 'curriculum', 'notes', 'qna', 'resources'].includes(initialTab) ? initialTab : 'overview'
+  const [activeTab, setActiveTab] = useState<'overview' | 'qna' | 'notes' | 'announcements' | 'reviews' | 'tools' | 'curriculum'>(
+    initialTab && ['overview', 'qna', 'notes', 'announcements', 'reviews', 'tools', 'curriculum'].includes(initialTab) ? initialTab : 'overview'
   );
 
   useEffect(() => {
-    const t = searchParams.get('tab') as 'overview' | 'curriculum' | 'notes' | 'qna' | 'resources';
-    if (t && ['overview', 'curriculum', 'notes', 'qna', 'resources'].includes(t)) {
+    const t = searchParams.get('tab') as 'overview' | 'qna' | 'notes' | 'announcements' | 'reviews' | 'tools' | 'curriculum';
+    if (t && ['overview', 'qna', 'notes', 'announcements', 'reviews', 'tools', 'curriculum'].includes(t)) {
       setActiveTab(t);
     }
   }, [searchParams]);
@@ -544,23 +723,13 @@ export const LearningPlayer: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [hasNextLesson, hasPrevLesson, currentLessonIndex]);
 
-  // Loading state
-  if (allLessons.length === 0 || !course) {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white flex flex-col items-center justify-center p-6 text-center space-y-4 transition-colors">
-        <div className="w-12 h-12 rounded-2xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-600 dark:text-teal-400">
-          <RefreshCw className="w-6 h-6 animate-spin" />
-        </div>
-        <div className="space-y-1">
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white">Loading Course Materials</h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Setting up the interactive player environment...</p>
-        </div>
-      </div>
-    );
+  // Loading state with animated skeleton
+  if (isLoading || allLessons.length === 0 || !course) {
+    return <LearningPlayerSkeleton />;
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col antialiased selection:bg-teal-500 selection:text-white transition-colors">
+    <div className="min-h-screen bg-white dark:bg-[#141517] text-slate-900 dark:text-slate-100 flex flex-col antialiased selection:bg-purple-500 selection:text-white transition-colors">
       {/* Top Header */}
       <LearningHeader
         course={course}
@@ -572,48 +741,45 @@ export const LearningPlayer: React.FC = () => {
         isTheaterMode={isTheaterMode}
         onToggleTheaterMode={handleToggleTheaterMode}
         onOpenMobileCurriculum={() => setIsMobileCurriculumOpen(true)}
-        onOpenCertificate={() => {
-          const hasAlreadyRated = Boolean(localStorage.getItem(`uqlearn_course_rating_${course?.id}`));
-          if (!hasAlreadyRated && progressPercentage >= 100) {
-            setIsRatingModalOpen(true);
-          } else {
-            setIsCertificateModalOpen(true);
-          }
-        }}
+        onOpenRating={() => setIsRatingModalOpen(true)}
         onOpenShortcuts={() => setIsShortcutsModalOpen(true)}
         darkMode={darkMode}
         onToggleDarkMode={toggleDarkMode}
       />
 
-      {/* Main Container */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+      {/* Main Container: allows natural page scroll while sticky sidebar stays pinned */}
+      <div className="flex-1 flex flex-col lg:flex-row items-start w-full relative bg-white dark:bg-[#141517]">
         {/* Main Content Area (Video Player, Nav, & Tab Content) */}
-        <div className={`flex-1 flex flex-col overflow-y-auto transition-all duration-300 ${
+        <div className={`flex-1 min-w-0 w-full transition-all duration-300 bg-white dark:bg-[#141517] ${
           isTheaterMode ? 'w-full' : ''
         }`}>
-          {/* Video Section Container */}
-          <div className="w-full max-w-6xl mx-auto p-0 sm:p-4 md:p-6 lg:p-8 space-y-4 sm:space-y-6">
-            {/* Video Player */}
-            <LearningVideoPlayer
-              currentLesson={currentLesson}
-              course={course}
-              videoRef={videoRef}
-              playbackSpeed={playbackSpeed}
-              onSpeedChange={setPlaybackSpeed}
-              showResumeBanner={showResumeBanner}
-              resumeTime={resumeTime}
-              onResumePlayback={handleResumePlayback}
-              onDismissResume={() => setShowResumeBanner(false)}
-              onTimeUpdate={handleTimeUpdate}
-              onVideoPause={handleVideoPause}
-              onVideoEnded={handleVideoEnded}
-              autoplayNext={autoplayNext}
-              onPlayNextLesson={handleNextLesson}
-              nextLessonTitle={nextLesson?.title}
-            />
+          {/* Main Video & Content Column - Flush against right sidebar with ZERO outer padding */}
+          <div className="w-full flex flex-col">
+            {/* Video Player on dark backdrop matching Udemy */}
+            <div className="w-full bg-black flex justify-center items-center">
+              <div className="w-full">
+                <LearningVideoPlayer
+                  currentLesson={currentLesson}
+                  course={course}
+                  videoRef={videoRef}
+                  playbackSpeed={playbackSpeed}
+                  onSpeedChange={setPlaybackSpeed}
+                  showResumeBanner={showResumeBanner}
+                  resumeTime={resumeTime}
+                  onResumePlayback={handleResumePlayback}
+                  onDismissResume={() => setShowResumeBanner(false)}
+                  onTimeUpdate={handleTimeUpdate}
+                  onVideoPause={handleVideoPause}
+                  onVideoEnded={handleVideoEnded}
+                  autoplayNext={autoplayNext}
+                  onPlayNextLesson={handleNextLesson}
+                  nextLessonTitle={nextLesson?.title}
+                />
+              </div>
+            </div>
 
             {/* Lesson Navigation Bar (Prev / Complete / Next) */}
-            <div className="px-3 sm:px-0">
+            <div className="px-4 sm:px-6 md:px-8 lg:px-10 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#1c1d1f]">
               <LearningLessonNav
                 currentLesson={currentLesson}
                 currentLessonIndex={currentLessonIndex}
@@ -628,96 +794,172 @@ export const LearningPlayer: React.FC = () => {
                 nextLessonTitle={nextLesson?.title}
                 autoplayNext={autoplayNext}
                 onToggleAutoplay={handleToggleAutoplay}
-                onClaimCertificate={() => setIsRatingModalOpen(true)}
                 isAllCompleted={progressPercentage >= 100}
               />
             </div>
 
-            {/* Segmented Tabs Bar (Overview, Curriculum for mobile, Notes, Q&A, Resources) */}
-            <div className="px-3 sm:px-0">
-              <div className="flex items-center gap-1.5 p-1 bg-slate-200/80 dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 rounded-2xl overflow-x-auto scrollbar-hide select-none shadow-xs transition-colors">
+            {/* Tab Navigation Bar matching Udemy learning interface (Sharp UI) */}
+            <div className="px-4 sm:px-6 md:px-8 lg:px-10 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#1c1d1f] pt-2">
+              <div className="flex items-center gap-6 overflow-x-auto scrollbar-hide text-xs sm:text-sm select-none">
+                {/* Search Icon Affordance */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('overview');
+                  }}
+                  className="pb-3 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors cursor-pointer shrink-0 pt-0.5"
+                  title="Search course materials"
+                >
+                  <Search className="w-4 h-4" />
+                </button>
+
+                {/* Tab: Overview */}
                 <button
                   type="button"
                   onClick={() => setActiveTab('overview')}
-                  className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+                  className={`pb-3 whitespace-nowrap transition-colors cursor-pointer border-b-2 ${
                     activeTab === 'overview'
-                      ? 'bg-white dark:bg-slate-800 text-teal-700 dark:text-teal-300 shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/60 dark:hover:bg-slate-800/50'
+                      ? 'border-slate-900 dark:border-white text-slate-900 dark:text-white font-bold -mb-px'
+                      : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-semibold'
                   }`}
                 >
-                  <BookOpen className="w-3.5 h-3.5" />
-                  <span>Overview</span>
+                  Overview
                 </button>
 
-                {/* Mobile Curriculum Tab (Shown prominently on mobile/tablet) */}
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('curriculum')}
-                  className={`lg:hidden px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
-                    activeTab === 'curriculum'
-                      ? 'bg-white dark:bg-slate-800 text-teal-700 dark:text-teal-300 shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/60 dark:hover:bg-slate-800/50'
-                  }`}
-                >
-                  <ListOrdered className="w-3.5 h-3.5" />
-                  <span>Curriculum</span>
-                  <span className="px-1.5 py-0.2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px] rounded-md font-mono font-bold">
-                    {completedCount}/{allLessons.length}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('notes')}
-                  className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
-                    activeTab === 'notes'
-                      ? 'bg-white dark:bg-slate-800 text-teal-700 dark:text-teal-300 shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/60 dark:hover:bg-slate-800/50'
-                  }`}
-                >
-                  <Bookmark className="w-3.5 h-3.5" />
-                  <span>Notes</span>
-                </button>
-
+                {/* Tab: Q&A */}
                 <button
                   type="button"
                   onClick={() => setActiveTab('qna')}
-                  className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+                  className={`pb-3 whitespace-nowrap transition-colors cursor-pointer border-b-2 ${
                     activeTab === 'qna'
-                      ? 'bg-white dark:bg-slate-800 text-teal-700 dark:text-teal-300 shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/60 dark:hover:bg-slate-800/50'
+                      ? 'border-slate-900 dark:border-white text-slate-900 dark:text-white font-bold -mb-px'
+                      : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-semibold'
                   }`}
                 >
-                  <MessageSquare className="w-3.5 h-3.5" />
-                  <span>Q&A</span>
+                  Q&A
                 </button>
 
+                {/* Tab: Notes */}
                 <button
                   type="button"
-                  onClick={() => setActiveTab('resources')}
-                  className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
-                    activeTab === 'resources'
-                      ? 'bg-white dark:bg-slate-800 text-teal-700 dark:text-teal-300 shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/60 dark:hover:bg-slate-800/50'
+                  onClick={() => setActiveTab('notes')}
+                  className={`pb-3 whitespace-nowrap transition-colors cursor-pointer border-b-2 ${
+                    activeTab === 'notes'
+                      ? 'border-slate-900 dark:border-white text-slate-900 dark:text-white font-bold -mb-px'
+                      : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-semibold'
                   }`}
                 >
-                  <FolderDown className="w-3.5 h-3.5" />
-                  <span>Resources</span>
+                  Notes
+                </button>
+
+                {/* Tab: Announcements */}
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('announcements')}
+                  className={`pb-3 whitespace-nowrap transition-colors cursor-pointer border-b-2 ${
+                    activeTab === 'announcements'
+                      ? 'border-slate-900 dark:border-white text-slate-900 dark:text-white font-bold -mb-px'
+                      : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-semibold'
+                  }`}
+                >
+                  Announcements
+                </button>
+
+                {/* Tab: Reviews */}
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('reviews')}
+                  className={`pb-3 whitespace-nowrap transition-colors cursor-pointer border-b-2 ${
+                    activeTab === 'reviews'
+                      ? 'border-slate-900 dark:border-white text-slate-900 dark:text-white font-bold -mb-px'
+                      : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-semibold'
+                  }`}
+                >
+                  Reviews
+                </button>
+
+                {/* Tab: Learning tools */}
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('tools')}
+                  className={`pb-3 whitespace-nowrap transition-colors cursor-pointer border-b-2 ${
+                    activeTab === 'tools'
+                      ? 'border-slate-900 dark:border-white text-slate-900 dark:text-white font-bold -mb-px'
+                      : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-semibold'
+                  }`}
+                >
+                  Learning tools
+                </button>
+
+                {/* Mobile Course Content Tab */}
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('curriculum')}
+                  className={`lg:hidden pb-3 whitespace-nowrap transition-colors cursor-pointer border-b-2 ${
+                    activeTab === 'curriculum'
+                      ? 'border-slate-900 dark:border-white text-slate-900 dark:text-white font-bold -mb-px'
+                      : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-semibold'
+                  }`}
+                >
+                  Course content ({completedCount}/{allLessons.length})
                 </button>
               </div>
 
-              {/* Tab Contents */}
-              <div className="pt-4 sm:pt-6 pb-16">
+              {/* Tab Contents (Zero outer margin against right sidebar) */}
+              <div className="px-4 sm:px-6 md:px-8 lg:px-10 py-8 max-w-5xl">
                 {activeTab === 'overview' && (
                   <LearningOverviewTab
                     currentLesson={currentLesson}
                     course={course}
                     lessonIndex={currentLessonIndex}
+                    realLearnersCount={realLearnersCount}
+                    realRating={realRating}
+                    realReviewCount={realReviewCount}
+                    modules={effectiveModules}
+                    watchProgress={watchProgress}
+                  />
+                )}
+
+                {activeTab === 'qna' && (
+                  <LearningQnATab
+                    course={course}
+                    currentLesson={currentLesson}
+                    userName={userName}
+                  />
+                )}
+
+                {activeTab === 'notes' && (
+                  <LearningNotesTab
+                    courseId={course.id}
+                    courseTitle={course.title}
+                    currentLesson={currentLesson}
+                    currentVideoTime={currentVideoTime}
+                    onSeekToTime={handleSeekToTime}
+                  />
+                )}
+
+                {activeTab === 'announcements' && (
+                  <LearningAnnouncementsTab
+                    course={course}
+                  />
+                )}
+
+                {activeTab === 'reviews' && (
+                  <LearningReviewsTab
+                    course={course}
+                    onOpenRating={() => setIsRatingModalOpen(true)}
+                  />
+                )}
+
+                {activeTab === 'tools' && (
+                  <LearningToolsTab
+                    course={course}
+                    onOpenShortcuts={() => setIsShortcutsModalOpen(true)}
                   />
                 )}
 
                 {activeTab === 'curriculum' && (
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs">
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none overflow-hidden shadow-none">
                     <LearningCurriculum
                       modules={effectiveModules}
                       allLessons={allLessons}
@@ -733,39 +975,14 @@ export const LearningPlayer: React.FC = () => {
                     />
                   </div>
                 )}
-
-                {activeTab === 'notes' && (
-                  <LearningNotesTab
-                    courseId={course.id}
-                    courseTitle={course.title}
-                    currentLesson={currentLesson}
-                    currentVideoTime={currentVideoTime}
-                    onSeekToTime={handleSeekToTime}
-                  />
-                )}
-
-                {activeTab === 'qna' && (
-                  <LearningQnATab
-                    course={course}
-                    currentLesson={currentLesson}
-                    userName={userName}
-                  />
-                )}
-
-                {activeTab === 'resources' && (
-                  <LearningResourcesTab
-                    course={course}
-                    currentLesson={currentLesson}
-                  />
-                )}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Desktop Curriculum Sidebar (Hidden in Theater Mode or Mobile) */}
+        {/* Desktop Curriculum Sidebar (Flush-joined to header with top-14, zero padding, sticky and independently scrollable) */}
         {!isTheaterMode && (
-          <aside className="hidden lg:flex w-80 xl:w-96 shrink-0 h-[calc(100vh-61px)] sticky top-[61px] bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 z-20 transition-colors">
+          <aside className="hidden lg:flex w-80 xl:w-96 shrink-0 h-[calc(100vh-3.5rem)] sticky top-14 bg-white dark:bg-[#141517] border-l border-slate-200 dark:border-slate-800 z-20 flex-col overflow-hidden p-0 m-0">
             <LearningCurriculum
               modules={effectiveModules}
               allLessons={allLessons}
@@ -777,8 +994,22 @@ export const LearningPlayer: React.FC = () => {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               onToggleLessonComplete={toggleLessonComplete}
+              onClose={handleToggleTheaterMode}
             />
           </aside>
+        )}
+
+        {/* Quick Re-open button for Course content when Theater Mode is active */}
+        {isTheaterMode && (
+          <button
+            type="button"
+            onClick={handleToggleTheaterMode}
+            className="hidden lg:flex fixed right-0 top-16 z-30 bg-[#1c1d1f] hover:bg-slate-800 text-white text-xs font-semibold px-3 py-2 border-l border-t border-b border-slate-700 shadow-xl items-center gap-1.5 cursor-pointer rounded-none transition-all"
+            title="Show Course content"
+          >
+            <SidebarOpen className="w-4 h-4 text-[#a435f0]" />
+            <span>Course content</span>
+          </button>
         )}
       </div>
 
@@ -806,11 +1037,9 @@ export const LearningPlayer: React.FC = () => {
           isOpen={isRatingModalOpen}
           onClose={() => {
             setIsRatingModalOpen(false);
-            setIsCertificateModalOpen(true);
           }}
           onSuccessNext={() => {
             setIsRatingModalOpen(false);
-            setIsCertificateModalOpen(true);
           }}
           course={course}
           studentId={userId}

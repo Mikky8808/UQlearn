@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { Navbar } from './Navbar';
 import { CategorySubNav } from './CategorySubNav';
@@ -86,6 +86,9 @@ export function UserPortal() {
     setCartModalOpen(false);
   };
 
+  const location = useLocation();
+  const isLearningRoute = location.pathname.startsWith('/learn') || location.pathname.includes('/learn');
+
   return (
     <div className={darkMode ? 'dark bg-slate-950 text-slate-100 min-h-screen font-sans' : 'bg-slate-50 text-slate-900 min-h-screen font-sans'}>
       {/* Universal Multi-Level Sidebar Drawer */}
@@ -101,17 +104,19 @@ export function UserPortal() {
         courses={courses}
       />
 
-      {/* Universal Navbar */}
-      <Navbar
-        cartCount={cart.length}
-        onOpenCart={() => setCartModalOpen(true)}
-        darkMode={darkMode}
-        onToggleDarkMode={toggleDarkMode}
-        currentUser={currentUser}
-        onLogout={() => setCurrentUser(null)}
-        courses={courses}
-        onOpenMainSidebar={() => setMainSidebarOpen(true)}
-      />
+      {/* Universal Navbar (Hidden on learn page) */}
+      {!isLearningRoute && (
+        <Navbar
+          cartCount={cart.length}
+          onOpenCart={() => setCartModalOpen(true)}
+          darkMode={darkMode}
+          onToggleDarkMode={toggleDarkMode}
+          currentUser={currentUser}
+          onLogout={() => setCurrentUser(null)}
+          courses={courses}
+          onOpenMainSidebar={() => setMainSidebarOpen(true)}
+        />
+      )}
 
 
 

@@ -4,14 +4,16 @@ import React from 'react';
  * KilimallCourseCardSkeleton
  * Compact shelf skeleton matching the KilimallCourseCard layout on the Landing Page.
  */
-export const KilimallCourseCardSkeleton: React.FC = () => {
+export const KilimallCourseCardSkeleton: React.FC<{ className?: string }> = ({
+  className = "w-[220px] xs:w-[250px] sm:w-[290px]"
+}) => {
   return (
-    <div className="flex-shrink-0 w-[195px] sm:w-[220px] select-none animate-pulse">
-      <div className="h-[310px] p-2.5 sm:p-3 rounded-lg bg-white dark:bg-slate-900 border border-purple-100 dark:border-purple-950/60 shadow-xs flex flex-col justify-between relative overflow-hidden">
+    <div className={`flex-shrink-0 select-none animate-pulse ${className}`}>
+      <div className="h-full min-h-[300px] p-2 sm:p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between relative overflow-hidden">
         <div>
           {/* Thumbnail Skeleton */}
-          <div className="relative aspect-square sm:aspect-[4/3] overflow-hidden rounded-md bg-slate-200/80 dark:bg-slate-800 mb-2 border border-slate-200/50 dark:border-slate-800">
-            <div className="w-full h-full bg-slate-200 dark:bg-slate-700/60 rounded-md" />
+          <div className="relative aspect-[16/9] overflow-hidden rounded-lg bg-slate-200/80 dark:bg-slate-800 mb-2 border border-slate-200/50 dark:border-slate-800">
+            <div className="w-full h-full bg-slate-200 dark:bg-slate-700/60 rounded-lg animate-pulse" />
           </div>
 
           {/* Title Placeholder */}

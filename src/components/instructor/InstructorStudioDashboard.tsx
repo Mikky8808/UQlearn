@@ -9,11 +9,13 @@ import {
   FolderOpen,
   Camera,
   ArrowRight,
-  AlertTriangle
+  AlertTriangle,
+  Image as ImageIcon
 } from 'lucide-react';
 import { Course, CourseSubscription } from '../../types';
 import { InstructorTabKey } from '../navigation/InstructorSidebar';
 import { subscriptionService } from '../../services/subscription-service';
+import { fetchInstructorCourseImagesStatusApi } from '../../lib/apiConfig';
 
 interface InstructorStudioDashboardProps {
   courses: Course[];
@@ -27,6 +29,7 @@ export const InstructorStudioDashboard: React.FC<InstructorStudioDashboardProps>
   courses,
   currentUser,
   onSelectTab,
+  onSelectCourse,
   complianceStatus = 'none',
 }) => {
   // Learners State
@@ -34,6 +37,10 @@ export const InstructorStudioDashboard: React.FC<InstructorStudioDashboardProps>
   const [loadingLearners, setLoadingLearners] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showAllLearners, setShowAllLearners] = useState(false);
+
+  // Missing Thumbnail / Course Images State
+  const [apiProblemCourses, setApiProblemCourses] = useState<{ id: string; title: string; status?: string; reason?: string }[] | null>(null);
+  const [isCheckingImages, setIsCheckingImages] = useState(false);
 
   // Check if instructor has a profile avatar set
   const hasAvatar = Boolean(
@@ -111,6 +118,69 @@ export const InstructorStudioDashboard: React.FC<InstructorStudioDashboardProps>
     return filteredLearners.slice(0, 5);
   }, [filteredLearners, showAllLearners]);
 
+  // Check courses with missing thumbnails client-side as immediate detection
+  const clientProblemCourses = useMemo(() => {
+    return courses
+      .filter((c) => {
+        const raw = (c.thumbnail || c.image || (c as any).courseImage || (c as any).course_image || '').trim();
+        return !raw;
+      })
+      .map((c) => ({
+        id: c.id,
+        title: c.title || 'Untitled Course',
+        status: 'empty',
+        reason: 'No thumbnail image provided',
+      }));
+  }, [courses]);
+
+  // Query backend course_images.php for instructor-specific image status
+  useEffect(() => {
+    let isMounted = true;
+    const loadCourseImagesStatus = async () => {
+      const instId = currentUser?.id || currentUser?.userId || currentUser?.email || '';
+      if (!instId && (!courses || courses.length === 0)) return;
+
+      try {
+        setIsCheckingImages(true);
+        const res = await fetchInstructorCourseImagesStatusApi(instId || 'me', {
+          checkRemote: false,
+          filter: 'empty,missing,broken',
+        });
+        if (!isMounted) return;
+
+        if (res && res.success && Array.isArray(res.data)) {
+          const problemList = res.data.map((item: any) => ({
+            id: String(item.id || item.courseId || item.course_id || ''),
+            title: item.title || item.courseTitle || 'Untitled Course',
+            status: item.status || 'empty',
+            reason: item.error || (item.status === 'empty' ? 'No thumbnail image provided' : 'Broken or missing image'),
+          }));
+          setApiProblemCourses(problemList);
+        } else {
+          setApiProblemCourses(null);
+        }
+      } catch (err) {
+        console.warn('Failed to query course_images.php:', err);
+        if (isMounted) setApiProblemCourses(null);
+      } finally {
+        if (isMounted) setIsCheckingImages(false);
+      }
+    };
+
+    loadCourseImagesStatus();
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser, courses]);
+
+  // Combine backend response and client-side fallback
+  const problemCourses = useMemo(() => {
+    if (apiProblemCourses !== null) return apiProblemCourses;
+    return clientProblemCourses;
+  }, [apiProblemCourses, clientProblemCourses]);
+
+  const problemCount = problemCourses.length;
+
   const handleCreateCourseClick = () => {
     if (!hasAvatar) {
       alert('Profile Image Required: Please set your profile avatar before creating any course. Your image is required so learners can identify you on course details pages.');
@@ -159,6 +229,58 @@ export const InstructorStudioDashboard: React.FC<InstructorStudioDashboardProps>
           </div>
         )}
 
+        {/* Missing Course Thumbnails Warning Banner (Compact) */}
+        {problemCount > 0 && (
+          <div className="p-3 sm:p-3.5 bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700/80 rounded-none shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn">
+            <div className="flex items-start sm:items-center space-x-3 min-w-0 flex-1">
+              <div className="p-2 bg-amber-100 dark:bg-amber-900/80 text-amber-800 dark:text-amber-200 rounded-none shrink-0 mt-0.5 sm:mt-0">
+                <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
+              <div className="min-w-0 space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-xs sm:text-sm font-bold text-amber-950 dark:text-amber-100">
+                    {problemCount} of courses do not have thumbnail images please update them
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[11px] text-amber-800/80 dark:text-amber-300/80 font-medium">Courses:</span>
+                  {problemCourses.map((pc) => (
+                    <button
+                      key={pc.id}
+                      type="button"
+                      onClick={() => {
+                        if (onSelectCourse && pc.id) onSelectCourse(pc.id);
+                        onSelectTab('course-builder');
+                      }}
+                      className="inline-flex items-center space-x-1 px-2 py-0.5 bg-amber-100/80 dark:bg-amber-900/50 hover:bg-amber-200 dark:hover:bg-amber-800/70 text-amber-950 dark:text-amber-100 text-[11px] font-semibold rounded-none border border-amber-300/60 dark:border-amber-700/60 transition cursor-pointer"
+                      title={`Click to edit thumbnail for ${pc.title}`}
+                    >
+                      <span className="truncate max-w-[160px]">{pc.title}</span>
+                      <ArrowRight className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2 shrink-0 self-end sm:self-center">
+              <button
+                type="button"
+                onClick={() => {
+                  if (problemCourses[0]?.id && onSelectCourse) {
+                    onSelectCourse(problemCourses[0].id);
+                  }
+                  onSelectTab('course-builder');
+                }}
+                className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-none shadow-xs transition-all flex items-center space-x-1.5 cursor-pointer whitespace-nowrap"
+              >
+                <span>Update Thumbnail</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center space-x-2">
           <GraduationCap className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
           <h2 className="text-xl font-bold text-slate-900 dark:text-white">
@@ -169,29 +291,66 @@ export const InstructorStudioDashboard: React.FC<InstructorStudioDashboardProps>
         {/* Courses List */}
         {courses.length > 0 ? (
           <div className="bg-white dark:bg-slate-900 rounded-none border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 shadow-md overflow-hidden">
-            {courses.map((course) => (
-              <div
-                key={course.id}
-                className="p-3.5 sm:p-4 flex items-center space-x-4 hover:bg-slate-50/75 dark:hover:bg-slate-800/50 transition duration-150"
-              >
-                {/* Thumbnail Image */}
-                <div className="relative w-16 h-12 sm:w-20 sm:h-14 rounded-none overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0 border border-slate-200 dark:border-slate-700">
-                  <img
-                    src={course.thumbnail || course.image || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80'}
-                    alt={course.title}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLElement).style.display = 'none';
-                    }}
-                  />
-                </div>
+            {courses.map((course) => {
+              const rawImg = (course.thumbnail || course.image || (course as any).courseImage || (course as any).course_image || '').trim();
+              const isMissingImg = !rawImg || problemCourses.some(p => p.id === course.id);
 
-                {/* Course Title */}
-                <h3 className="font-bold text-slate-900 dark:text-white text-sm sm:text-base truncate">
-                  {course.title}
-                </h3>
-              </div>
-            ))}
+              return (
+                <div
+                  key={course.id}
+                  className="p-3.5 sm:p-4 flex items-center justify-between space-x-4 hover:bg-slate-50/75 dark:hover:bg-slate-800/50 transition duration-150"
+                >
+                  <div className="flex items-center space-x-4 min-w-0 flex-1">
+                    {/* Thumbnail Image */}
+                    <div className="relative w-16 h-12 sm:w-20 sm:h-14 rounded-none overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0 border border-slate-200 dark:border-slate-700">
+                      {rawImg ? (
+                        <img
+                          src={rawImg}
+                          alt={course.title}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 p-1 text-center">
+                          <ImageIcon className="w-4 h-4 mb-0.5" />
+                          <span className="text-[9px] font-bold uppercase leading-none">No Image</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Course Title & Issue Indicator */}
+                    <div className="min-w-0">
+                      <h3 className="font-bold text-slate-900 dark:text-white text-sm sm:text-base truncate">
+                        {course.title}
+                      </h3>
+                      {isMissingImg && (
+                        <span className="inline-flex items-center space-x-1 text-[11px] font-bold text-amber-600 dark:text-amber-400 mt-0.5">
+                          <AlertTriangle className="w-3 h-3" />
+                          <span>Thumbnail required</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  {isMissingImg && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onSelectCourse) onSelectCourse(course.id);
+                        onSelectTab('course-builder');
+                      }}
+                      className="px-3 py-1.5 bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 font-bold text-xs shrink-0 flex items-center space-x-1 cursor-pointer transition"
+                    >
+                      <span>Update</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         ) : (
           /* Empty Courses State */

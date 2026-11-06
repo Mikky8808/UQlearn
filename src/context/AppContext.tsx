@@ -3,11 +3,14 @@ import { Course, User, UserRole, CourseCategory, CourseConfigDefaults } from '..
 import { 
   deleteCourseApi, 
   fetchCoursesApi, 
+  getActiveSponsoredCoursesApi,
+  extractSponsoredCourseIds,
   apiFetch,
   normalizeCourse, 
   API_ENDPOINTS, 
   fetchLogoApi,
   getCourseDefaultThumbnailApi, 
+  saveCourseDefaultThumbnailApi,
   updateLogoApi,
   fetchCourseCategoriesApi,
   saveCourseCategoryApi,
@@ -30,7 +33,8 @@ import {
   deletePayoutBankApi,
   togglePayoutBankActiveApi,
   ROOT_URL,
-  API_BASE_URL
+  API_BASE_URL,
+  getReviewerChatHistoryApi
 } from '../lib/apiConfig';
 import { logApiError } from '../lib/errorLogger';
 import { updateDocumentFavicon, DEFAULT_LOGO_URL, resolveBrandingLogoUrl } from '../lib/branding';
@@ -167,7 +171,7 @@ export interface InstructorNotification {
   courseTitle: string;
   courseThumbnail?: string;
   category?: string;
-  type: 'price_adjustment' | 'system' | 'quality' | 'general';
+  type: 'price_adjustment' | 'system' | 'quality' | 'general' | 'reviewer_message';
   title: string;
   message: string;
   suggestedPrice?: number;
@@ -346,13 +350,57 @@ export const defaultCourseConfig: CourseConfigDefaults = {
   allowedVideoFormats: ['mp4', 'webm', 'mov', 'mkv'],
   maxVideoSizeMb: 500,
   defaultLevel: 'All Levels',
-  ceoName: 'SIR, RAJAB WAMUU',
+  ceoName: 'Sir, rajab wamuu',
   ceoTitle: 'CEO UQLEARN',
   ceoSignature: ''
 };
 
 
-const defaultCourses: Course[] = [];
+const defaultCourses: Course[] = [
+  {
+    id: 'canva-mastery-pro',
+    title: 'Canva Mastery: Design Like a Pro',
+    subtitle: 'Design stunning graphics, social media posts, presentations and videos like a seasoned professional with Canva Pro.',
+    description: 'Master Canva Pro from scratch. Create brand kits, marketing materials, social media graphics, and professional video animations with zero prior design experience.',
+    image: '/assets/images/canva_mastery_banner_1790490284393.jpg',
+    thumbnail: '/assets/images/canva_mastery_banner_1790490284393.jpg',
+    category: 'Design',
+    price: 19.99,
+    originalPrice: 99.99,
+    rating: 2.5,
+    reviewCount: 2,
+    learnersEnrolled: 3,
+    duration: '22 mins',
+    instructor: 'Mike Kenyanya',
+    instructorTitle: '7-Figure Online Business Founder & Educator',
+    instructorAvatar: '/assets/aistudio/image_68c82312.png',
+    updatedAt: new Date().toISOString(),
+    modules: [
+      {
+        id: 'module-1',
+        title: 'Section 1: Introduction & Interface',
+        lessons: [
+          {
+            id: 'lesson-1',
+            title: 'Welcome to Canva Mastery: Interface Tour & Core Tools',
+            duration: '',
+            videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            type: 'video',
+            content: 'Welcome to Canva Mastery! In this first lecture, we take a comprehensive tour of the Canva interface, explore core design tools, layers, templates, and brand kits to set you up for professional design success.'
+          },
+          {
+            id: 'lesson-2',
+            title: 'Creating Your First Pro Graphic & Exporting',
+            duration: '',
+            videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            type: 'video',
+            content: 'Learn how to export designs in multiple formats (PNG, JPG, PDF, MP4 video) with professional bleed and resolution settings.'
+          }
+        ]
+      }
+    ]
+  }
+];
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
@@ -670,9 +718,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [courseDefaultThumbnail, setCourseDefaultThumbnailState] = useState<string>(() => {
     try {
-      return localStorage.getItem('uqlearn_course_default_thumbnail') || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80';
+      return localStorage.getItem('uqlearn_course_default_thumbnail') || 'https://uqlearn.org/uploads/courses/1793397934_bb01db00c53c0a65497165cd5958a36e.png';
     } catch {
-      return 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80';
+      return 'https://uqlearn.org/uploads/courses/1793397934_bb01db00c53c0a65497165cd5958a36e.png';
     }
   });
 
@@ -729,6 +777,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (e) {
       console.warn('Failed to save default thumbnail URL', e);
     }
+    saveCourseDefaultThumbnailApi(url).catch(err => console.warn('Failed to sync default thumbnail to backend API', err));
   };
 
   const fetchCourses = useCallback(async (creatorId?: string) => {
@@ -737,10 +786,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Determine effective creatorId when in instructor mode
       const effectiveCreatorId = creatorId || (currentUser?.role === 'instructor' && currentUser?.id ? currentUser.id : undefined);
 
-      // Fetch live courses from API endpoints with optional creator_id parameter
-      const rawRes = await fetchCoursesApi(effectiveCreatorId);
+      // Fetch live courses and active sponsored ads from API endpoints in parallel
+      const [rawRes, sponsoredRes] = await Promise.all([
+        fetchCoursesApi(effectiveCreatorId),
+        getActiveSponsoredCoursesApi().catch(() => null)
+      ]);
+
+      const activeSponsoredCourseIds = extractSponsoredCourseIds(sponsoredRes);
+
       const apiCourses = Array.isArray(rawRes) ? rawRes : (Array.isArray((rawRes as any)?.data) ? (rawRes as any).data : []);
-      const normalized = apiCourses.map(normalizeCourse);
+      const normalized = apiCourses.map(normalizeCourse).map(c => {
+        const idStr = String(c.id || '');
+        const courseIdStr = String(c.course_id || '');
+        const isSp = activeSponsoredCourseIds.includes(idStr) || (courseIdStr !== '' && activeSponsoredCourseIds.includes(courseIdStr));
+        return {
+          ...c,
+          isSponsored: isSp,
+          is_sponsored: isSp
+        };
+      });
       
       if (normalized.length > 0) {
         setCourses(normalized);
@@ -1051,25 +1115,78 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const fetchInstructorNotifications = useCallback(async () => {
     try {
-      // Fetch from PHP API
-      const res = await api.priceAdjustments.getAll();
-      const apiNotifs = (res.success && res.data) ? res.data : [];
+      // 1. Fetch price adjustments and system notices from PHP API
+      const res = await api.priceAdjustments.getAll().catch(() => ({ success: false, data: [] }));
+      const apiNotifs: InstructorNotification[] = (res && res.success && Array.isArray(res.data)) ? res.data : [];
 
-      // Filter by current user if not admin
+      // 2. Fetch reviewer messages from reviewer-chat.php
+      const chatRes = await getReviewerChatHistoryApi().catch(() => null);
+      let rawChatMessages: any[] = [];
+      if (chatRes) {
+        if (Array.isArray(chatRes.messages)) rawChatMessages = chatRes.messages;
+        else if (Array.isArray(chatRes)) rawChatMessages = chatRes;
+        else if (chatRes.data && Array.isArray(chatRes.data)) rawChatMessages = chatRes.data;
+      }
+
+      // Convert reviewer messages to InstructorNotification format
+      const chatNotifs: InstructorNotification[] = rawChatMessages.map((m: any) => {
+        const cId = String(m.course_id || m.courseId || '');
+        const courseMatch = courses.find(c => String(c.id) === cId);
+        return {
+          id: `chat-notif-${m.id || m.created_at}`,
+          courseId: cId,
+          courseTitle: courseMatch?.title || (m.courseTitle || `Course #${cId}`),
+          courseThumbnail: courseMatch?.thumbnail || courseMatch?.image || '',
+          instructorName: courseMatch?.instructor || (courseMatch as any)?.created_by_name || 'Instructor',
+          instructorEmail: (courseMatch as any)?.instructorEmail || (courseMatch as any)?.instructor_email || (courseMatch as any)?.created_by_email || m.recipient || '',
+          type: 'reviewer_message',
+          title: `💬 Reviewer Message: ${courseMatch?.title || 'Course Review'}`,
+          message: m.message || '',
+          createdAt: m.created_at || new Date().toISOString(),
+          read: false,
+          status: 'pending'
+        };
+      });
+
+      // Combine both lists, deduplicating by ID
+      const map = new Map<string, InstructorNotification>();
+      [...chatNotifs, ...apiNotifs].forEach(item => {
+        if (!map.has(item.id)) {
+          map.set(item.id, item);
+        }
+      });
+
+      const allNotifs = Array.from(map.values()).sort((a, b) => 
+        new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+      );
+
+      // Filter by current user if instructor
       if (currentUser?.role === 'instructor') {
-        const email = currentUser.email.toLowerCase();
-        const filtered = apiNotifs.filter((n: InstructorNotification) => 
+        const email = (currentUser.email || '').toLowerCase();
+        const name = (currentUser.name || '').toLowerCase();
+        const instructorCourseIds = new Set(
+          courses
+            .filter(c => 
+              ((c as any).created_by_email || (c as any).instructor_email || '').toLowerCase() === email ||
+              (c.instructor || (c as any).created_by_name || '').toLowerCase() === name ||
+              String((c as any).creator_id) === String(currentUser.id)
+            )
+            .map(c => String(c.id))
+        );
+
+        const filtered = allNotifs.filter((n: InstructorNotification) => 
           (n.instructorEmail || '').toLowerCase() === email || 
-          (n.instructorName || '').toLowerCase() === (currentUser.name || '').toLowerCase()
+          (n.instructorName || '').toLowerCase() === name ||
+          instructorCourseIds.has(String(n.courseId))
         );
         setInstructorNotifications(filtered);
       } else {
-        setInstructorNotifications(apiNotifs);
+        setInstructorNotifications(allNotifs);
       }
     } catch (e) {
       console.warn("Failed to fetch instructor notifications", e);
     }
-  }, [currentUser?.email, currentUser?.role, currentUser?.name]);
+  }, [currentUser, courses]);
 
   useEffect(() => {
     fetchInstructorNotifications();
@@ -1193,16 +1310,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     async function loadApiCategories() {
       try {
         const apiCats = await fetchCourseCategoriesApi();
-        if (isMounted && Array.isArray(apiCats) && apiCats.length > 0) {
-          const formatted: CourseCategory[] = apiCats.map((c: any, idx: number) => ({
+        const catList = Array.isArray(apiCats) 
+          ? apiCats 
+          : (apiCats && typeof apiCats === 'object' && Array.isArray((apiCats as any).data) ? (apiCats as any).data : []);
+        
+        if (isMounted && Array.isArray(catList) && catList.length > 0) {
+          const formatted: CourseCategory[] = catList.map((c: any, idx: number) => ({
             id: String(c.id || `cat-${idx + 1}`),
             name: String(c.name || 'Untitled Category'),
-            slug: String(c.slug || c.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')),
+            slug: String(c.slug || (c.name ? String(c.name).toLowerCase().replace(/[^a-z0-9]+/g, '-') : `cat-${idx + 1}`)),
             description: String(c.description || ''),
             icon: c.icon || 'BookOpen',
             color: c.color || 'blue',
             isFeatured: Boolean(c.isFeatured || c.is_featured),
-            isActive: c.isActive !== false && c.is_active !== 0,
+            isActive: c.isActive !== false && c.is_active !== 0 && c.is_active !== '0',
             sortOrder: Number(c.orderIndex ?? c.order_index ?? c.sortOrder ?? idx + 1),
             courseCount: Number(c.courseCount ?? c.course_count ?? 0)
           }));

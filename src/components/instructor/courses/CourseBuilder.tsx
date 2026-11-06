@@ -2811,7 +2811,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
     const newLesson: LessonInput = {
       id: newLessonId,
       title: customTitle || (type === 'quiz' ? `Quiz ${existingCount + 1}: Check Your Knowledge` : `Lecture ${existingCount + 1}: Key Concepts`),
-      duration: type === 'video' ? '12:00' : type === 'quiz' ? '10:00' : '05:00',
+      duration: '',
       type,
       isPreview: false,
       content: `# ${typeLabel}\n\nAdd rich lecture instructions, video resources, code blocks, and downloadable assets.`
@@ -3321,7 +3321,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
         { id: 'instructor_desc', text: `Have an instructor description with at least 50 words (currently ${instructorDescription.trim().split(/\s+/).filter(Boolean).length} words)`, done: instructorDescription.trim().split(/\s+/).filter(Boolean).length >= 50, tab: 'landing-page' as BuilderTabKey },
         { id: 'category', text: 'Select the category of your course', done: category.trim().length > 0, tab: 'landing-page' as BuilderTabKey },
         { id: 'level', text: 'Select the level of your course', done: level.trim().length > 0, tab: 'landing-page' as BuilderTabKey },
-        { id: 'subcategory', text: 'Select the subcategory of your course', done: subcategory.trim().length > 0, tab: 'landing-page' as BuilderTabKey },
+        { id: 'subcategory', text: 'Select the subcategory of your course', done: true, tab: 'landing-page' as BuilderTabKey },
         { id: 'primary_taught', text: 'Select what is primarily taught in your course', done: primaryTaught.trim().length > 0, tab: 'landing-page' as BuilderTabKey },
         { id: 'image', text: 'Upload a course image', done: image.trim().length > 0, tab: 'landing-page' as BuilderTabKey },
         { id: 'instructor_image', text: 'Upload an instructor image', done: Boolean(resolvedInstructorAvatar && resolvedInstructorAvatar.length > 2 && !/^[A-Z]{1,3}$/.test(resolvedInstructorAvatar)), tab: 'landing-page' as BuilderTabKey }
@@ -7628,7 +7628,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
                 <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
                   <h3 className="text-xs font-black text-slate-900 dark:text-slate-200 uppercase tracking-wider">Basic info</h3>
                   
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     {/* Language select */}
                     <div className="relative">
                       <select
@@ -7664,37 +7664,26 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
                       </div>
                     </div>
 
-                    {/* Category Selector */}
+                    {/* Dynamic Category Selector */}
                     <div className="relative">
                       <select
                         value={category}
                         onChange={(e: any) => setCategory(e.target.value)}
-                        className="w-full appearance-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2.5 pr-8 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none"
+                        className="w-full appearance-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2.5 pr-8 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none cursor-pointer"
                       >
-                        <option value="Business">Business</option>
-                        <option value="Development">Development</option>
-                        <option value="Design">Design</option>
-                        <option value="Data Science">Data Science</option>
-                        <option value="Marketing">Marketing</option>
-                        <option value="Personal Growth">Personal Growth</option>
-                      </select>
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                        <ChevronDown className="w-3.5 h-3.5" />
-                      </div>
-                    </div>
-
-                    {/* Subcategory dropdown */}
-                    <div className="relative">
-                      <select
-                        value={subcategory}
-                        onChange={(e) => setSubcategory(e.target.value)}
-                        className="w-full appearance-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2.5 pr-8 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none"
-                      >
-                        <option value="">-- Select Subcategory --</option>
-                        <option value="Project Management">Project Management</option>
-                        <option value="Web Development">Web Development</option>
-                        <option value="Digital Marketing">Digital Marketing</option>
-                        <option value="Financial Accounting">Financial Accounting</option>
+                        <option value="">-- Select Category --</option>
+                        {(categories && categories.length > 0 ? categories.filter(c => c.isActive !== false) : [
+                          { id: '1', name: 'Development' },
+                          { id: '2', name: 'Business' },
+                          { id: '3', name: 'Design' },
+                          { id: '4', name: 'Data Science' },
+                          { id: '5', name: 'Marketing' },
+                          { id: '6', name: 'Personal Growth' }
+                        ]).map((cat) => (
+                          <option key={cat.id || cat.name} value={cat.name}>
+                            {cat.name}
+                          </option>
+                        ))}
                       </select>
                       <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
                         <ChevronDown className="w-3.5 h-3.5" />

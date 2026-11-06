@@ -19,13 +19,20 @@ export default defineConfig({
         main: path.resolve(__dirname, 'index.html'),
         admin: path.resolve(__dirname, 'admin/admin.html'),
         instructor: path.resolve(__dirname, 'instructor/instructor.html'),
-        rev: path.resolve(__dirname, 'rev/rev.html'),
       },
       output: {
         entryFileNames: 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]',
-        manualChunks: undefined,
+        manualChunks: (id) => {
+          if (id.includes('node_modules')) {
+            if (id.includes('lucide-react')) return 'vendor-icons';
+            if (id.includes('react-dom') || id.includes('react/')) return 'vendor-react';
+            if (id.includes('html2canvas') || id.includes('jspdf') || id.includes('purify')) return 'vendor-pdf-canvas';
+            if (id.includes('recharts') || id.includes('d3')) return 'vendor-charts';
+            return 'vendor-libs';
+          }
+        },
       },
     },
   },

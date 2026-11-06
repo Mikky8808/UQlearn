@@ -10,10 +10,15 @@ import {
   CheckCircle2, 
   KeyRound, 
   AlertCircle,
-  Loader2
+  Loader2,
+  ShieldCheck,
+  X,
+  Edit3,
+  RefreshCw
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { API_ENDPOINTS, apiFetch, GOOGLE_CLIENT_ID } from '../../lib/apiConfig';
+import { emailService } from '../../lib/emailService';
 import { decodeGoogleJwt, signInWithGoogleUniversal } from '../../lib/googleAuth';
 import { BrandLogo } from '../common/BrandLogo';
 
@@ -30,17 +35,23 @@ export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 
-  // OTP State
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
-  const [countdown, setCountdown] = useState(45);
-  const [timerActive, setTimerActive] = useState(false);
+
 
   // Status & validation
   const [formLoading, setFormLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [gsiReady, setGsiReady] = useState(false);
+
+  // Modal Verification Code Overlay State
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [modalEmail, setModalEmail] = useState('');
+  const [modalOtpDigits, setModalOtpDigits] = useState(['', '', '', '', '', '']);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [modalError, setModalError] = useState('');
+  const [modalSuccess, setModalSuccess] = useState('');
+  const [modalCountdown, setModalCountdown] = useState(60);
+  const [modalTimerActive, setModalTimerActive] = useState(false);
 
   // If already logged in, show notice or allow redirect
   const queryParams = new URLSearchParams(location.search);
@@ -107,7 +118,14 @@ export const LoginPage: React.FC = () => {
           method: 'POST',
           body: JSON.stringify({
             authProvider: 'google',
+            provider: 'google',
+            auth_provider: 'google',
+            auth_type: 'google',
+            is_google: 1,
+            is_google_login: 1,
+            google_sso: true,
             email: googleEmail,
+            password: 'google-oauth-sso-authenticated',
             name: googleName,
             displayName: googleName,
             avatar: googlePicture,
@@ -181,26 +199,36 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  // Handle Send OTP to Email
-  const handleSendOtp = async () => {
+  // Modal Timer effect
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (modalTimerActive && modalCountdown > 0) {
+      timer = setTimeout(() => setModalCountdown(prev => prev - 1), 1000);
+    } else if (modalCountdown === 0) {
+      setModalTimerActive(false);
+    }
+    return () => clearTimeout(timer);
+  }, [modalTimerActive, modalCountdown]);
+
+  // Open Verification Modal & Send OTP
+  const handleInitiateOtpModal = async (targetEmailInput?: string) => {
     setErrorMsg('');
-    const cleanEmail = email.trim().toLowerCase();
-    if (!cleanEmail || !cleanEmail.includes('@')) {
+    const targetEmail = (targetEmailInput || email).trim().toLowerCase();
+    if (!targetEmail || !targetEmail.includes('@')) {
       setErrorMsg('Please enter a valid email address.');
       return;
     }
 
     setFormLoading(true);
     try {
-      const data = await apiFetch(API_ENDPOINTS.SEND_LOGIN_OTP, {
-        method: 'POST',
-        body: JSON.stringify({ email: cleanEmail })
-      });
-      setOtpSent(true);
-      setTimerActive(true);
-      setCountdown(60);
-      setOtpDigits(['', '', '', '', '', '']);
-      setSuccessMsg(data?.message || `6-digit verification code sent to ${cleanEmail}`);
+      const res = await emailService.sendLoginOtp(targetEmail);
+      setModalEmail(targetEmail);
+      setModalOtpDigits(['', '', '', '', '', '']);
+      setModalError('');
+      setModalSuccess(res.message);
+      setModalCountdown(60);
+      setModalTimerActive(true);
+      setShowOtpModal(true);
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to send verification code. Please check your email.');
     } finally {
@@ -208,48 +236,105 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  // Timer effect
-  React.useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (timerActive && countdown > 0) {
-      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-    } else if (countdown === 0) {
-      setTimerActive(false);
-    }
-    return () => clearTimeout(timer);
-  }, [timerActive, countdown]);
-
-  const handleOtpChange = (index: number, val: string) => {
-    if (val.length > 1) {
-      val = val.slice(-1);
-    }
-    const newDigits = [...otpDigits];
-    newDigits[index] = val;
-    setOtpDigits(newDigits);
-
-    // Auto-focus next input
-    if (val && index < 5) {
-      const nextInput = document.getElementById(`otp-input-${index + 1}`);
-      nextInput?.focus();
+  // Handle Modal Resend Code
+  const handleModalResendCode = async () => {
+    if (modalTimerActive) return;
+    setModalError('');
+    setModalSuccess('');
+    setModalLoading(true);
+    try {
+      const res = await emailService.sendLoginOtp(modalEmail);
+      setModalSuccess(res.message);
+      setModalCountdown(60);
+      setModalTimerActive(true);
+      setModalOtpDigits(['', '', '', '', '', '']);
+    } catch (err: any) {
+      setModalError(err.message || 'Failed to resend code.');
+    } finally {
+      setModalLoading(false);
     }
   };
 
-  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
-      const prevInput = document.getElementById(`otp-input-${index - 1}`);
+  // Handle Modal OTP digit changes
+  const handleModalOtpChange = (index: number, val: string) => {
+    if (val.length > 1) val = val.slice(-1);
+    const newDigits = [...modalOtpDigits];
+    newDigits[index] = val;
+    setModalOtpDigits(newDigits);
+
+    if (val && index < 5) {
+      const nextInput = document.getElementById(`modal-otp-input-${index + 1}`);
+      nextInput?.focus();
+    }
+
+    if (val && index === 5 && newDigits.every(d => d !== '')) {
+      handleModalVerifySubmit(newDigits.join(''));
+    }
+  };
+
+  const handleModalOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !modalOtpDigits[index] && index > 0) {
+      const prevInput = document.getElementById(`modal-otp-input-${index - 1}`);
       prevInput?.focus();
     }
   };
 
-  const handleOtpPaste = (e: React.ClipboardEvent) => {
+  const handleModalOtpPaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
     const pasted = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 6);
     if (pasted.length > 0) {
-      const newDigits = [...otpDigits];
+      const newDigits = [...modalOtpDigits];
       for (let i = 0; i < pasted.length; i++) {
         newDigits[i] = pasted[i];
       }
-      setOtpDigits(newDigits);
+      setModalOtpDigits(newDigits);
+      if (pasted.length === 6) {
+        handleModalVerifySubmit(pasted);
+      }
+    }
+  };
+
+  // Handle Modal Verification Submit
+  const handleModalVerifySubmit = async (codeToVerify?: string) => {
+    const code = codeToVerify || modalOtpDigits.join('');
+    if (code.length < 6) {
+      setModalError('Please enter all 6 digits of your verification code.');
+      return;
+    }
+
+    setModalError('');
+    setModalSuccess('');
+    setModalLoading(true);
+
+    try {
+      const res = await emailService.verifyEmailOtp(modalEmail, code);
+
+      const verifiedUser = res.user || {
+        id: `stu-${Date.now()}`,
+        name: modalEmail.split('@')[0].replace('.', ' '),
+        email: modalEmail,
+        role: 'student',
+        isVerified: true
+      };
+
+      loginUser({
+        id: verifiedUser.id || `stu-${Date.now()}`,
+        name: verifiedUser.name || modalEmail.split('@')[0].replace('.', ' '),
+        email: verifiedUser.email || modalEmail,
+        role: 'student',
+        isVerified: true,
+        token: res.token
+      });
+
+      setModalSuccess(res.message || 'Email verified successfully! Loading your dashboard...');
+      setTimeout(() => {
+        setShowOtpModal(false);
+        navigate(redirectPath);
+      }, 700);
+    } catch (err: any) {
+      setModalError(err.message || 'Invalid or expired verification code.');
+    } finally {
+      setModalLoading(false);
     }
   };
 
@@ -258,75 +343,49 @@ export const LoginPage: React.FC = () => {
     e.preventDefault();
     setErrorMsg('');
 
-    if (authMethod === 'password') {
-      if (!email.trim() || !email.includes('@')) {
-        setErrorMsg('Please enter a valid email address.');
-        return;
-      }
-
-      if (!password || password.length < 6) {
-        setErrorMsg('Password must be at least 6 characters.');
-        return;
-      }
-    } else {
-      // OTP Method
-      if (!otpSent) {
-        handleSendOtp();
-        return;
-      }
-      const code = otpDigits.join('');
-      if (code.length < 6) {
-        setErrorMsg('Please enter all 6 digits of your verification code.');
-        return;
-      }
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setErrorMsg('Please enter a valid email address.');
+      return;
     }
 
-    const cleanEmail = email.trim().toLowerCase();
+    if (authMethod === 'otp') {
+      // Open 6-Digit Verification Modal
+      handleInitiateOtpModal(cleanEmail);
+      return;
+    }
+
+    // Password Login Method
+    if (!password || password.length < 6) {
+      setErrorMsg('Password must be at least 6 characters.');
+      return;
+    }
+
     setFormLoading(true);
-
     try {
-      if (authMethod === 'otp') {
-        const code = otpDigits.join('');
-        await apiFetch(API_ENDPOINTS.VERIFY_EMAIL, {
-          method: 'POST',
-          body: JSON.stringify({ action: 'verify', email: cleanEmail, code: code })
-        });
-
-        loginUser({
-          id: `stu-${Date.now()}`,
-          name: cleanEmail.split('@')[0].replace('.', ' '),
-          email: cleanEmail,
-          role: 'student',
-          isVerified: true
-        });
-
-        setSuccessMsg('Email verified successfully! Loading your dashboard...');
-        setTimeout(() => navigate(redirectPath), 700);
-      } else {
-        // Password Login via PHP backend
-        const data = await apiFetch(API_ENDPOINTS.LOGIN, {
-          method: 'POST',
-          body: JSON.stringify({ email: cleanEmail, password: password, role: 'student' })
-        });
-        
-        if (!data || !data.user) {
-          throw new Error('Authentication failed on backend.');
-        }
-
-        const backendUser = data.user;
-        loginUser({
-          id: backendUser?.id,
-          name: backendUser?.name || cleanEmail.split('@')[0],
-          email: backendUser?.email || cleanEmail,
-          avatar: backendUser?.avatar || undefined,
-          role: 'student',
-          isVerified: true,
-          token: data.token
-        });
-
-        setSuccessMsg(`Welcome back, ${backendUser?.name || 'Learner'}! Redirecting...`);
-        setTimeout(() => navigate(redirectPath), 600);
+      // Password Login via PHP backend
+      const data = await apiFetch(API_ENDPOINTS.LOGIN, {
+        method: 'POST',
+        body: JSON.stringify({ email: cleanEmail, password: password, role: 'student' })
+      });
+      
+      if (!data || !data.user) {
+        throw new Error('Authentication failed on backend.');
       }
+
+      const backendUser = data.user;
+      loginUser({
+        id: backendUser?.id,
+        name: backendUser?.name || cleanEmail.split('@')[0],
+        email: backendUser?.email || cleanEmail,
+        avatar: backendUser?.avatar || undefined,
+        role: 'student',
+        isVerified: true,
+        token: data.token
+      });
+
+      setSuccessMsg(`Welcome back, ${backendUser?.name || 'Learner'}! Redirecting...`);
+      setTimeout(() => navigate(redirectPath), 600);
     } catch (err: any) {
       console.error('Login Auth Error:', err);
       setErrorMsg(err.message || 'Login failed. Please check your credentials or sign up first.');
@@ -452,62 +511,16 @@ export const LoginPage: React.FC = () => {
               </div>
             )}
 
-            {/* Method 2: OTP Digits */}
+            {/* Method 2: OTP Verification Prompt */}
             {authMethod === 'otp' && (
-              <div className="space-y-3 pt-1">
-                {!otpSent ? (
-                  <button
-                    type="button"
-                    onClick={handleSendOtp}
-                    disabled={formLoading || !email}
-                    className="w-full py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 flex items-center justify-center space-x-2 transition-all cursor-pointer"
-                  >
-                    {formLoading ? (
-                      <Loader2 className="w-4 h-4 animate-spin text-teal-600" />
-                    ) : (
-                      <KeyRound className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-                    )}
-                    <span>Send 6-Digit Code to Email</span>
-                  </button>
-                ) : (
-                  <div className="space-y-2">
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                      Enter 6-Digit Verification Code
-                    </label>
-                    <div className="flex justify-between gap-2 on-paste" onPaste={handleOtpPaste}>
-                      {otpDigits.map((digit, idx) => (
-                        <input
-                          key={idx}
-                          id={`otp-input-${idx}`}
-                          type="text"
-                          maxLength={1}
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          value={digit}
-                          onChange={(e) => handleOtpChange(idx, e.target.value)}
-                          onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                          className="w-11 h-12 text-center text-lg font-black bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all"
-                        />
-                      ))}
-                    </div>
-                    <div className="flex items-center justify-between text-xs pt-1">
-                      <span className="text-slate-500 dark:text-slate-400 font-medium">
-                        Didn't receive code?
-                      </span>
-                      {timerActive ? (
-                        <span className="text-slate-400 font-bold">Resend in {countdown}s</span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={handleSendOtp}
-                          className="text-teal-600 dark:text-teal-400 font-bold hover:underline cursor-pointer"
-                        >
-                          Resend Code
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
+              <div className="p-4 bg-teal-50/60 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800/80 rounded-2xl text-xs space-y-2">
+                <div className="flex items-center space-x-2 text-teal-800 dark:text-teal-200 font-bold">
+                  <ShieldCheck className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
+                  <span>1-Click Verification Code Sign-In</span>
+                </div>
+                <p className="text-slate-600 dark:text-slate-300 text-[11px] leading-relaxed">
+                  Submitting will send a 6-digit verification code to <strong className="text-slate-900 dark:text-slate-100 font-semibold">{email || 'your email'}</strong> and open the verification modal.
+                </p>
               </div>
             )}
 
@@ -535,16 +548,31 @@ export const LoginPage: React.FC = () => {
               {formLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Verifying Credentials...</span>
+                  <span>Sending Code...</span>
                 </>
               ) : (
                 <>
-                  <span>Sign In</span>
+                  <span>{authMethod === 'otp' ? 'Send Code & Verify' : 'Sign In'}</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
           </form>
+
+          {/* Quick Option to Open Email Code Verification Modal */}
+          {authMethod === 'password' && (
+            <div className="text-center pt-1">
+              <button
+                type="button"
+                onClick={() => handleInitiateOtpModal()}
+                disabled={formLoading || !email}
+                className="text-xs font-bold text-teal-600 dark:text-teal-400 hover:underline flex items-center justify-center space-x-1.5 mx-auto cursor-pointer"
+              >
+                <KeyRound className="w-3.5 h-3.5" />
+                <span>Or Sign In with 1-Click Verification Code</span>
+              </button>
+            </div>
+          )}
 
           {/* Social Sign-In Divider */}
           <div className="relative flex py-2 items-center">
@@ -587,6 +615,141 @@ export const LoginPage: React.FC = () => {
         </div>
 
       </div>
+
+      {/* 6-DIGIT VERIFICATION CODE MODAL OVERLAY */}
+      {showOtpModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-6 relative">
+            
+            {/* Close Modal Button */}
+            <button
+              type="button"
+              onClick={() => setShowOtpModal(false)}
+              className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              title="Close modal"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Modal Header */}
+            <div className="text-center space-y-3">
+              <div className="w-14 h-14 mx-auto rounded-2xl bg-teal-50 dark:bg-teal-950/80 border border-teal-200 dark:border-teal-800/80 flex items-center justify-center shadow-lg shadow-teal-500/10">
+                <ShieldCheck className="w-7 h-7 text-teal-600 dark:text-teal-400" />
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+                  Enter Verification Code
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  We've sent a 6-digit verification code to
+                </p>
+                <div className="pt-1 flex items-center justify-center space-x-2">
+                  <span className="px-3 py-1 bg-teal-50 dark:bg-teal-950/60 border border-teal-200/80 dark:border-teal-800/80 text-teal-700 dark:text-teal-300 font-mono font-bold text-xs rounded-full truncate max-w-[240px]">
+                    {modalEmail}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowOtpModal(false)}
+                    className="text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 p-1 cursor-pointer transition-colors"
+                    title="Change email address"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Success Alert */}
+            {modalSuccess && (
+              <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs font-bold flex items-center space-x-2 animate-fadeIn">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span>{modalSuccess}</span>
+              </div>
+            )}
+
+            {/* Modal Error Alert */}
+            {modalError && (
+              <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-xs font-semibold flex items-center space-x-2 animate-shake">
+                <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                <span>{modalError}</span>
+              </div>
+            )}
+
+            {/* 6-Digit OTP Digits Grid */}
+            <div className="space-y-4">
+              <div className="flex justify-between gap-2" onPaste={handleModalOtpPaste}>
+                {modalOtpDigits.map((digit, idx) => (
+                  <input
+                    key={idx}
+                    id={`modal-otp-input-${idx}`}
+                    type="text"
+                    maxLength={1}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={digit}
+                    onChange={(e) => handleModalOtpChange(idx, e.target.value)}
+                    onKeyDown={(e) => handleModalOtpKeyDown(idx, e)}
+                    disabled={modalLoading}
+                    className="w-11 h-13 text-center text-xl font-black bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 disabled:opacity-50 transition-all font-mono shadow-xs"
+                  />
+                ))}
+              </div>
+
+              {/* Resend Code & Timer */}
+              <div className="flex items-center justify-between text-xs font-medium pt-1">
+                <span className="text-slate-500 dark:text-slate-400">
+                  Didn't receive the code?
+                </span>
+                {modalTimerActive ? (
+                  <span className="text-slate-400 font-bold font-mono">Resend in {modalCountdown}s</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleModalResendCode}
+                    disabled={modalLoading}
+                    className="text-teal-600 dark:text-teal-400 font-bold hover:underline flex items-center space-x-1 cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${modalLoading ? 'animate-spin' : ''}`} />
+                    <span>Resend Code</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Submit & Action Buttons */}
+            <div className="space-y-3 pt-2">
+              <button
+                type="button"
+                onClick={() => handleModalVerifySubmit()}
+                disabled={modalLoading || modalOtpDigits.some(d => d === '')}
+                className="w-full py-3.5 px-4 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white rounded-xl font-bold text-sm shadow-lg shadow-teal-600/25 flex items-center justify-center space-x-2 transition-all transform active:scale-[0.99] cursor-pointer"
+              >
+                {modalLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    <span>Verifying Code...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Verify & Sign In</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowOtpModal(false)}
+                className="w-full py-2.5 text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
+              >
+                Cancel & Change Email
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 };

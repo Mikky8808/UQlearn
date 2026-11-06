@@ -194,9 +194,9 @@ export const InstructorLoginPage: React.FC = () => {
 
     setFormLoading(true);
     try {
-      const data = await apiFetch('verify-email.php', {
+      const data = await apiFetch(API_ENDPOINTS.SEND_LOGIN_OTP, {
         method: 'POST',
-        body: JSON.stringify({ action: 'resend', email: cleanEmail })
+        body: JSON.stringify({ email: cleanEmail })
       });
       setOtpSent(true);
       setTimerActive(true);

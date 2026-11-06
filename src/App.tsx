@@ -9,10 +9,10 @@ import { DeveloperPortalSwitcher } from './components/common/DeveloperPortalSwit
 import { useApp } from './context/AppContext';
 import { isDeveloperUser } from './lib/developer';
 
-const UserPortal = React.lazy(() => import('./components/user/App'));
-const InstructorApp = React.lazy(() => import('./components/instructor/App'));
-const ReviewerApp = React.lazy(() => import('./components/reviewer/App'));
-const AdminApp = React.lazy(() => import('./components/admin/App'));
+import UserPortal from './components/user/App';
+import InstructorApp from './components/instructor/App';
+import ReviewerApp from './components/reviewer/App';
+import AdminApp from './components/admin/App';
 
 /**
  * Route protection wrapper that seamlessly redirects unauthorized users
@@ -69,8 +69,8 @@ export default function App() {
 
   const hostname = typeof window !== 'undefined' ? window.location.hostname.toLowerCase() : '';
   const isInstructorHost = hostname.startsWith('instructor.');
-  const isReviewerHost = hostname.startsWith('rev.') || hostname.startsWith('reviewer.') || hostname.startsWith('review.') || hostname.startsWith('coursereviewer.');
   const isAdminHost = hostname.startsWith('en.') || hostname.startsWith('admin.');
+  const isReviewerHost = hostname.startsWith('rev.') || hostname.startsWith('reviewer.') || hostname.startsWith('review.') || hostname.startsWith('coursereviewer.');
 
   // Portal Authorization Rules
   const isDev = isDeveloperUser(currentUser);

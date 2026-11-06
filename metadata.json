@@ -1,6 +1,6 @@
 {
   "name": "UQlearn - Online Learning & Course Marketplace",
-  "description": "UQlearn is a premier online learning marketplace for TVET KNEC courses, professional certifications, and interactive education.",
+  "description": "UqLearn is an online learning platform built for ambitious learners in Africa and around the world. Take high-quality courses taught by experienced industry instructors, learn at your own pace on a secure platform, and earn a verifiable certificate for every course you complete. Stack your certificates into micro-credentials that show employers exactly what you know and can do. Are you a skilled professional? Teach on UqLearn and turn your expertise into income. Learn a skill or teach one. Start today with Africa’s fast-growing eLearning platform.",
   "requestFramePermissions": [
     "microphone"
   ],

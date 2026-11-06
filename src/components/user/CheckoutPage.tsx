@@ -20,6 +20,7 @@ import { payheroService } from '../../services/payhero-service';
 import { subscriptionService } from '../../services/subscription-service';
 import { MpesaPaymentTracker, MpesaStepsState } from './MpesaPaymentTracker';
 import { MpesaPaymentModal } from './MpesaPaymentModal';
+import { CardBrandsRow } from '../common/CardBrandsRow';
 
 interface CheckoutPageProps {
   cart: Course[];
@@ -461,20 +462,17 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('card')}
-                    className={`p-3.5 border-2 rounded-xl flex items-center justify-center transition-all cursor-pointer bg-white dark:bg-slate-800 ${
+                    className={`p-3.5 border-2 rounded-xl flex flex-col items-center justify-center space-y-2 transition-all cursor-pointer bg-white dark:bg-slate-800 ${
                       paymentMethod === 'card'
                         ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20 shadow-sm'
                         : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
                     }`}
                   >
-                    <img 
-                      src={`${ROOT_URL}/uploads/logo/card.png`} 
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = '/card.png';
-                      }}
-                      alt="Card" 
-                      className="h-7 object-contain"
-                    />
+                    <div className="flex items-center space-x-1.5">
+                      <CreditCard className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                      <span className="font-bold text-xs text-slate-800 dark:text-slate-200">Cards</span>
+                    </div>
+                    <CardBrandsRow />
                   </button>
                 </div>
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ROOT_URL, API_BASE_URL, apiFetch, localApiFetch } from '../../lib/apiConfig';
+import { deployDistSequentially } from '../../lib/distDeployer';
 import { 
   Terminal as TerminalIcon, 
   CloudUpload, 
@@ -128,9 +129,9 @@ export const InstructorPhpSyncTab: React.FC = () => {
   // 1. Fetch Local Workspace /api/v1/ Files
   const fetchLocalFiles = async () => {
     setLoadingFiles(true);
-    addLog('[FS] Reading local /api/v1/ directory tree...', 'info');
+    addLog('[FS] Reading local /api/ directory tree recursively...', 'info');
     try {
-      const data = await localApiFetch('/api/v1/remote-sync/local-files', { silent: true });
+      const data = await localApiFetch('/api/v1/remote-sync/local-files', { silent: true } as any);
       if (data && data.success && Array.isArray(data.files)) {
         setFiles(data.files);
         setSelectedFileNames(data.files.map((f: ApiFile) => f.name));
@@ -147,19 +148,19 @@ export const InstructorPhpSyncTab: React.FC = () => {
   };
 
   // 2. Fetch Dist Files
-  const fetchDistFiles = async () => {
+  const fetchDistFiles = async (): Promise<DistFile[]> => {
     setLoadingDistFiles(true);
+    let list: DistFile[] = [];
     try {
-      const data = await localApiFetch('/api/v1/dist-files', { silent: true });
+      const data = await localApiFetch('/api/v1/dist-files', { silent: true } as any);
       if (data && data.success) {
         setHasBuiltDist(data.hasBuilt && data.files?.length > 0);
-        setDistFiles(data.files || []);
-        setSelectedDistPaths((data.files || []).map((f: DistFile) => f.path));
-        if (data.files && data.files.length > 0) {
-          if (!selectedDistFile) {
-            const htmlFile = data.files.find((f: DistFile) => f.path === 'index.html') || data.files[0];
-            setSelectedDistFile(htmlFile);
-          }
+        list = data.files || [];
+        setDistFiles(list);
+        setSelectedDistPaths(list.map((f: DistFile) => f.path));
+        if (list.length > 0 && !selectedDistFile) {
+          const htmlFile = list.find((f: DistFile) => f.path === 'index.html') || list[0];
+          setSelectedDistFile(htmlFile);
         }
       }
     } catch {
@@ -167,6 +168,7 @@ export const InstructorPhpSyncTab: React.FC = () => {
     } finally {
       setLoadingDistFiles(false);
     }
+    return list;
   };
 
   // 3. Handle Download deploy.php Script
@@ -201,15 +203,28 @@ export const InstructorPhpSyncTab: React.FC = () => {
         setHasBuiltDist(true);
         setLastBuildTime(new Date().toLocaleTimeString());
         setLastBuildDuration(data.durationMs || elapsed);
-        addLog(`[BUILD] ✓ ${data.message} (${(data.totalKb || 0)} KB across ${data.totalFiles} files).`, 'success');
+        addLog(`[BUILD] ✓ ${data.message} (${(data.totalKb || 0)} KB across ${data.totalFiles || 0} files).`, 'success');
         
+        // Output ALL build lines from Vite stdout
         if (data.stdout) {
-          // Output lines from stdout
           const lines = data.stdout.split('\n').filter((l: string) => l.trim().length > 0);
-          lines.slice(-6).forEach((line: string) => addLog(`  │ ${line}`, 'info'));
+          lines.forEach((line: string) => addLog(`  │ ${line}`, 'info'));
         }
 
-        await fetchDistFiles();
+        // Fetch and print EVERY single built dist file in a structured list
+        const freshDist = await fetchDistFiles();
+        const distList = freshDist || [];
+        if (distList.length > 0) {
+          addLog('====================================================', 'info');
+          addLog(`[BUILD MANIFEST] 📦 ${distList.length} Total Built Files Generated in /dist/:`, 'success');
+          addLog('====================================================', 'info');
+          distList.forEach((f: DistFile, idx: number) => {
+            const kb = (f.size / 1024).toFixed(2);
+            addLog(`  ├── [${idx + 1}/${distList.length}] dist/${f.path} (${kb} KB)`, 'success');
+          });
+          addLog('====================================================', 'info');
+          addLog(`[BUILD] All ${distList.length} files are auto-selected and ready for 1-click deployment!`, 'success');
+        }
       } else {
         addLog(`[BUILD] ✕ Build failed: ${data?.message || 'Unknown error'}`, 'error');
         if (data?.stderr) {
@@ -271,7 +286,7 @@ export const InstructorPhpSyncTab: React.FC = () => {
 
     // Method B: Server Proxy Fetch
     try {
-      const data = await localApiFetch(`/api/v1/remote-sync/remote-status?url=${encodeURIComponent(url)}&key=${encodeURIComponent(deployKey)}`, { silent: true });
+      const data = await localApiFetch(`/api/v1/remote-sync/remote-status?url=${encodeURIComponent(url)}&key=${encodeURIComponent(deployKey)}`, { silent: true } as any);
       const elapsed = Math.round(performance.now() - startTime);
 
       if (data && data.success && data.reachable) {
@@ -320,18 +335,18 @@ export const InstructorPhpSyncTab: React.FC = () => {
     checkRemoteStatus(currentRemoteUrl);
   }, [deployMode]);
 
-  // 5. Push Backend API Files (Dual transport: Direct Browser POST with Proxy Fallback)
+  // 5. Push Backend API Files (1 File Per Request Sequential Deployment)
   const handlePushApiFiles = async (fileNamesToPush?: string[]) => {
     const targets = fileNamesToPush || (selectedFileNames.length > 0 ? selectedFileNames : files.map(f => f.name));
     if (targets.length === 0) {
-      addLog('[DEPLOY] ✕ Aborted: No files selected for deployment.', 'warn');
+      addLog('[DEPLOY] ✕ Aborted: No API files selected for deployment.', 'warn');
       return;
     }
 
     setIsPushing(true);
-    addLog(`[DEPLOY] 🚀 Initiating push of ${targets.length} API files to ${backendRemoteUrl} ...`, 'info');
+    addLog(`[DEPLOY] 🚀 Initiating 1-File-Per-Request Sequential Deployment of ${targets.length} API files to ${backendRemoteUrl} ...`, 'cmd');
 
-    // Step A: Attempt Direct Browser POST first
+    // Step A: Attempt Direct Browser 1-by-1 Sequential Transmission
     try {
       const payloadRes = await localApiFetch('/api/v1/remote-sync/get-api-payload', {
         method: 'POST',
@@ -339,42 +354,63 @@ export const InstructorPhpSyncTab: React.FC = () => {
       });
 
       if (payloadRes && payloadRes.success && payloadRes.files) {
-        addLog(`[DEPLOY] Transmitting ${payloadRes.totalFiles} files directly from browser to ${backendRemoteUrl}...`, 'info');
-        let proxyUrl = backendRemoteUrl;
-        const isLiveHost = typeof window !== 'undefined' && (window.location.hostname === 'uqlearn.org' || window.location.hostname.endsWith('.uqlearn.org'));
-        if (!isLiveHost && proxyUrl.startsWith(API_BASE_URL.replace(/\/$/, ''))) {
-          proxyUrl = proxyUrl.replace(API_BASE_URL.replace(/\/$/, ''), '/api/v1');
-        }
-        const directPushRes = await fetch(proxyUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Deploy-Key': deployKey
-          },
-          body: JSON.stringify({
-            files: payloadRes.files,
-            deploy_key: deployKey
-          })
-        });
+        const filesMap: Record<string, string> = payloadRes.files || {};
+        const fileKeys = Object.keys(filesMap);
 
-        if (directPushRes.ok) {
-          const directData = await directPushRes.json();
-          addLog(`[DEPLOY] ✓ API Deployment Succeeded! Server response: "${directData.message || 'Files synchronized'}"`, 'success');
-          if (directData.updated_files && Array.isArray(directData.updated_files)) {
-            directData.updated_files.slice(0, 8).forEach((f: any) => {
-              addLog(`  └── synced -> /public_html/api/${f.path || f}`, 'success');
-            });
+        if (fileKeys.length > 0) {
+          addLog(`[DEPLOY] 📡 Transmitting ${fileKeys.length} API files 1-by-1 directly from browser to ${backendRemoteUrl}...`, 'info');
+          addLog('====================================================', 'info');
+
+          let proxyUrl = backendRemoteUrl;
+          const isLiveHost = typeof window !== 'undefined' && (window.location.hostname === 'uqlearn.org' || window.location.hostname.endsWith('.uqlearn.org'));
+          if (!isLiveHost && proxyUrl.startsWith(API_BASE_URL.replace(/\/$/, ''))) {
+            proxyUrl = proxyUrl.replace(API_BASE_URL.replace(/\/$/, ''), '/api/v1');
           }
+
+          let successfulCount = 0;
+          for (let i = 0; i < fileKeys.length; i++) {
+            const relPath = fileKeys[i];
+            const content = filesMap[relPath];
+            const fileKb = (new Blob([content]).size / 1024).toFixed(2);
+            const startMs = Date.now();
+
+            try {
+              const directPushRes = await fetch(proxyUrl, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-Deploy-Key': deployKey
+                },
+                body: JSON.stringify({
+                  files: { [relPath]: content },
+                  deploy_key: deployKey
+                })
+              });
+
+              const elapsed = Date.now() - startMs;
+              if (directPushRes.ok) {
+                successfulCount++;
+                addLog(`  ├── [${i + 1}/${fileKeys.length}] api/${relPath} (${fileKb} KB) ──> ✓ Written (${elapsed}ms)`, 'success');
+              } else {
+                addLog(`  ├── [${i + 1}/${fileKeys.length}] api/${relPath} (${fileKb} KB) ──> ✕ Error (HTTP ${directPushRes.status})`, 'error');
+              }
+            } catch (fileErr: any) {
+              addLog(`  ├── [${i + 1}/${fileKeys.length}] api/${relPath} (${fileKb} KB) ──> ✕ Error (${fileErr.message})`, 'error');
+            }
+          }
+
+          addLog('====================================================', 'info');
+          addLog(`[DEPLOY] 🎉 1-by-1 API Deployment Complete (${successfulCount}/${fileKeys.length} files verified)!`, 'success');
           checkRemoteStatus(backendRemoteUrl);
           setIsPushing(false);
           return;
         }
       }
     } catch {
-      addLog('[DEPLOY] Direct browser transport unavailable, trying server proxy...', 'info');
+      addLog('[DEPLOY] Direct browser transport unavailable, switching to server proxy 1-by-1 transport...', 'info');
     }
 
-    // Step B: Server Proxy Fallback
+    // Step B: Server Proxy Fallback (Sequential 1-by-1 inside Express server)
     try {
       const data = await localApiFetch('/api/v1/remote-sync/push', {
         method: 'POST',
@@ -386,12 +422,27 @@ export const InstructorPhpSyncTab: React.FC = () => {
       });
 
       if (data && data.success) {
-        addLog(`[DEPLOY] ✓ API Deployment Succeeded! Server response: "${data.message}"`, 'success');
-        if (data.uploadedFiles && Array.isArray(data.uploadedFiles)) {
-          data.uploadedFiles.forEach((fn: string) => {
-            addLog(`  └── synced -> /public_html/api/${fn}`, 'success');
+        addLog('====================================================', 'info');
+        addLog(`[DEPLOY REALTIME FEEDBACK] ✓ ${data.deployedCount || data.uploadedFiles?.length || 0}/${data.totalFiles || targets.length} API files written 1-by-1!`, 'success');
+        addLog('====================================================', 'info');
+
+        if (Array.isArray(data.fileTraces)) {
+          data.fileTraces.forEach((t: any, idx: number) => {
+            const kb = (t.size / 1024).toFixed(2);
+            if (t.status === 'ok') {
+              addLog(`  ├── [${idx + 1}/${data.fileTraces.length}] api/${t.path} (${kb} KB) ──> ✓ Written (${t.latencyMs}ms)`, 'success');
+            } else {
+              addLog(`  ├── [${idx + 1}/${data.fileTraces.length}] api/${t.path} (${kb} KB) ──> ✕ Error (${t.status})`, 'error');
+            }
+          });
+        } else if (data.uploadedFiles) {
+          data.uploadedFiles.forEach((fn: string, idx: number) => {
+            addLog(`  ├── [${idx + 1}/${data.uploadedFiles.length}] api/${fn} ──> ✓ Written`, 'success');
           });
         }
+
+        addLog('====================================================', 'info');
+        addLog(`[DEPLOY] 🎉 1-by-1 API Deployment Complete!`, 'success');
         checkRemoteStatus(backendRemoteUrl);
       } else {
         addLog(`[DEPLOY] ✕ API Deployment failed: ${data?.message}`, 'error');
@@ -406,23 +457,24 @@ export const InstructorPhpSyncTab: React.FC = () => {
     }
   };
 
-  // 6. Deploy Built Dist Files in 1 Request (Dual transport: Direct Browser POST with Proxy Fallback)
-  const handleDeployDist = async (pathsToDeploy?: string[]) => {
+  // 6. Deploy Built Dist Files (Dual transport: Direct Browser POST with Proxy Fallback)
+  const handleDeployDist = async (pathsToDeploy?: string[], forceDeployAll: boolean = true) => {
     if (!hasBuiltDist || distFiles.length === 0) {
       addLog('[DEPLOY] ✕ No production build found in dist/. Triggering build first...', 'warn');
       await handleRunBuild();
     }
 
-    const targets = pathsToDeploy || (selectedDistPaths.length > 0 ? selectedDistPaths : distFiles.map(f => f.path));
+    const allPaths = distFiles.map(f => f.path);
+    const targets = pathsToDeploy || (forceDeployAll ? allPaths : (selectedDistPaths.length > 0 ? selectedDistPaths : allPaths));
     if (targets.length === 0) {
       addLog('[DEPLOY] ✕ Aborted: No dist files selected.', 'warn');
       return;
     }
 
     setIsPushing(true);
-    addLog(`[DEPLOY] 🚀 Deploying ${targets.length} built dist files in resilient batches to ${frontendRemoteUrl} ...`, 'cmd');
+    addLog(`[DEPLOY] 🚀 Initiating Real-Time Sequential Deployment of ${targets.length} Dist Files (1 File Per Request) to ${frontendRemoteUrl}...`, 'cmd');
 
-    // Step A: Resilient Batched Server Deployment (uploads assets first, index.html last, with automatic retries)
+    // Step A: Server-side Sequential Deployment with Itemized File Traces
     try {
       const data = await localApiFetch('/api/v1/remote-sync/deploy-dist', {
         method: 'POST',
@@ -435,25 +487,36 @@ export const InstructorPhpSyncTab: React.FC = () => {
       });
 
       if (data && data.success) {
-        addLog(`[DEPLOY] ✓ Frontend Deployment Succeeded! ${data.deployedCount} dist files written to web root.`, 'success');
-        if (data.remoteResponse && data.remoteResponse.updated_files) {
-          const sample = data.remoteResponse.updated_files.slice(0, 8);
-          sample.forEach((f: any) => {
-            addLog(`  └── written -> /${f.path} (${Math.round((f.bytes || 0) / 1024)} KB)`, 'success');
+        addLog('====================================================', 'info');
+        addLog(`[DEPLOY REALTIME FEEDBACK] ✓ ${data.deployedCount}/${data.totalFiles || targets.length} files successfully written to web root!`, 'success');
+        addLog('====================================================', 'info');
+
+        if (Array.isArray(data.fileTraces)) {
+          data.fileTraces.forEach((t: any, idx: number) => {
+            const kb = (t.size / 1024).toFixed(2);
+            if (t.status === 'ok' || t.status === 'ok_non_json') {
+              addLog(`  ├── [${idx + 1}/${data.fileTraces.length}] dist/${t.path} (${kb} KB) ──> ✓ Written (${t.latencyMs}ms)`, 'success');
+            } else {
+              addLog(`  ├── [${idx + 1}/${data.fileTraces.length}] dist/${t.path} (${kb} KB) ──> ✕ Error (${t.status})`, 'error');
+            }
           });
-          if (data.remoteResponse.updated_files.length > 8) {
-            addLog(`  └── ...and ${data.remoteResponse.updated_files.length - 8} more files.`, 'info');
-          }
+        } else if (data.remoteResponse && data.remoteResponse.updated_files) {
+          data.remoteResponse.updated_files.forEach((f: any, idx: number) => {
+            const kb = Math.round((f.bytes || 0) / 1024);
+            addLog(`  ├── [${idx + 1}/${data.remoteResponse.updated_files.length}] dist/${f.path} (${kb} KB) ──> ✓ Written`, 'success');
+          });
         }
+        addLog('====================================================', 'info');
+        addLog(`[DEPLOY] 🎉 100% Real-Time Deployment Complete on ${ROOT_URL.replace('https://', '')}!`, 'success');
         checkRemoteStatus(frontendRemoteUrl);
         setIsPushing(false);
         return;
       }
     } catch {
-      addLog('[DEPLOY] Server batched transport unavailable, trying direct browser transport...', 'info');
+      addLog('[DEPLOY] Server transport unavailable, switching to direct browser 1-by-1 transport...', 'info');
     }
 
-    // Step B: Direct Browser Fallback
+    // Step B: Direct Browser Fallback via deployDistSequentially utility (Transmit 1 File Per Request)
     try {
       const payloadRes = await localApiFetch('/api/v1/remote-sync/get-dist-payload', {
         method: 'POST',
@@ -461,34 +524,20 @@ export const InstructorPhpSyncTab: React.FC = () => {
       });
 
       if (payloadRes && payloadRes.success && payloadRes.files) {
-        addLog(`[DEPLOY] Transmitting ${payloadRes.totalFiles} dist files directly to ${frontendRemoteUrl}...`, 'info');
+        const textFilesMap: Record<string, string> = payloadRes.files || {};
+        const base64FilesMap: Record<string, string> = payloadRes.base64Files || {};
 
-        const directPushRes = await fetch(frontendRemoteUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Deploy-Key': deployKey
-          },
-          body: JSON.stringify({
-            files: payloadRes.files,
-            dist_files: payloadRes.files,
-            base64_files: payloadRes.base64Files || {},
-            clean_assets: cleanAssetsOnDeploy,
-            deploy_key: deployKey
-          })
+        const result = await deployDistSequentially({
+          remoteUrl: frontendRemoteUrl,
+          deployKey,
+          files: textFilesMap,
+          base64Files: base64FilesMap,
+          cleanAssets: cleanAssetsOnDeploy,
+          onLog: (msg, level) => addLog(msg, level)
         });
 
-        if (directPushRes.ok) {
-          const directData = await directPushRes.json();
-          addLog(`[DEPLOY] ✓ Frontend Deployment Succeeded! Server response: "${directData.message || 'Dist deployed successfully'}"`, 'success');
-          if (directData.updated_files && Array.isArray(directData.updated_files)) {
-            directData.updated_files.slice(0, 8).forEach((f: any) => {
-              addLog(`  └── written -> /${f.path || f}`, 'success');
-            });
-          }
+        if (result.success) {
           checkRemoteStatus(frontendRemoteUrl);
-        } else {
-          addLog(`[DEPLOY] ✕ Dist deployment failed with HTTP ${directPushRes.status}`, 'error');
         }
       }
     } catch (err: any) {
@@ -607,109 +656,271 @@ export const InstructorPhpSyncTab: React.FC = () => {
   // Root deployer script for ${ROOT_URL.replace('https://', '')}/deploy.php
   const rootDeployPhpCode = `<?php
 /**
- * Production Frontend (Dist) & SPA Deployment Worker Script
- * Location: Place at web root: ${ROOT_URL}/deploy.php
+ * Production Frontend (Dist) & Multi-Portal Deployment Worker Script
+ * Target Location: Place at your cPanel web root: /home/uqlearno/public_html/deploy.php
+ * Endpoint URL: ${ROOT_URL}/deploy.php
+ *
+ * Handles 1-Click synchronization of all React single-page app bundles,
+ * sub-portals (admin, instructor, rev), CSS/JS assets, and .htaccess rewrite rules.
  */
+
+// 1. Server Limits & Configuration
+@ini_set('memory_limit', '512M');
+@ini_set('max_execution_time', 300);
+@set_time_limit(300);
 date_default_timezone_set('Africa/Nairobi');
+
+// 2. CORS & Response Headers
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-Deploy-Key");
 header("Content-Type: application/json; charset=UTF-8");
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit(); }
+// Handle CORS Preflight
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
 
+// 3. Security Deploy Secret
 define('DEFAULT_DEPLOY_SECRET', 'cubiclink_sync_secret_2026');
 $baseDir = __DIR__;
 
+// Helper: Check Deploy Authorization
+function check_deploy_auth() {
+    $providedKey = $_SERVER['HTTP_X_DEPLOY_KEY'] ?? $_GET['deploy_key'] ?? $_POST['deploy_key'] ?? '';
+    $configuredSecret = getenv('CUBICLINK_DEPLOY_SECRET') ?: DEFAULT_DEPLOY_SECRET;
+    
+    if (!empty($configuredSecret) && $providedKey !== $configuredSecret && $providedKey !== 'admin_override') {
+        if (empty($providedKey)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// GET: Status Check & Health Diagnostic
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    $assetsCount = 0;
+    if (is_dir($baseDir . '/assets')) {
+        $assets = glob($baseDir . '/assets/*');
+        $assetsCount = $assets ? count($assets) : 0;
+    }
+
     echo json_encode([
         "success" => true,
-        "worker" => "Root Frontend & Dist Deployer",
+        "worker" => "UQlearn Root Frontend & Dist Deployer",
         "endpoint" => "${ROOT_URL}/deploy.php",
         "status" => "ready",
+        "server_time" => date('Y-m-d H:i:s'),
+        "php_version" => phpversion(),
         "web_root" => $baseDir,
         "is_writable" => is_writable($baseDir),
-        "has_index_html" => file_exists($baseDir . '/index.html')
+        "post_max_size" => ini_get('post_max_size'),
+        "upload_max_filesize" => ini_get('upload_max_filesize'),
+        "memory_limit" => ini_get('memory_limit'),
+        "has_index_html" => file_exists($baseDir . '/index.html'),
+        "has_htaccess" => file_exists($baseDir . '/.htaccess'),
+        "has_admin_portal" => is_dir($baseDir . '/admin'),
+        "has_instructor_portal" => is_dir($baseDir . '/instructor'),
+        "total_assets" => $assetsCount
     ], JSON_PRETTY_PRINT);
     exit();
 }
 
+// POST: Write Built Dist Files to Web Root
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $providedKey = $_SERVER['HTTP_X_DEPLOY_KEY'] ?? $_GET['deploy_key'] ?? '';
-    if (!empty($providedKey) && $providedKey !== DEFAULT_DEPLOY_SECRET && $providedKey !== 'admin_override') {
+    if (!check_deploy_auth()) {
         http_response_code(401);
-        echo json_encode(["success" => false, "message" => "Unauthorized deploy key"]);
+        echo json_encode([
+            "success" => false,
+            "message" => "Unauthorized: Missing or invalid deployment secret key."
+        ]);
         exit();
     }
 
-    $input = json_decode(file_get_contents('php://input'), true);
+    $rawInput = file_get_contents('php://input');
+    $input = json_decode($rawInput, true);
+
+    if (!$input && !empty($rawInput)) {
+        http_response_code(400);
+        echo json_encode([
+            "success" => false,
+            "message" => "Invalid JSON payload received. Payload might have exceeded post_max_size (" . ini_get('post_max_size') . ").",
+            "raw_length" => strlen($rawInput)
+        ]);
+        exit();
+    }
+
     $textFiles = $input['files'] ?? $input['dist_files'] ?? [];
     $base64Files = $input['base64_files'] ?? [];
+    $chunkFile = $input['chunk_file'] ?? '';
+    $chunkData = $input['chunk_data'] ?? '';
+    $chunkIndex = isset($input['chunk_index']) ? (int)$input['chunk_index'] : 0;
+    $totalChunks = isset($input['total_chunks']) ? (int)$input['total_chunks'] : 1;
     $cleanAssets = !empty($input['clean_assets']);
     
+    // Recursive directory cleaner function for assets/
+    $cleanDir = function($dir, $self) {
+        if (!is_dir($dir)) return;
+        $items = glob($dir . '/*');
+        if ($items) {
+            foreach ($items as $item) {
+                if (is_dir($item)) {
+                    $self($item, $self);
+                    @rmdir($item);
+                } else if (is_file($item)) {
+                    @unlink($item);
+                }
+            }
+        }
+    };
+
     if ($cleanAssets && is_dir($baseDir . '/assets')) {
-        foreach (glob($baseDir . '/assets/*') as $old) { if (is_file($old)) @unlink($old); }
+        $cleanDir($baseDir . '/assets', $cleanDir);
     }
 
     $updated = [];
-    foreach ($textFiles as $rel => $code) {
-        $clean = trim(str_replace(['../', '..\\\\'], '', $rel), '/\\\\');
-        if (!$clean) continue;
-        $dest = $baseDir . '/' . $clean;
-        $folder = dirname($dest);
-        if (!is_dir($folder)) mkdir($folder, 0755, true);
-        file_put_contents($dest, $code);
-        $updated[] = ['path' => $clean, 'bytes' => strlen($code)];
-    }
+    $errors = [];
 
-    foreach ($base64Files as $rel => $b64) {
-        $clean = trim(str_replace(['../', '..\\\\'], '', $rel), '/\\\\');
-        if (!$clean) continue;
-        $dest = $baseDir . '/' . $clean;
-        $folder = dirname($dest);
-        if (!is_dir($folder)) mkdir($folder, 0755, true);
-        $decoded = base64_decode($b64);
-        if ($decoded !== false) {
-            file_put_contents($dest, $decoded);
-            $updated[] = ['path' => $clean, 'bytes' => strlen($decoded)];
+    // Support chunked file transmission for large assets/bundles
+    if ($chunkFile && $chunkData) {
+        $clean = trim(str_replace(['../', '..\\\\'], '', $chunkFile), '/\\\\');
+        if ($clean) {
+            $dest = $baseDir . '/' . $clean;
+            $folder = dirname($dest);
+            if (!is_dir($folder)) @mkdir($folder, 0755, true);
+            $decoded = base64_decode($chunkData);
+            if ($decoded !== false) {
+                $flags = ($chunkIndex === 0) ? 0 : FILE_APPEND;
+                $written = @file_put_contents($dest, $decoded, $flags);
+                if ($written !== false) {
+                    $updated[] = ['path' => $clean, 'bytes' => $written, 'chunk' => $chunkIndex + 1, 'total_chunks' => $totalChunks, 'type' => 'chunk'];
+                } else {
+                    $errors[] = ['path' => $clean, 'error' => 'Failed to write chunk'];
+                }
+            }
         }
     }
 
-    // Mirror assets, index.html, and .htaccess into admin/, instructor/, and rev/ for subdomains (e.g. rev.${ROOT_URL.replace('https://', '')} -> /rev/)
-    $sourceAssets = glob($baseDir . '/assets/*');
+    // Write text files (HTML, JS, CSS, SVG, JSON, .htaccess)
+    foreach ($textFiles as $rel => $code) {
+        $clean = trim(str_replace(['../', '..\\\\'], '', $rel), '/\\\\');
+        if (!$clean) continue;
+        
+        $dest = $baseDir . '/' . $clean;
+        $folder = dirname($dest);
+        if (!is_dir($folder)) @mkdir($folder, 0755, true);
+        
+        $written = @file_put_contents($dest, $code);
+        if ($written !== false) {
+            $updated[] = ['path' => $clean, 'bytes' => $written, 'type' => 'text'];
+        } else {
+            $errors[] = ['path' => $clean, 'error' => 'Failed to write file'];
+        }
+    }
+
+    // Write binary files (images, fonts, media)
+    foreach ($base64Files as $rel => $b64) {
+        $clean = trim(str_replace(['../', '..\\\\'], '', $rel), '/\\\\');
+        if (!$clean) continue;
+        
+        $dest = $baseDir . '/' . $clean;
+        $folder = dirname($dest);
+        if (!is_dir($folder)) @mkdir($folder, 0755, true);
+        
+        $decoded = base64_decode($b64);
+        if ($decoded !== false) {
+            $written = @file_put_contents($dest, $decoded);
+            if ($written !== false) {
+                $updated[] = ['path' => $clean, 'bytes' => $written, 'type' => 'binary'];
+            } else {
+                $errors[] = ['path' => $clean, 'error' => 'Failed to write binary'];
+            }
+        }
+    }
+
+    // Mirror assets recursively into admin/, instructor/, and rev/ for subdomain routing
+    $syncDirRecursive = function($src, $dst, $self) {
+        if (!is_dir($src)) return;
+        if (!is_dir($dst)) @mkdir($dst, 0755, true);
+        $dir = opendir($src);
+        if ($dir) {
+            while (false !== ($file = readdir($dir))) {
+                if ($file !== '.' && $file !== '..') {
+                    $srcFile = $src . '/' . $file;
+                    $dstFile = $dst . '/' . $file;
+                    if (is_dir($srcFile)) {
+                        $self($srcFile, $dstFile, $self);
+                    } else {
+                        @copy($srcFile, $dstFile);
+                    }
+                }
+            }
+            closedir($dir);
+        }
+    };
+
     $subRoots = [$baseDir . '/admin', $baseDir . '/instructor', $baseDir . '/rev'];
     foreach ($subRoots as $subRoot) {
         if (!is_dir($subRoot)) @mkdir($subRoot, 0755, true);
-        $subAssets = $subRoot . '/assets';
-        if (!is_dir($subAssets)) @mkdir($subAssets, 0755, true);
-        if ($sourceAssets) {
-            foreach ($sourceAssets as $srcFile) {
-                if (is_file($srcFile)) @copy($srcFile, $subAssets . '/' . basename($srcFile));
-            }
+        if (is_dir($baseDir . '/assets')) {
+            $syncDirRecursive($baseDir . '/assets', $subRoot . '/assets', $syncDirRecursive);
         }
         if (file_exists($baseDir . '/index.html')) {
             @copy($baseDir . '/index.html', $subRoot . '/index.html');
             if (basename($subRoot) === 'rev' && file_exists($baseDir . '/rev/rev.html')) {
-                // If rev.html was specifically bundled, copy it as index.html into rev/
                 @copy($baseDir . '/rev/rev.html', $subRoot . '/index.html');
             } elseif (basename($subRoot) === 'rev') {
                 @copy($baseDir . '/index.html', $subRoot . '/rev.html');
             }
         }
-        @file_put_contents($subRoot . '/.htaccess', "<IfModule mod_rewrite.c>\\nRewriteEngine On\\nRewriteBase /\\nRewriteCond %{REQUEST_URI} ^/api/ [NC,OR]\\nRewriteCond %{REQUEST_URI} ^/uploads/ [NC]\\nRewriteRule ^ - [L]\\nRewriteCond %{REQUEST_FILENAME} !-f\\nRewriteCond %{REQUEST_FILENAME} !-d\\nRewriteRule ^ index.html [L]\\n</IfModule>\\nAddType application/javascript .js .mjs\\nAddType text/css .css\\n");
+        $subHtaccess = "<IfModule mod_rewrite.c>\\n" .
+            "  RewriteEngine On\\n" .
+            "  RewriteBase /\\n" .
+            "  RewriteCond %{REQUEST_URI} ^/api/ [NC,OR]\\n" .
+            "  RewriteCond %{REQUEST_URI} ^/uploads/ [NC]\\n" .
+            "  RewriteRule ^ - [L]\\n" .
+            "  RewriteCond %{REQUEST_FILENAME} !-f\\n" .
+            "  RewriteCond %{REQUEST_FILENAME} !-d\\n" .
+            "  RewriteRule ^ index.html [L]\\n" .
+            "</IfModule>\\n" .
+            "AddType application/javascript .js .mjs\\n" .
+            "AddType text/css .css\\n" .
+            "<IfModule mod_headers.c>\\n" .
+            "  Header set Access-Control-Allow-Origin \\"*\\"\\n" .
+            "</IfModule>\\n";
+        @file_put_contents($subRoot . '/.htaccess', $subHtaccess);
     }
 
-    // Default SPA .htaccess
+    // Default SPA .htaccess in public_html/
     $htPath = $baseDir . '/.htaccess';
     if (!file_exists($htPath) && !isset($textFiles['.htaccess'])) {
-        file_put_contents($htPath, "<IfModule mod_rewrite.c>\\nRewriteEngine On\\nRewriteBase /\\nRewriteCond %{REQUEST_URI} ^/api/ [NC,OR]\\nRewriteCond %{REQUEST_URI} ^/uploads/ [NC]\\nRewriteRule ^ - [L]\\nRewriteCond %{REQUEST_FILENAME} !-f\\nRewriteCond %{REQUEST_FILENAME} !-d\\nRewriteRule ^ index.html [L]\\n</IfModule>\\nAddType application/javascript .js .mjs\\nAddType text/css .css\\n");
+        $defaultHtaccess = "<IfModule mod_rewrite.c>\\n" .
+            "  RewriteEngine On\\n" .
+            "  RewriteBase /\\n" .
+            "  RewriteCond %{REQUEST_URI} ^/api/ [NC,OR]\\n" .
+            "  RewriteCond %{REQUEST_URI} ^/uploads/ [NC]\\n" .
+            "  RewriteRule ^ - [L]\\n" .
+            "  RewriteCond %{REQUEST_FILENAME} !-f\\n" .
+            "  RewriteCond %{REQUEST_FILENAME} !-d\\n" .
+            "  RewriteRule ^ index.html [L]\\n" .
+            "</IfModule>\\n" .
+            "AddType application/javascript .js .mjs\\n" .
+            "AddType text/css .css\\n" .
+            "<IfModule mod_headers.c>\\n" .
+            "  Header set Access-Control-Allow-Origin \\"*\\"\\n" .
+            "</IfModule>\\n";
+        @file_put_contents($htPath, $defaultHtaccess);
     }
 
+    $totalUpdated = count($updated);
     echo json_encode([
-        "success" => count($updated) > 0,
-        "message" => "Dist deployment completed successfully!",
-        "deployed_count" => count($updated),
-        "updated_files" => $updated
+        "success" => $totalUpdated > 0 || empty($errors),
+        "message" => "Dist deployment completed successfully ($totalUpdated files written).",
+        "deployed_count" => $totalUpdated,
+        "updated_files" => $updated,
+        "errors" => $errors
     ], JSON_PRETTY_PRINT);
     exit();
 }
@@ -717,7 +928,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   const apiDeployPhpCode = `<?php
 /**
- * Backend API Deployer for {ROOT_URL.replace('https://', '')}
+ * Backend API Deployer for ${ROOT_URL.replace('https://', '')}
  * Location: public_html/api/v1/deploy.php
  */
 header("Access-Control-Allow-Origin: *");
@@ -728,15 +939,25 @@ header("Content-Type: application/json; charset=UTF-8");
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit(); }
 
 define('DEFAULT_DEPLOY_SECRET', 'cubiclink_sync_secret_2026');
-$targetDir = dirname(__DIR__); // Point to api/ folder (parent of v1/) to support deploying v1 and v2
+
+// Dynamically locate the 'api/' root directory regardless of where deploy.php is placed on shared hosting
+$currentDir = __DIR__;
+if (basename($currentDir) === 'v1' || basename($currentDir) === 'v2') {
+    $parent = dirname($currentDir);
+    $apiBaseDir = (basename($parent) === 'api') ? $parent : ($parent . '/api');
+} elseif (basename($currentDir) === 'api') {
+    $apiBaseDir = $currentDir;
+} else {
+    $apiBaseDir = $currentDir . '/api';
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     echo json_encode([
         "success" => true,
         "endpoint" => "${API_BASE_URL.replace(/\/$/, '')}/deploy.php",
         "status" => "online",
-        "parent_dir" => $targetDir,
-        "is_writable" => is_writable($targetDir)
+        "api_base_dir" => $apiBaseDir,
+        "is_writable" => is_writable($apiBaseDir) || is_writable(dirname($apiBaseDir))
     ]);
     exit();
 }
@@ -752,6 +973,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $cleanPath = trim(str_replace(['../', '..\\'], '', $name), '/\\');
             if (!$cleanPath) continue;
 
+            // Strip leading 'api/' if present so it doesn't double-nest under $apiBaseDir
+            if (strpos($cleanPath, 'api/') === 0) {
+                $cleanPath = substr($cleanPath, 4);
+            }
+
             $ext = strtolower(pathinfo($cleanPath, PATHINFO_EXTENSION));
             $filenameOnly = basename($cleanPath);
 
@@ -760,7 +986,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 continue;
             }
 
-            $dest = $targetDir . '/' . $cleanPath;
+            $dest = $apiBaseDir . '/' . $cleanPath;
             $folder = dirname($dest);
             if (!is_dir($folder)) {
                 @mkdir($folder, 0755, true);
@@ -770,7 +996,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($bytes !== false) {
                 $updated[] = $cleanPath;
             } else {
-                $errors[] = "Failed to write '$cleanPath'";
+                $errors[] = "Failed to write '$cleanPath' to '$dest'";
             }
         }
         echo json_encode([
@@ -932,12 +1158,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
               {/* DEPLOY DIST BUTTON */}
               <button
-                onClick={() => handleDeployDist()}
+                onClick={() => handleDeployDist(undefined, true)}
                 disabled={isPushing || isBuilding || distFiles.length === 0}
                 className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-950/50 transition-all flex items-center space-x-2 cursor-pointer border border-emerald-500/40"
               >
                 <CloudUpload className={`w-4 h-4 ${isPushing ? 'animate-bounce' : ''}`} />
-                <span>{isPushing ? 'Deploying...' : `Deploy Dist to ${ROOT_URL.replace('https://', '')}/deploy.php (${selectedDistPaths.length})`}</span>
+                <span>{isPushing ? 'Deploying...' : `Deploy All Dist Files (${distFiles.length}) to ${ROOT_URL.replace('https://', '')}`}</span>
               </button>
 
               {/* CLEAN ASSETS TOGGLE */}

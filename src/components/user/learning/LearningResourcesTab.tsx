@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Course, Lesson } from '../../../types';
 import { ResourcePreviewModal } from '../../common/ResourcePreviewModal';
+import { useApp } from '../../../context/AppContext';
 
 interface LearningResourcesTabProps {
   course: Course;
@@ -23,6 +24,9 @@ export const LearningResourcesTab: React.FC<LearningResourcesTabProps> = ({
   course,
   currentLesson
 }) => {
+  const { currentUser } = useApp();
+  const learnerName = currentUser?.name || currentUser?.displayName || 'Wamuu Rajab';
+  const learnerEmail = currentUser?.email || 'wamuurajab@gmail.com';
   const [previewResource, setPreviewResource] = useState<any | null>(null);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
 
@@ -81,7 +85,7 @@ export const LearningResourcesTab: React.FC<LearningResourcesTabProps> = ({
   const handleDownload = (res: any) => {
     if (!res.url || res.url === '#') {
       // Generate a quick downloadable text file for default stubs
-      const textContent = `# ${res.name}\nCourse: ${course.title}\nLecture: ${currentLesson.title}\nInstructor: ${course.instructor}\nResource Size: ${res.fileSize}\n\nDescription:\n${res.description}\n\nVisit ${ROOT_URL} for more lectures.`;
+      const textContent = `# ${res.name}\nCourse: ${course.title}\nLecture: ${currentLesson.title}\nInstructor: ${course.instructor}\nResource Size: ${res.fileSize}\n\nDescription:\n${res.description}\n\n========================================\nUQLEARN LICENSED COPY\nLicensed To: ${learnerName}\nEmail: ${learnerEmail}\nSingle-user license, 30 oct 2026\nID: UQ-7F3A9C\nwww.uqlearn.org\nDO NOT COPY OR SHARE\n========================================\n\nVisit ${ROOT_URL} for more lectures.`;
       const blob = new Blob([textContent], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');

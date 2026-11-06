@@ -1106,7 +1106,7 @@ export const AdminCoursesConfigTab: React.FC<AdminCoursesConfigTabProps> = ({
                 userId="ceo"
                 initialSignature={configDraft.ceoSignature}
                 title="CEO Official Certificate Signature"
-                signerName={configDraft.ceoName || 'SIR, RAJAB WAMUU'}
+                signerName={configDraft.ceoName || 'Sir, rajab wamuu'}
                 signerTitle={configDraft.ceoTitle || 'CEO UQLEARN'}
                 onSave={(data) => setConfigDraft(prev => ({ ...prev, ceoSignature: data }))}
               />

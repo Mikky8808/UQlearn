@@ -15,6 +15,7 @@ export interface CertificateData {
   verificationUrl?: string;
   qrDataUrl?: string;
   logoUrl?: string;
+  verifiedBadgeUrl?: string;
 }
 
 interface UqlearnCertificateSvgProps {
@@ -34,10 +35,11 @@ export const UqlearnCertificateSvg: React.FC<UqlearnCertificateSvgProps> = ({
   const courseTitle = data.courseTitle?.trim() || 'Virtual Assistant';
   const completionDate = data.completionDate?.trim() || 'July 1, 2026';
   const instructorName = (data.instructorName?.trim() || 'MICHAEL KENYANYA').toUpperCase();
-  const ceoName = (data.ceoName?.trim() || 'SIR, RAJAB WAMUU').toUpperCase();
+  const ceoName = data.ceoName?.trim() || 'Sir, rajab wamuu';
   const ceoTitle = (data.ceoTitle?.trim() || 'CEO UQLEARN').toUpperCase();
   const credentialId = data.credentialId || 'UQL-CERT-2026';
   const effectiveLogoUrl = resolveCertificateLogo(data.logoUrl);
+  const effectiveBadgeUrl = data.verifiedBadgeUrl || '/assets/verified-badge.jpeg';
 
   const hasCustomInstructorSig = instructorSignatureService.isValidSignature(data.instructorSignature);
   const hasCustomCeoSig = instructorSignatureService.isValidSignature(data.ceoSignature);
@@ -336,17 +338,37 @@ export const UqlearnCertificateSvg: React.FC<UqlearnCertificateSvgProps> = ({
       </g>
 
       {/* ======================================================== */}
-      {/* 4. TOP LOGO EMBLEM (UQLEARN OFFICIAL SITE LOGO)         */}
+      {/* 4. TOP LOGO EMBLEM                                       */}
       {/* ======================================================== */}
       <g id="uql-crest-emblem">
-        {/* Render the site's official logo directly with dual href and xlinkHref attributes */}
+        {/* Subtle decorative concentric crest framing rings matching certificate parchment aesthetic */}
+        <circle
+          cx="800"
+          cy="140"
+          r="89"
+          fill="none"
+          stroke={`url(#goldGrad-${uid})`}
+          strokeWidth="3.5"
+          opacity="0.85"
+        />
+        <circle
+          cx="800"
+          cy="140"
+          r="93"
+          fill="none"
+          stroke="#d4af37"
+          strokeWidth="1"
+          strokeDasharray="3 3"
+          opacity="0.6"
+        />
+        {/* Render the official UQlearn certificate crest emblem */}
         <image
           href={effectiveLogoUrl}
           xlinkHref={effectiveLogoUrl}
-          x="730"
-          y="72"
-          width="140"
-          height="140"
+          x="712"
+          y="52"
+          width="176"
+          height="176"
           preserveAspectRatio="xMidYMid meet"
         />
       </g>
@@ -500,28 +522,14 @@ export const UqlearnCertificateSvg: React.FC<UqlearnCertificateSvgProps> = ({
         <polygon points="380,829 386,835 380,841 374,835" fill="#d4af37" />
         <line x1="395" y1="835" x2="540" y2="835" stroke="#d4af37" strokeWidth="1.6" />
 
-        {/* Instructor Full Name - Always visible for professional clarity */}
+        {/* Instructor Role Title */}
         <text
           x="380"
           y="872"
           textAnchor="middle"
-          className="uql-cinzel"
-          fontWeight="700"
-          fontSize="17"
-          letterSpacing="2"
-          fill="#0f172a"
-        >
-          {instructorName}
-        </text>
-
-        {/* Instructor Role Title */}
-        <text
-          x="380"
-          y="897"
-          textAnchor="middle"
           className="uql-body"
           fontWeight="600"
-          fontSize="12"
+          fontSize="13"
           letterSpacing="2.5"
           fill="#475569"
         >
@@ -557,15 +565,19 @@ export const UqlearnCertificateSvg: React.FC<UqlearnCertificateSvgProps> = ({
           />
         )}
 
-        {/* Small Center QR Site Logo Badge */}
-        <circle cx="800" cy="803" r="16" fill="#ffffff" stroke={`url(#purpleGrad-${uid})`} strokeWidth="1.5" />
+        {/* Center QR Verification Badge */}
+        <clipPath id={`badgeClip-${uid}`}>
+          <circle cx="800" cy="803" r="17" />
+        </clipPath>
+        <circle cx="800" cy="803" r="18" fill="#ffffff" stroke={`url(#purpleGrad-${uid})`} strokeWidth="1.5" />
         <image
-          href={effectiveLogoUrl}
-          xlinkHref={effectiveLogoUrl}
-          x="786"
-          y="789"
-          width="28"
-          height="28"
+          href={effectiveBadgeUrl}
+          xlinkHref={effectiveBadgeUrl}
+          x="782"
+          y="785"
+          width="36"
+          height="36"
+          clipPath={`url(#badgeClip-${uid})`}
           preserveAspectRatio="xMidYMid meet"
         />
 
@@ -620,7 +632,7 @@ export const UqlearnCertificateSvg: React.FC<UqlearnCertificateSvgProps> = ({
             fill="#1e293b"
             opacity="0.8"
           >
-            {data.ceoName || 'Sir Rajab Wamuu'}
+            {data.ceoName || 'Sir, rajab wamuu'}
           </text>
         )}
 
@@ -629,28 +641,14 @@ export const UqlearnCertificateSvg: React.FC<UqlearnCertificateSvgProps> = ({
         <polygon points="1220,829 1226,835 1220,841 1214,835" fill="#d4af37" />
         <line x1="1235" y1="835" x2="1380" y2="835" stroke="#d4af37" strokeWidth="1.6" />
 
-        {/* CEO Full Name - Always visible */}
+        {/* CEO Role Title */}
         <text
           x="1220"
           y="872"
           textAnchor="middle"
-          className="uql-cinzel"
-          fontWeight="700"
-          fontSize="17"
-          letterSpacing="2"
-          fill="#0f172a"
-        >
-          {ceoName}
-        </text>
-
-        {/* CEO Role Title */}
-        <text
-          x="1220"
-          y="897"
-          textAnchor="middle"
           className="uql-body"
           fontWeight="600"
-          fontSize="12"
+          fontSize="13"
           letterSpacing="2.5"
           fill="#475569"
         >

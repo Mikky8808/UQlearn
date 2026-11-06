@@ -17,7 +17,6 @@ date_default_timezone_set('Africa/Nairobi');
 // =========================================================================
 header("Content-Type: application/json; charset=UTF-8");
 
-
 // Only accept POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -48,12 +47,24 @@ try {
         exit();
     }
 
-    // 5. Extract Fields
-    $auth_provider = isset($data['authProvider']) ? strtolower(trim($data['authProvider'])) : 'email';
-    $email = isset($data['email']) ? strtolower(trim($data['email'])) : '';
+    // 5. Extract & Normalize Fields
+    // Check multiple possible key names for authProvider
+    $raw_provider = '';
+    if (!empty($data['authProvider'])) $raw_provider = $data['authProvider'];
+    elseif (!empty($data['auth_provider'])) $raw_provider = $data['auth_provider'];
+    elseif (!empty($data['provider'])) $raw_provider = $data['provider'];
+    elseif (!empty($data['auth_type'])) $raw_provider = $data['auth_type'];
+    elseif (!empty($data['is_google']) || !empty($data['google_sso']) || !empty($data['is_google_login'])) $raw_provider = 'google';
+
+    $auth_provider = strtolower(trim((string)$raw_provider));
+    if (empty($auth_provider)) {
+        $auth_provider = 'email';
+    }
+
+    $email = isset($data['email']) ? strtolower(trim((string)$data['email'])) : '';
     $password = isset($data['password']) ? (string)$data['password'] : '';
-    $firebase_uid = isset($data['firebaseUid']) ? trim($data['firebaseUid']) : (isset($data['firebase_uid']) ? trim($data['firebase_uid']) : '');
-    $role_requested = isset($data['role']) ? strtolower(trim($data['role'])) : '';
+    $firebase_uid = isset($data['firebaseUid']) ? trim((string)$data['firebaseUid']) : (isset($data['firebase_uid']) ? trim((string)$data['firebase_uid']) : '');
+    $role_requested = isset($data['role']) ? strtolower(trim((string)$data['role'])) : '';
 
     // 6. Basic Validation
     if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -107,10 +118,10 @@ try {
         $user = $result ? $result->fetch_assoc() : null;
         $stmt->close();
 
-        // If user not found, auto-create or return 404 with guidance
+        // If user not found, auto-create account for Google user
         if (!$user) {
-            $displayName = isset($data['displayName']) ? trim($data['displayName']) : (isset($data['name']) ? trim($data['name']) : '');
-            $photoURL = isset($data['photoURL']) ? trim($data['photoURL']) : (isset($data['avatar']) ? trim($data['avatar']) : '');
+            $displayName = isset($data['displayName']) ? trim((string)$data['displayName']) : (isset($data['name']) ? trim((string)$data['name']) : '');
+            $photoURL = isset($data['photoURL']) ? trim((string)$data['photoURL']) : (isset($data['avatar']) ? trim((string)$data['avatar']) : '');
             $nameParts = !empty($displayName) ? explode(' ', $displayName, 2) : ['User', ''];
             $firstName = $nameParts[0];
             $lastName = isset($nameParts[1]) ? $nameParts[1] : '';
@@ -118,17 +129,23 @@ try {
             $newId = 'usr_' . bin2hex(random_bytes(8));
             $userRole = in_array($role_requested, ['learner', 'instructor', 'admin']) ? $role_requested : 'learner';
             $avatar = !empty($photoURL) ? $photoURL : 'https://ui-avatars.com/api/?name=' . urlencode($displayName ?: $email) . '&background=random&size=128';
+            $dummy_hash = '*OAUTH_GOOGLE_ACCOUNT*';
 
+            // Attempt insert including password_hash column to avoid MySQL strict NOT NULL errors
             $insert = $conn->prepare("
                 INSERT INTO users (
-                    id, role, first_name, last_name, email, 
+                    id, role, first_name, last_name, email, password_hash,
                     avatar_url, auth_provider, firebase_uid, is_email_verified, 
                     agreed_terms, last_login_at, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 1, NOW(), NOW())
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, NOW(), NOW())
             ");
-            $insert->bind_param("ssssssss", $newId, $userRole, $firstName, $lastName, $email, $avatar, $auth_provider, $firebase_uid);
+            $insert->bind_param("sssssssss", $newId, $userRole, $firstName, $lastName, $email, $dummy_hash, $avatar, $auth_provider, $firebase_uid);
             
-            if ($insert->execute()) {
+            $insert_ok = $insert->execute();
+            $insert_error = $insert->error;
+            $insert->close();
+
+            if ($insert_ok) {
                 $user = [
                     'id' => $newId,
                     'role' => $userRole,
@@ -144,22 +161,49 @@ try {
                     'is_email_verified' => 1
                 ];
             } else {
-                http_response_code(404);
-                echo json_encode([
-                    "success" => false,
-                    "message" => "No account found with this Google email. Please register first."
-                ]);
-                $conn->close();
-                exit();
+                // Fallback attempt without password_hash column if schema differs
+                $fallback = $conn->prepare("
+                    INSERT INTO users (
+                        id, role, first_name, last_name, email, 
+                        avatar_url, auth_provider, firebase_uid, is_email_verified, 
+                        agreed_terms, last_login_at, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 1, NOW(), NOW())
+                ");
+                $fallback->bind_param("ssssssss", $newId, $userRole, $firstName, $lastName, $email, $avatar, $auth_provider, $firebase_uid);
+                
+                if ($fallback->execute()) {
+                    $user = [
+                        'id' => $newId,
+                        'role' => $userRole,
+                        'first_name' => $firstName,
+                        'last_name' => $lastName,
+                        'email' => $email,
+                        'country_code' => '+254',
+                        'phone_number' => null,
+                        'preferred_language' => 'en',
+                        'avatar_url' => $avatar,
+                        'auth_provider' => $auth_provider,
+                        'firebase_uid' => $firebase_uid,
+                        'is_email_verified' => 1
+                    ];
+                    $fallback->close();
+                } else {
+                    $fallback->close();
+                    http_response_code(500);
+                    echo json_encode([
+                        "success" => false,
+                        "message" => "Failed to create account for Google user: " . ($insert_error ?: "Database insert error.")
+                    ]);
+                    $conn->close();
+                    exit();
+                }
             }
-            $insert->close();
         } else {
-            // Update firebase_uid and last_login if needed
+            // Update last login timestamp and email verification flag
             $updateSql = "UPDATE users SET last_login_at = NOW(), updated_at = NOW()";
             if (!empty($firebase_uid) && empty($user['firebase_uid'])) {
                 $updateSql .= ", firebase_uid = '" . $conn->real_escape_string($firebase_uid) . "'";
             }
-            // Auto mark verified if logging in via Google
             if (!$user['is_email_verified']) {
                 $updateSql .= ", is_email_verified = 1";
                 $user['is_email_verified'] = 1;
@@ -235,7 +279,7 @@ try {
     }
 
     // If account was created with Google only (no password hash)
-    if (empty($user['password_hash']) && $user['auth_provider'] === 'google') {
+    if ((empty($user['password_hash']) || $user['password_hash'] === '*OAUTH_GOOGLE_ACCOUNT*') && $user['auth_provider'] === 'google') {
         http_response_code(400);
         echo json_encode([
             "success" => false,

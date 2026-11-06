@@ -351,16 +351,18 @@ export const InstructorNavbar: React.FC<InstructorNavbarProps> = ({
                                   <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
                                     notif.type === 'price_adjustment'
                                       ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300'
+                                      : notif.type === 'reviewer_message'
+                                      ? 'bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
                                       : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
                                   }`}>
-                                    {notif.type === 'price_adjustment' ? 'Price Adjustment Request' : 'System Notice'}
+                                    {notif.type === 'price_adjustment' ? 'Price Adjustment Request' : notif.type === 'reviewer_message' ? 'Reviewer Message' : 'System Notice'}
                                   </span>
                                   {!notif.read && (
                                     <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>
                                   )}
                                 </div>
                                 <span className="text-[10px] text-slate-400 font-mono">
-                                  Action Required
+                                  {notif.createdAt ? new Date(notif.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'Recent'}
                                 </span>
                               </div>
 

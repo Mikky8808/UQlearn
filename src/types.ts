@@ -3,6 +3,8 @@ export type UserRole = 'learner' | 'student' | 'instructor' | 'reviewer' | 'cour
 export interface User {
   id: string;
   name: string;
+  displayName?: string;
+  fullName?: string;
   email: string;
   role: UserRole;
   avatar?: string;
@@ -63,7 +65,7 @@ export interface Course {
   created_by?: string;
   creatorEmail?: string;
   category: 'Development' | 'Business' | 'Design' | 'Data Science' | 'Marketing' | 'Personal Growth' | string;
-  level: 'Beginner' | 'Intermediate' | 'Advanced' | 'All Levels' | string;
+  level?: 'Beginner' | 'Intermediate' | 'Advanced' | 'All Levels' | string;
   price: number;
   originalPrice?: number;
   rating: number;
@@ -181,6 +183,7 @@ export interface LearnerNote {
   lessonId: string;
   lessonTitle: string;
   timestamp: string; // e.g. "04:15"
+  title?: string;
   content: string;
   createdAt: string;
 }
@@ -224,6 +227,9 @@ export interface CourseResource {
   size: string;
   downloadUrl: string;
   description: string;
+  moduleTitle?: string;
+  lessonTitle?: string;
+  fileType?: string;
 }
 
 export interface CertificateItem {
@@ -334,7 +340,7 @@ export interface InstructorNotification {
   courseTitle: string;
   courseThumbnail?: string;
   category?: string;
-  type: 'price_adjustment' | 'system' | 'quality' | 'general';
+  type: 'price_adjustment' | 'system' | 'quality' | 'general' | 'reviewer_message';
   title: string;
   message: string;
   suggestedPrice?: number;

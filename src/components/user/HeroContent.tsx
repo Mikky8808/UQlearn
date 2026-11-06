@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { BADGE_ICON_URL } from '../../assets/badgeIcon';
 
 export const HeroContent: React.FC = () => {
   const images = [
@@ -25,13 +26,17 @@ export const HeroContent: React.FC = () => {
       <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-12 relative z-10">
         {/* Content Side */}
         <div className="flex-1 space-y-6">
-          <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 font-bold text-sm border border-rose-100 dark:border-rose-900/40">
-            <img 
-              src="/assets/aistudio/WhatsApp_Image_2026-10-29_at_7.07.57_PM_4784691e.jpeg" 
-              alt="Badge Icon" 
-              className="w-5 h-5 rounded-full object-cover shrink-0 shadow-xs" 
-            />
-            <span>Africa's Fastest Growing eLearning Platform</span>
+          <div className="inline-flex items-center space-x-2.5 px-4 py-2 rounded-full bg-rose-50/90 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 font-bold text-sm border border-rose-200/80 dark:border-rose-900/60 shadow-xs hover:shadow-sm transition-all">
+            <div className="relative w-5.5 h-5.5 shrink-0 flex items-center justify-center">
+              {/* Slow spinner glow ring behind icon */}
+              <div className="absolute inset-0 rounded-full bg-rose-400/30 dark:bg-rose-500/30 blur-2xs animate-[spin_8s_linear_infinite]" />
+              <img 
+                src={BADGE_ICON_URL} 
+                alt="Badge Icon" 
+                className="w-5 h-5 rounded-full object-cover shrink-0 shadow-xs relative z-10 animate-[spin_10s_linear_infinite]" 
+              />
+            </div>
+            <span className="tracking-tight">Africa's Fastest Growing eLearning Platform</span>
           </div>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white leading-tight">
             Where learning meets innovation. Unleash your potential with <span className="text-rose-600">dynamic Instructors</span>

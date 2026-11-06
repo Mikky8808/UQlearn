@@ -5,7 +5,10 @@ const copies = [
   { src: '.htaccess', dest: 'dist/.htaccess' },
   { src: 'admin/.htaccess', dest: 'dist/admin/.htaccess' },
   { src: 'instructor/.htaccess', dest: 'dist/instructor/.htaccess' },
-  { src: 'rev/.htaccess', dest: 'dist/rev/.htaccess' },
+  { src: 'admin/admin.html', dest: 'dist/admin/admin.html' },
+  { src: 'admin/index.html', dest: 'dist/admin/index.html' },
+  { src: 'instructor/instructor.html', dest: 'dist/instructor/instructor.html' },
+  { src: 'instructor/index.html', dest: 'dist/instructor/index.html' },
 ];
 
 copies.forEach(({ src, dest }) => {
@@ -20,6 +23,6 @@ copies.forEach(({ src, dest }) => {
     fs.copyFileSync(srcPath, destPath);
     console.log(`Copied ${src} -> ${dest}`);
   } else {
-    console.warn(`Source htaccess not found: ${src}`);
+    console.warn(`Source not found: ${src}`);
   }
 });

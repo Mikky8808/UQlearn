@@ -153,11 +153,7 @@ export const CartCheckoutModal: React.FC<CartCheckoutModalProps> = ({
     <div className="fixed inset-0 z-50 w-full h-full bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col overflow-y-auto animate-in fade-in duration-200 font-sans">
       
       {/* Top Bar with Close Button */}
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-8 pt-6 flex items-center justify-between">
-        <div className="flex items-center space-x-2 text-teal-600 dark:text-teal-400 font-extrabold text-sm tracking-wide uppercase">
-          <ShoppingCart className="w-5 h-5" />
-          <span>UQ Learn Checkout</span>
-        </div>
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-8 pt-6 flex items-center justify-end">
         <button
           onClick={onClose}
           disabled={loading}

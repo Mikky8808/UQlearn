@@ -8,6 +8,7 @@ import { subscriptionService } from '../../services/subscription-service';
 import { payheroService } from '../../services/payhero-service';
 import { MpesaPaymentTracker, MpesaStepsState } from './MpesaPaymentTracker';
 import { MpesaPaymentModal } from './MpesaPaymentModal';
+import { CardBrandsRow } from '../common/CardBrandsRow';
 
 export const CourseEnrollmentPage: React.FC = () => {
   const { courseId } = useParams<{ courseId: string }>();
@@ -547,17 +548,14 @@ export const CourseEnrollmentPage: React.FC = () => {
                     {/* Card Option (Below M-Pesa) */}
                     <button 
                       onClick={() => setCheckoutStep('card-details')}
-                      className="flex items-center justify-center p-6 border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 rounded-2xl transition-all cursor-pointer bg-white dark:bg-slate-800 group"
+                      className="flex flex-col items-center justify-center space-y-2 p-5 border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 rounded-2xl transition-all cursor-pointer bg-white dark:bg-slate-800 group"
                       aria-label="Pay with Card"
                     >
-                      <img 
-                        src={`${ROOT_URL}/uploads/logo/card.png`} 
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = '/card.png';
-                        }}
-                        alt="Debit or Credit Card" 
-                        className="h-12 object-contain group-hover:scale-105 transition-transform"
-                      />
+                      <div className="flex items-center space-x-1.5">
+                        <CreditCard className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                        <span className="font-bold text-xs text-slate-800 dark:text-slate-200">Debit or Credit Cards</span>
+                      </div>
+                      <CardBrandsRow />
                     </button>
                   </div>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">

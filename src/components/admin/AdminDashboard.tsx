@@ -165,7 +165,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ courses, onRefre
   // CEO Signature states for Certificate issuance
   const [isCeoSignerModalOpen, setIsCeoSignerModalOpen] = useState(false);
   const [ceoSignature, setCeoSignature] = useState(courseConfig?.ceoSignature || '');
-  const [ceoNameInput, setCeoNameInput] = useState(courseConfig?.ceoName || 'SIR, RAJAB WAMUU');
+  const [ceoNameInput, setCeoNameInput] = useState(courseConfig?.ceoName || 'Sir, rajab wamuu');
   const [ceoTitleInput, setCeoTitleInput] = useState(courseConfig?.ceoTitle || 'CEO UQLEARN');
 
   useEffect(() => {
@@ -1298,7 +1298,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ courses, onRefre
                               setCeoNameInput(e.target.value);
                               updateCourseConfig({ ceoName: e.target.value });
                             }}
-                            placeholder="e.g. SIR, RAJAB WAMUU"
+                            placeholder="e.g. Sir, rajab wamuu"
                             className="w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
                           />
                         </div>
@@ -1327,13 +1327,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ courses, onRefre
                           initialSignature={ceoSignature}
                           title="CEO Signature Pad"
                           subtitle="Draw your signature directly onto the canvas surface below and press Save Official Signature."
-                          signerName={ceoNameInput || 'SIR, RAJAB WAMUU'}
+                          signerName={ceoNameInput || 'Sir, rajab wamuu'}
                           signerTitle={ceoTitleInput || 'CEO UQLEARN'}
                           onSave={(data) => {
                             setCeoSignature(data);
                             updateCourseConfig({ 
                               ceoSignature: data,
-                              ceoName: ceoNameInput || 'SIR, RAJAB WAMUU',
+                              ceoName: ceoNameInput || 'Sir, rajab wamuu',
                               ceoTitle: ceoTitleInput || 'CEO UQLEARN'
                             });
                             setNotificationMsg('CEO signature saved and updated across all completion certificates!');
@@ -1584,13 +1584,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ courses, onRefre
                 userId="ceo"
                 initialSignature={ceoSignature}
                 title="CEO Signature Pad"
-                signerName={ceoNameInput || 'SIR, RAJAB WAMUU'}
+                signerName={ceoNameInput || 'Sir, rajab wamuu'}
                 signerTitle={ceoTitleInput || 'CEO UQLEARN'}
                 onSave={(data) => {
                   setCeoSignature(data);
                   updateCourseConfig({
                     ceoSignature: data,
-                    ceoName: ceoNameInput || 'SIR, RAJAB WAMUU',
+                    ceoName: ceoNameInput || 'Sir, rajab wamuu',
                     ceoTitle: ceoTitleInput || 'CEO UQLEARN'
                   });
                   setIsCeoSignerModalOpen(false);

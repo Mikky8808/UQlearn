@@ -105,21 +105,9 @@ export const LearnerSidebar: React.FC<LearnerSidebarProps> = ({
     },
     {
       id: 'tools',
-      label: 'Study Tools & Library',
-      icon: FileText,
+      label: 'Saved & Wishlist',
+      icon: Heart,
       items: [
-        {
-          key: 'notes' as LearnerTabKey,
-          label: 'Timestamped Notes',
-          icon: FileText,
-          description: 'Exportable lesson notes'
-        },
-        {
-          key: 'resources' as LearnerTabKey,
-          label: 'Downloadable Resources',
-          icon: FolderDown,
-          description: 'PDFs, slides, GitHub repos'
-        },
         {
           key: 'wishlist' as LearnerTabKey,
           label: 'Wishlist & Curated Lists',

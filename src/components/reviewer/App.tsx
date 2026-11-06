@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Course } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { ReviewerLoginPage } from './ReviewerLoginPage';
@@ -8,9 +9,9 @@ import { ReviewerDashboard } from './ReviewerDashboard';
 import { isDeveloperUser } from '../../lib/developer';
 import { X, Loader2 } from 'lucide-react';
 
-export default function ReviewerApp() {
+function ReviewerWorkbench() {
   const { currentUser, courses, logoutUser } = useApp();
-  const [activeTab, setActiveTab] = useState<ReviewerTab>('pending');
+  const [activeTab, setActiveTab] = useState<ReviewerTab>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
   const [isLoggingOut, setIsLoggingOut] = useState<boolean>(false);
@@ -45,7 +46,6 @@ export default function ReviewerApp() {
     }, 1000);
   };
 
-  // If logging out, display the spinner modal
   if (isLoggingOut) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950 p-4 font-sans">
@@ -65,19 +65,6 @@ export default function ReviewerApp() {
     );
   }
 
-  // Check if current user is authorized to access the Reviewer Portal
-  const isReviewer = currentUser && !!currentUser.email && (
-    currentUser.role === 'reviewer' || 
-    currentUser.role === 'course_reviewer' || 
-    currentUser.role === 'admin' || 
-    isDeveloperUser(currentUser)
-  );
-
-  if (!currentUser || !currentUser.email || !isReviewer) {
-    return <ReviewerLoginPage />;
-  }
-
-  // Calculate courses assigned to current reviewer
   const isCourseAssignedToCurrentReviewer = (c: Course) => {
     if (!currentUser) return true;
     const userEmail = (currentUser.email || '').toLowerCase().trim();
@@ -102,75 +89,25 @@ export default function ReviewerApp() {
     ? courses.filter(c => isCourseAssignedToCurrentReviewer(c)) 
     : courses;
 
-  // Calculate review counts for sidebar indicators based on assigned courses
   const pendingCount = reviewerCourses.filter(c => !c.isApprovedByAdmin && (c.reviewStatus === 'pending_review' || !c.reviewStatus)).length;
   const underReviewCount = reviewerCourses.filter(c => c.reviewStatus === 'under_review').length;
   const approvedCount = reviewerCourses.filter(c => c.isApprovedByAdmin || c.reviewStatus === 'approved').length;
   const needsChangesCount = reviewerCourses.filter(c => c.reviewStatus === 'needs_changes' || c.reviewStatus === 'rejected').length;
 
+  const totalCount = reviewerCourses.length;
+
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
-      
-      {/* Top Reviewer Navbar */}
       <ReviewerNavbar
-        onToggleSidebar={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+        onToggleSidebar={() => {}}
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
         pendingCount={pendingCount}
         onLogout={handleLogout}
       />
 
-      <div className="flex-1 flex max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-        
-        {/* Desktop Sidebar Navigation */}
-        <div className="hidden md:block">
-          <ReviewerSidebar
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            pendingCount={pendingCount}
-            underReviewCount={underReviewCount}
-            approvedCount={approvedCount}
-            needsChangesCount={needsChangesCount}
-            onLogout={handleLogout}
-          />
-        </div>
-
-        {/* Mobile Slide-Over Navigation Drawer */}
-        {mobileSidebarOpen && (
-          <div className="fixed inset-0 z-50 md:hidden flex">
-            <div 
-              className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm"
-              onClick={() => setMobileSidebarOpen(false)}
-            />
-            <div className="relative bg-slate-900 w-72 max-w-full flex flex-col h-full z-10 shadow-2xl border-r border-slate-800">
-              <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-                <span className="text-xs font-bold text-purple-400 uppercase tracking-wider">
-                  Reviewer Navigation
-                </span>
-                <button
-                  onClick={() => setMobileSidebarOpen(false)}
-                  className="p-1 text-slate-400 hover:text-white rounded-lg"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <ReviewerSidebar
-                activeTab={activeTab}
-                onTabChange={setActiveTab}
-                pendingCount={pendingCount}
-                underReviewCount={underReviewCount}
-                approvedCount={approvedCount}
-                needsChangesCount={needsChangesCount}
-                onCloseMobile={() => setMobileSidebarOpen(false)}
-                onLogout={handleLogout}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Main Content Area */}
-        <main className="flex-1 md:pl-8 min-w-0">
+      <div className="flex-1 flex">
+        <main className="flex-1 min-w-0 p-6 lg:p-8 max-w-7xl mx-auto w-full">
           <ReviewerDashboard
             activeTab={activeTab}
             onTabChange={setActiveTab}
@@ -178,8 +115,64 @@ export default function ReviewerApp() {
             onSearchChange={setSearchTerm}
           />
         </main>
-
       </div>
     </div>
+  );
+}
+
+export default function ReviewerApp() {
+  const { currentUser } = useApp();
+  const location = useLocation();
+
+  const hostname = typeof window !== 'undefined' ? window.location.hostname.toLowerCase() : '';
+  const isReviewerHost = hostname.startsWith('rev.') || hostname.startsWith('reviewer.') || hostname.startsWith('review.') || hostname.startsWith('coursereviewer.');
+  const loginPath = isReviewerHost ? '/login' : '/login/reviewer';
+  const homePath = isReviewerHost ? '/' : '/reviewer';
+
+  const isDev = isDeveloperUser(currentUser);
+  const isReviewerAuthorized = Boolean(currentUser && (
+    currentUser.role === 'reviewer' || 
+    currentUser.role === 'course_reviewer' || 
+    currentUser.role === 'admin' || 
+    isDev
+  ));
+
+  return (
+    <Routes>
+      <Route 
+        path="/login" 
+        element={
+          isReviewerAuthorized ? (
+            <Navigate to={homePath} replace />
+          ) : (
+            <ReviewerLoginPage />
+          )
+        } 
+      />
+      <Route 
+        path="/login/reviewer" 
+        element={
+          isReviewerAuthorized ? (
+            <Navigate to={homePath} replace />
+          ) : (
+            <ReviewerLoginPage />
+          )
+        } 
+      />
+      <Route 
+        path="/*" 
+        element={
+          !isReviewerAuthorized ? (
+            <Navigate 
+              to={loginPath} 
+              replace 
+              state={{ from: location.pathname + location.search }} 
+            />
+          ) : (
+            <ReviewerWorkbench />
+          )
+        } 
+      />
+    </Routes>
   );
 }

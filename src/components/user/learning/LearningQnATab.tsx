@@ -265,14 +265,14 @@ export const LearningQnATab: React.FC<LearningQnATabProps> = ({
               <button
                 type="button"
                 onClick={() => setShowAskForm(true)}
-                className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 active:bg-teal-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                className="px-4 py-2 rounded-none bg-[#a435f0] hover:bg-[#8710d8] text-white text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Ask Question</span>
               </button>
             )
           ) : (
-            <div className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 text-xs font-bold flex items-center gap-1.5 cursor-not-allowed">
+            <div className="px-3.5 py-2 rounded-none bg-slate-100 dark:bg-slate-800 text-slate-400 text-xs font-bold flex items-center gap-1.5 cursor-not-allowed">
               <Lock className="w-3.5 h-3.5 text-slate-400" />
               <span>Enroll to Ask</span>
             </div>
@@ -282,7 +282,7 @@ export const LearningQnATab: React.FC<LearningQnATabProps> = ({
 
       {/* Permission Block Banner */}
       {!canParticipate && (
-        <div className="p-4 rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 text-xs text-amber-800 dark:text-amber-300 flex items-start space-x-2.5">
+        <div className="p-4 rounded-none bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 text-xs text-amber-800 dark:text-amber-300 flex items-start space-x-2.5">
           <Lock className="w-4 h-4 mt-0.5 shrink-0" />
           <div>
             <p className="font-bold">Discussion Locked</p>
@@ -295,9 +295,9 @@ export const LearningQnATab: React.FC<LearningQnATabProps> = ({
 
       {/* Ask Question Composer */}
       {showAskForm && canParticipate && (
-        <form onSubmit={handleAskQuestion} className="bg-white dark:bg-[#1c1d1f] border border-teal-500/30 rounded-2xl p-4 sm:p-5 space-y-3 shadow-lg animate-fadeIn transition-colors">
+        <form onSubmit={handleAskQuestion} className="bg-white dark:bg-[#1c1d1f] border border-[#a435f0] rounded-none p-5 space-y-3 shadow-none animate-fadeIn transition-colors">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-teal-600 dark:text-teal-400">
+            <span className="text-xs font-bold text-[#a435f0]">
               New Discussion Thread
             </span>
             <button
@@ -315,7 +315,7 @@ export const LearningQnATab: React.FC<LearningQnATabProps> = ({
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
             placeholder="Question summary (e.g., How do we handle caching with edge functions?)"
-            className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-teal-500 font-semibold"
+            className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-none text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#a435f0] font-semibold"
           />
 
           <textarea
@@ -324,21 +324,21 @@ export const LearningQnATab: React.FC<LearningQnATabProps> = ({
             value={newContent}
             onChange={(e) => setNewContent(e.target.value)}
             placeholder="Provide context or code snippet details to help instructors and peers assist you..."
-            className="w-full p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-teal-500 leading-relaxed resize-y"
+            className="w-full p-3 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-none text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#a435f0] leading-relaxed resize-y"
           />
 
           <div className="flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={() => setShowAskForm(false)}
-              className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold cursor-pointer"
+              className="px-3.5 py-1.5 rounded-none bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={!newTitle.trim() || !newContent.trim()}
-              className="px-4 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+              className="px-4 py-1.5 rounded-none bg-[#a435f0] hover:bg-[#8710d8] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold transition-colors cursor-pointer"
             >
               Post Question
             </button>
@@ -356,7 +356,7 @@ export const LearningQnATab: React.FC<LearningQnATabProps> = ({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search questions or users..."
-            className="w-full pl-10 pr-4 py-2 bg-white dark:bg-[#1c1d1f] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-teal-500 transition-colors shadow-2xs"
+            className="w-full pl-10 pr-4 py-2 bg-white dark:bg-[#1c1d1f] border border-slate-300 dark:border-slate-700 rounded-none text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#a435f0] transition-colors"
           />
         </div>
 
@@ -366,7 +366,7 @@ export const LearningQnATab: React.FC<LearningQnATabProps> = ({
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as any)}
-            className="bg-white dark:bg-[#1c1d1f] border border-slate-200 dark:border-slate-800/80 text-[11px] font-bold text-slate-600 dark:text-slate-300 rounded-xl py-1.5 px-3 focus:outline-none cursor-pointer"
+            className="bg-white dark:bg-[#1c1d1f] border border-slate-300 dark:border-slate-700 text-[11px] font-bold text-slate-600 dark:text-slate-300 rounded-none py-1.5 px-3 focus:outline-none cursor-pointer"
           >
             <option value="newest">Newest First</option>
             <option value="oldest">Oldest First</option>
@@ -378,14 +378,14 @@ export const LearningQnATab: React.FC<LearningQnATabProps> = ({
       {/* INSTAGRAM STYLE Q&A COMMENT LIST */}
       <div className="space-y-5">
         {sortedQuestions.length === 0 ? (
-          <div className="p-8 text-center bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 text-slate-400 space-y-2">
+          <div className="p-8 text-center bg-slate-50 dark:bg-slate-900/50 rounded-none border border-slate-300 dark:border-slate-800 text-slate-400 space-y-2">
             <MessageSquare className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-700" />
             <p className="text-xs font-semibold">No discussions match your filter</p>
             {canParticipate && (
               <button
                 type="button"
                 onClick={() => setShowAskForm(true)}
-                className="text-xs text-teal-600 dark:text-teal-400 hover:underline cursor-pointer font-bold"
+                className="text-xs text-[#a435f0] hover:underline cursor-pointer font-bold"
               >
                 Start a thread
               </button>
@@ -395,7 +395,7 @@ export const LearningQnATab: React.FC<LearningQnATabProps> = ({
           sortedQuestions.map((q) => (
             <div
               key={q.id}
-              className="p-5 sm:p-6 bg-white dark:bg-[#1c1d1f] border border-slate-200/60 dark:border-slate-800/80 rounded-3xl transition-all space-y-4.5 shadow-xs hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700/80 relative overflow-hidden"
+              className="p-5 sm:p-6 bg-white dark:bg-[#1c1d1f] border border-slate-200 dark:border-slate-800 rounded-none transition-colors space-y-4 shadow-none hover:border-slate-400 dark:hover:border-slate-700 relative overflow-hidden"
             >
               {/* Parent Comment Header (Instagram Style) */}
               <div className="flex items-start justify-between gap-3">

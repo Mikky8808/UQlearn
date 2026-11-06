@@ -1,23 +1,17 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { 
-  Clock, 
-  FileText, 
-  CheckCircle2, 
-  AlertTriangle, 
+  BookOpen, 
   LogOut, 
   ShieldCheck
 } from 'lucide-react';
 
-export type ReviewerTab = 'pending' | 'under_review' | 'approved' | 'needs_changes';
+export type ReviewerTab = 'all';
 
 interface ReviewerSidebarProps {
   activeTab: ReviewerTab;
   onTabChange: (tab: ReviewerTab) => void;
-  pendingCount: number;
-  underReviewCount: number;
-  approvedCount: number;
-  needsChangesCount: number;
+  totalCount: number;
   onCloseMobile?: () => void;
   onLogout?: () => void;
 }
@@ -25,10 +19,7 @@ interface ReviewerSidebarProps {
 export const ReviewerSidebar: React.FC<ReviewerSidebarProps> = ({
   activeTab,
   onTabChange,
-  pendingCount,
-  underReviewCount,
-  approvedCount,
-  needsChangesCount,
+  totalCount,
   onCloseMobile,
   onLogout
 }) => {
@@ -51,33 +42,6 @@ export const ReviewerSidebar: React.FC<ReviewerSidebarProps> = ({
 
   const iconColor = "text-indigo-400";
 
-  const navItems = [
-    {
-      id: 'pending' as ReviewerTab,
-      label: 'Pending Review',
-      icon: Clock,
-      count: pendingCount,
-    },
-    {
-      id: 'under_review' as ReviewerTab,
-      label: 'Under Review',
-      icon: FileText,
-      count: underReviewCount,
-    },
-    {
-      id: 'approved' as ReviewerTab,
-      label: 'Approved',
-      icon: CheckCircle2,
-      count: approvedCount,
-    },
-    {
-      id: 'needs_changes' as ReviewerTab,
-      label: 'Needs Changes',
-      icon: AlertTriangle,
-      count: needsChangesCount,
-    },
-  ];
-
   return (
     <aside className="bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 flex flex-col justify-between h-[calc(100vh-4rem)] sticky top-16 shrink-0 w-64 select-none z-30 shadow-sm">
       <div className="p-4 flex-1 flex flex-col min-h-0">
@@ -97,39 +61,23 @@ export const ReviewerSidebar: React.FC<ReviewerSidebarProps> = ({
           </div>
         </div>
 
-        {/* Navigation Items */}
+        {/* Navigation Items (Single All Courses Button) */}
         <nav className="space-y-1.5 flex-1 overflow-y-auto no-scrollbar py-1">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
+          <button
+            onClick={() => handleSelectTab('all')}
+            className="w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer bg-[#151833] text-white shadow-xs border border-indigo-900/40"
+          >
+            <div className="flex items-center space-x-3 min-w-0">
+              <BookOpen className={`w-4 h-4 shrink-0 ${iconColor}`} />
+              <span className="truncate">All Courses</span>
+            </div>
 
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleSelectTab(item.id)}
-                className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
-                  isActive
-                    ? 'bg-[#151833] text-white shadow-xs border border-indigo-900/40'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-[#151833]/80'
-                }`}
-              >
-                <div className="flex items-center space-x-3 min-w-0">
-                  <Icon className={`w-4 h-4 shrink-0 ${iconColor}`} />
-                  <span className="truncate">{item.label}</span>
-                </div>
-
-                {item.count > 0 && (
-                  <span className={`text-[10px] px-2.5 py-0.5 rounded-lg font-mono font-bold border transition-colors shrink-0 ${
-                    isActive 
-                      ? 'bg-[#222752] text-indigo-200 border-indigo-700/50' 
-                      : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700/60'
-                  }`}>
-                    {item.count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+            {totalCount > 0 && (
+              <span className="text-[10px] px-2.5 py-0.5 rounded-lg font-mono font-bold border transition-colors shrink-0 bg-[#222752] text-indigo-200 border-indigo-700/50">
+                {totalCount}
+              </span>
+            )}
+          </button>
         </nav>
 
         {/* Footer Logout */}

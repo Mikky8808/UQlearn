@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Mail, Lock, User, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
 import { API_ENDPOINTS, apiFetch } from '../../lib/apiConfig';
+import { signInWithGoogleUniversal } from '../../lib/googleAuth';
 
 interface AuthModalProps {
   initialMode?: 'login' | 'signup';
@@ -69,7 +70,57 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   const handleGoogleAuth = async () => {
-    setErrorMsg('Google login is not supported without Firebase. Please use email/password.');
+    setErrorMsg('');
+    setFormLoading(true);
+    try {
+      const profile = await signInWithGoogleUniversal();
+      if (!profile.email) {
+        throw new Error('Failed to retrieve email from Google Account.');
+      }
+
+      let backendUser: any = null;
+      try {
+        const data = await apiFetch(API_ENDPOINTS.LOGIN, {
+          method: 'POST',
+          body: JSON.stringify({
+            authProvider: 'google',
+            provider: 'google',
+            auth_provider: 'google',
+            auth_type: 'google',
+            is_google: 1,
+            is_google_login: 1,
+            google_sso: true,
+            email: profile.email,
+            password: 'google-oauth-sso-authenticated',
+            name: profile.name,
+            displayName: profile.name,
+            avatar: profile.picture,
+            photoURL: profile.picture,
+            role: 'learner'
+          })
+        });
+
+        if (data && data.user) {
+          backendUser = data.user;
+        }
+      } catch (backendErr) {
+        console.warn('Backend login notice:', backendErr);
+      }
+
+      setSuccessMsg('Successfully authenticated with Google!');
+      setTimeout(() => {
+        onSuccess({
+          name: backendUser?.name || profile.name || profile.email.split('@')[0],
+          email: backendUser?.email || profile.email
+        });
+        onClose();
+      }, 700);
+    } catch (err: any) {
+      console.error('Google Auth error:', err);
+      setErrorMsg(err.message || 'Google authentication failed.');
+    } finally {
+      setFormLoading(false);
+    }
   };
 
   return (

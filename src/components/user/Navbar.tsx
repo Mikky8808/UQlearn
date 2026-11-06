@@ -65,6 +65,15 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [currencyDropdownOpen, setCurrencyDropdownOpen] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isCourseStickyHidden, setIsCourseStickyHidden] = useState(false);
+
+  useEffect(() => {
+    const handleSticky = (e: any) => {
+      setIsCourseStickyHidden(Boolean(e.detail?.visible));
+    };
+    window.addEventListener('uqlearn_course_sticky_header', handleSticky as EventListener);
+    return () => window.removeEventListener('uqlearn_course_sticky_header', handleSticky as EventListener);
+  }, []);
   
   const searchRef = useRef<HTMLDivElement>(null);
   const exploreRef = useRef<HTMLDivElement>(null);
@@ -130,8 +139,15 @@ export const Navbar: React.FC<NavbarProps> = ({
     return location.pathname.startsWith(path);
   };
 
+  // Never render Navbar on learning player routes
+  if (location.pathname.startsWith('/learn') || location.pathname.includes('/learn')) {
+    return null;
+  }
+
   return (
-    <header className="sticky top-0 z-40 bg-white dark:bg-slate-900 shadow-sm border-b border-slate-200 dark:border-slate-800 transition-colors">
+    <header className={`sticky top-0 z-40 bg-white dark:bg-slate-900 shadow-sm border-b border-slate-200 dark:border-slate-800 transition-all duration-300 ease-in-out ${
+      isCourseStickyHidden ? '-translate-y-full opacity-0 pointer-events-none h-0 overflow-hidden border-none' : 'translate-y-0 opacity-100'
+    }`}>
       {/* Top Advert Announcement Banner (shown before top nav) */}
       <TopAdvertBanner />
 

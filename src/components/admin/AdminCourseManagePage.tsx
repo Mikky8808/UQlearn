@@ -36,6 +36,7 @@ import { API_BASE_URL, apiFetch, assignCourseToReviewerApi, getCourseLearnersApi
 import { apiClient } from '../../lib/api';
 import { getReviewers, fetchReviewersFromApi, ReviewerAccount } from '../../lib/reviewerService';
 import { ResourcePreviewModal } from '../common/ResourcePreviewModal';
+import { AdminCoursePreviewModal } from './AdminCoursePreviewModal';
 
 interface AdminCourseManagePageProps {
   course: Course;
@@ -231,6 +232,7 @@ export const AdminCourseManagePage: React.FC<AdminCourseManagePageProps> = ({
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string>('');
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const [showLearnerPreview, setShowLearnerPreview] = useState<boolean>(false);
 
   // Learners API Sync States
   const [isSyncingLearners, setIsSyncingLearners] = useState<boolean>(false);
@@ -470,6 +472,16 @@ export const AdminCourseManagePage: React.FC<AdminCourseManagePageProps> = ({
 
         {/* Action Buttons Top Bar */}
         <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => setShowLearnerPreview(true)}
+            className="px-3.5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-black rounded-xl shadow-md transition-all flex items-center space-x-1.5 cursor-pointer"
+            title="Preview exact learner UI for course details and learn player"
+          >
+            <PlayCircle className="w-3.5 h-3.5" />
+            <span>Preview Learner UI</span>
+          </button>
+
           <Link
             to={`/course/${course.id}`}
             target="_blank"
@@ -1134,6 +1146,14 @@ export const AdminCourseManagePage: React.FC<AdminCourseManagePageProps> = ({
         onClose={() => setIsPreviewModalOpen(false)}
         resource={previewResource}
       />
+
+      {/* Immersive Learner UI Preview Modal */}
+      {showLearnerPreview && (
+        <AdminCoursePreviewModal
+          course={course}
+          onClose={() => setShowLearnerPreview(false)}
+        />
+      )}
 
     </div>
   );

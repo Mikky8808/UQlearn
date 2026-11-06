@@ -31,6 +31,7 @@ export const CanvasCertificateGenerator: React.FC<CanvasCertificateGeneratorProp
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [certLogo, setCertLogo] = useState<string>(() => resolveCertificateLogo(logoUrl));
+  const [verifiedBadgeDataUri, setVerifiedBadgeDataUri] = useState<string>('/assets/verified-badge.jpeg');
   const [downloadingPng, setDownloadingPng] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [downloadingSvg, setDownloadingSvg] = useState(false);
@@ -48,7 +49,7 @@ export const CanvasCertificateGenerator: React.FC<CanvasCertificateGeneratorProp
     }
   }, [certificateData.instructorSignature]);
 
-  const CEO_NAME = courseConfig.ceoName || 'SIR, RAJAB WAMUU';
+  const CEO_NAME = courseConfig.ceoName || 'Sir, rajab wamuu';
   const CEO_TITLE = courseConfig.ceoTitle || 'CEO UQLEARN';
   const CEO_SIGNATURE_URL = liveCeoSignature || courseConfig.ceoSignature || cachedCeoSig || '';
   const INSTRUCTOR_SIGNATURE_URL = liveInstructorSignature || certificateData.instructorSignature || '';
@@ -90,9 +91,15 @@ export const CanvasCertificateGenerator: React.FC<CanvasCertificateGeneratorProp
       }).catch((e) => console.warn('Could not dynamically fetch instructor signature:', e));
     }
 
-    // 4. Resolve and convert site logo to Data URI for seamless SVG & Canvas rendering
+    // 4. Resolve and convert site logo and verified badge to Data URIs for seamless SVG & Canvas rendering
     convertImageUrlToDataUri(resolveCertificateLogo(logoUrl)).then((dataUri) => {
       setCertLogo(dataUri);
+    }).catch(() => {});
+
+    convertImageUrlToDataUri('/assets/verified-badge.jpeg').then((badgeDataUri) => {
+      if (badgeDataUri) {
+        setVerifiedBadgeDataUri(badgeDataUri);
+      }
     }).catch(() => {});
   }, [isOpen, credentialId, certificateData.instructorId, logoUrl]);
 
@@ -108,7 +115,8 @@ export const CanvasCertificateGenerator: React.FC<CanvasCertificateGeneratorProp
     credentialId: credentialId,
     verificationUrl: `${ROOT_URL}/verify-certificate/${encodeURIComponent(credentialId)}`,
     qrDataUrl: qrDataUrl,
-    logoUrl: certLogo || resolveCertificateLogo(logoUrl)
+    logoUrl: certLogo || resolveCertificateLogo(logoUrl),
+    verifiedBadgeUrl: verifiedBadgeDataUri
   };
 
   // Helper to serialize the SVG element to a standalone XML string

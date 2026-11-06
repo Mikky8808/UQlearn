@@ -384,7 +384,7 @@ export const CurriculumOrganizer: React.FC<CurriculumOrganizerProps> = ({
     const newLesson: OrganizerLesson = {
       id: `les-${Date.now()}`,
       title: `Lecture ${modules[modIndex].lessons.length + 1}: New Topic`,
-      duration: '12:00',
+      duration: '',
       type: type as any,
       isPreview: false
     };
