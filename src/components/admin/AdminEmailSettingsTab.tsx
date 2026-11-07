@@ -36,7 +36,7 @@ export const AdminEmailSettingsTab: React.FC = () => {
   const [smtpUser, setSmtpUser] = useState('');
   const [smtpPass, setSmtpPass] = useState('');
   const [fromEmail, setFromEmail] = useState('noreply@uqlearn.org');
-  const [fromName, setFromName] = useState('AQLEARN');
+  const [fromName, setFromName] = useState('UQLearn');
   const [replyTo, setReplyTo] = useState('support@uqlearn.org');
 
   // Diagnostics & OTP Data
@@ -66,7 +66,7 @@ export const AdminEmailSettingsTab: React.FC = () => {
           setSmtpCrypto(diagData.smtp_settings.crypto || 'ssl');
           setSmtpUser(diagData.smtp_settings.user || '');
           setFromEmail(diagData.smtp_settings.from_email || 'noreply@uqlearn.org');
-          setFromName(diagData.smtp_settings.from_name || 'AQLEARN');
+          setFromName(diagData.smtp_settings.from_name || 'UQLearn');
           setReplyTo(diagData.smtp_settings.reply_to || 'support@uqlearn.org');
         }
       }
@@ -166,7 +166,7 @@ export const AdminEmailSettingsTab: React.FC = () => {
         method: 'POST',
         body: JSON.stringify({
           to: testRecipient.trim(),
-          subject: `AQLEARN Mail Delivery Check - ${new Date().toLocaleTimeString()}`
+          subject: `UQLearn Mail Delivery Check - ${new Date().toLocaleTimeString()}`
         })
       });
 

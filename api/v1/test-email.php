@@ -85,7 +85,7 @@ try {
         $body = !empty($raw) ? json_decode($raw, true) : [];
         
         $to = isset($body['to']) ? trim($body['to']) : (isset($_POST['to']) ? trim($_POST['to']) : 'MICHAELOMARE045@gmail.com');
-        $subject = isset($body['subject']) ? trim($body['subject']) : "AQLEARN Test Email - " . date('Y-m-d H:i:s');
+        $subject = isset($body['subject']) ? trim($body['subject']) : "UQLearn Test Email - " . date('Y-m-d H:i:s');
         
         $testCode = str_pad(random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
         
@@ -102,7 +102,7 @@ try {
         $htmlContent = '
         <div style="font-family: Arial, sans-serif; max-width: 580px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
             <div style="background: #0f172a; padding: 24px; text-align: center; color: #ffffff;">
-                <h1 style="margin: 0; font-size: 24px; font-weight: bold; letter-spacing: 1px;">AQLEARN</h1>
+                <h1 style="margin: 0; font-size: 24px; font-weight: bold; letter-spacing: 1px;">UQLearn</h1>
                 <p style="margin: 6px 0 0 0; font-size: 13px; color: #94a3b8;">Email Delivery Diagnostic Test</p>
             </div>
             <div style="padding: 28px 24px; color: #334155;">
@@ -120,11 +120,11 @@ try {
                 </p>
             </div>
             <div style="background: #f1f5f9; padding: 16px; text-align: center; font-size: 12px; color: #64748b;">
-                &copy; ' . date('Y') . ' AQLEARN LMS Platform. All rights reserved.
+                &copy; ' . date('Y') . ' UQLearn LMS Platform. All rights reserved.
             </div>
         </div>';
 
-        $plainContent = "AQLEARN Test Email\n\nYour test verification code is: {$testCode}\n\nTime: " . date('Y-m-d H:i:s') . "\nRecipient: {$to}";
+        $plainContent = "UQLearn Test Email\n\nYour test verification code is: {$testCode}\n\nTime: " . date('Y-m-d H:i:s') . "\nRecipient: {$to}";
 
         $result = AppMailer::send($to, $subject, $htmlContent, $plainContent, $conn);
 
@@ -137,7 +137,7 @@ try {
             "generated_test_otp" => $testCode,
             "debug_logs" => $result['logs'],
             "diagnostic_tip" => $result['success'] 
-                ? "Email sent! If you do not see it in your Gmail Inbox, please check your Spam/Junk and Promotions folders, or search for 'AQLEARN' in Gmail search."
+                ? "Email sent! If you do not see it in your Gmail Inbox, please check your Spam/Junk and Promotions folders, or search for 'UQLearn' in Gmail search."
                 : "Outgoing email attempt failed. See debug_logs for exact error reasons."
         ], JSON_PRETTY_PRINT);
 

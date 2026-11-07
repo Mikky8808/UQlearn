@@ -206,7 +206,7 @@ if ($action === 'verify') {
         http_response_code(200);
         echo json_encode([
             "success" => true,
-            "message" => "Email verified successfully! Welcome to AQLEARN.",
+            "message" => "Email verified successfully! Welcome to UQLearn.",
             "token" => $token,
             "user" => $user_info
         ]);
@@ -303,7 +303,7 @@ if ($action === 'resend') {
         // =========================================================================
         // Send Branded HTML Email with New OTP
         // =========================================================================
-        $subject = "New Verification Code - AQLEARN";
+        $subject = "New Verification Code - UQLearn";
 
         $html_message = '
         <!DOCTYPE html>
@@ -311,7 +311,7 @@ if ($action === 'resend') {
         <head><meta charset="utf-8">
             
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>New Verification Code - AQLEARN</title>
+            <title>New Verification Code - UQLearn</title>
             <style>
                 body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
                 .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); overflow: hidden; }
@@ -343,13 +343,13 @@ if ($action === 'resend') {
         <body>
             <div class="container">
                 <div class="header">
-                    <img src="https://uqlearn.org/logo/logo.png" alt="AQLEARN Logo">
-                    <h1>AQLEARN</h1>
+                    <img src="https://uqlearn.org/logo/logo.png" style="width: 150px; height: auto;" alt="UQLearn Logo">
+                    <h1>UQLearn</h1>
                 </div>
                 <div class="content">
                     <h2>New Verification Code</h2>
                     <p class="greeting">Hello <strong>' . htmlspecialchars($user['first_name']) . '</strong>,</p>
-                    <p>You requested a new verification code for your <strong>AQLEARN</strong> account.</p>
+                    <p>You requested a new verification code for your <strong>UQLearn</strong> account.</p>
                     <div class="otp-box">
                         <div class="otp-code">' . $new_otp . '</div>
                         <div class="otp-label">Verification Code - Valid for 1 hour</div>
@@ -359,7 +359,7 @@ if ($action === 'resend') {
                         <p><strong>⏰ Expires:</strong> 1 hour from now</p>
                     </div>
                     <p style="text-align: center;">
-                        <a href="https://uqlearn.org" class="button">Go to AQLEARN</a>
+                        <a href="https://uqlearn.org" class="button">Go to UQLearn</a>
                     </p>
                     <div class="divider"></div>
                     <p style="font-size: 14px; color: #666;">
@@ -374,7 +374,7 @@ if ($action === 'resend') {
                         <a href="https://youtube.com/aqlearn">YouTube</a>
                     </div>
                     <p>
-                        &copy; ' . date('Y') . ' <strong>AQLEARN</strong> — All Rights Reserved<br>
+                        &copy; ' . date('Y') . ' <strong>UQLearn</strong> — All Rights Reserved<br>
                         <a href="https://uqlearn.org">uqlearn.org</a> | 
                         <a href="mailto:support@aqlearn.com">support@aqlearn.com</a>
                     </p>

@@ -286,18 +286,18 @@ try {
     $otp_stmt->close();
 
     // =========================================================================
-    // 10. Send Branded HTML Email with AQLEARN Logo
+    // 10. Send Branded HTML Email with UQLearn Logo
     // =========================================================================
-    $subject = "Verify Your Email - AQLEARN";
+    $subject = "Verify Your Email - UQLearn";
     
-    // HTML Email Body with AQLEARN Branding
+    // HTML Email Body with UQLearn Branding
     $html_message = '
     <!DOCTYPE html>
     <html>
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Verify Your Email - AQLEARN</title>
+        <title>Verify Your Email - UQLearn</title>
         <style>
             body {
                 font-family: Arial, sans-serif;
@@ -433,8 +433,8 @@ try {
         <div class="container">
             <!-- Header with Logo -->
             <div class="header">
-                <img src="https://uqlearn.org/logo/logo.png" alt="AQLEARN Logo">
-                <h1>AQLEARN</h1>
+                <img src="https://uqlearn.org/logo/logo.png" style="width: 150px; height: auto;" alt="UQLearn Logo">
+                <h1>UQLearn</h1>
             </div>
             
             <!-- Content -->
@@ -443,7 +443,7 @@ try {
                 
                 <p class="greeting">Hello <strong>' . $first_name . '</strong>,</p>
                 
-                <p>Thank you for joining <strong>AQLEARN</strong>! We\'re excited to have you on board.</p>
+                <p>Thank you for joining <strong>UQLearn</strong>! We\'re excited to have you on board.</p>
                 
                 <p>Please use the verification code below to confirm your email address and activate your account:</p>
                 
@@ -459,14 +459,14 @@ try {
                 </div>
                 
                 <p style="text-align: center;">
-                    <a href="https://uqlearn.org" class="button">Go to AQLEARN</a>
+                    <a href="https://uqlearn.org" class="button">Go to UQLearn</a>
                 </p>
                 
                 <div class="divider"></div>
                 
                 <p style="font-size: 14px; color: #666;">
                     <strong>Didn\'t request this?</strong><br>
-                    If you didn\'t create an account with AQLEARN, please ignore this email. No action is required.
+                    If you didn\'t create an account with UQLearn, please ignore this email. No action is required.
                 </p>
             </div>
             
@@ -478,7 +478,7 @@ try {
                     <a href="https://youtube.com/aqlearn">YouTube</a>
                 </div>
                 <p>
-                    &copy; ' . date('Y') . ' <strong>AQLEARN</strong> — All Rights Reserved<br>
+                    &copy; ' . date('Y') . ' <strong>UQLearn</strong> — All Rights Reserved<br>
                     <a href="https://uqlearn.org">uqlearn.org</a> | 
                     <a href="mailto:support@aqlearn.com">support@aqlearn.com</a>
                 </p>
@@ -491,15 +491,15 @@ try {
     </html>';
 
     // Plain text version (fallback)
-    $plain_message = "AQLEARN - Verify Your Email\n\n";
+    $plain_message = "UQLearn - Verify Your Email\n\n";
     $plain_message .= "Hello " . $first_name . ",\n\n";
-    $plain_message .= "Thank you for joining AQLEARN!\n\n";
+    $plain_message .= "Thank you for joining UQLearn!\n\n";
     $plain_message .= "Your verification code is: " . $otp_code . "\n\n";
     $plain_message .= "This code expires in 1 hour.\n\n";
     $plain_message .= "Email: " . $email . "\n";
     $plain_message .= "Role: " . ucfirst($role) . "\n\n";
     $plain_message .= "If you didn't request this, please ignore this email.\n\n";
-    $plain_message .= "© " . date('Y') . " AQLEARN - All Rights Reserved\n";
+    $plain_message .= "© " . date('Y') . " UQLearn - All Rights Reserved\n";
     $plain_message .= "https://uqlearn.org\n";
 
     // =========================================================================
