@@ -1644,7 +1644,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
               regFormData.append('file_type', extension);
               regFormData.append('file_size', file.size.toString());
 
-              await apiFetch(`${API_BASE_URL}/user-resources.php`, {
+              await apiFetch('user-resources.php', {
                 method: 'POST',
                 body: regFormData,
                 silent: true
@@ -6852,7 +6852,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
                                                                   onClick={async () => {
                                                                     if (confirm(`Are you sure you want to delete "${clip.name}" from your Resource Library? This will remove the file record from the database.`)) {
                                                                       try {
-                                                                        const res = await apiFetch(`${API_BASE_URL}/user-resources.php?id=${encodeURIComponent(clip.id)}`, {
+                                                                        const res = await apiFetch(`user-resources.php?id=${encodeURIComponent(clip.id)}`, {
                                                                           method: "DELETE",
                                                                           silent: true
                                                                         });

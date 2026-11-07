@@ -33,6 +33,20 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 try {
     require_once __DIR__ . '/db.php';
 
+    // Ensure $conn is actively resolved and connected
+    if (!isset($conn) || !($conn instanceof mysqli)) {
+        $conn = function_exists('getDbConnection') ? getDbConnection() : ($GLOBALS['db_conn'] ?? ($GLOBALS['conn'] ?? null));
+    }
+
+    if (!$conn || !($conn instanceof mysqli) || $conn->connect_errno) {
+        http_response_code(500);
+        echo json_encode([
+            "success" => false,
+            "message" => "Database connection unavailable. Please check MySQL server status."
+        ]);
+        exit();
+    }
+
     // 4. Read JSON Input
     $raw_input = file_get_contents("php://input");
     $data = json_decode($raw_input, true);
@@ -43,12 +57,10 @@ try {
             "success" => false,
             "message" => "Invalid or empty JSON payload provided."
         ]);
-        if (isset($conn) && $conn instanceof mysqli) $conn->close();
         exit();
     }
 
     // 5. Extract & Normalize Fields
-    // Check multiple possible key names for authProvider
     $raw_provider = '';
     if (!empty($data['authProvider'])) $raw_provider = $data['authProvider'];
     elseif (!empty($data['auth_provider'])) $raw_provider = $data['auth_provider'];
@@ -65,6 +77,9 @@ try {
     $password = isset($data['password']) ? (string)$data['password'] : '';
     $firebase_uid = isset($data['firebaseUid']) ? trim((string)$data['firebaseUid']) : (isset($data['firebase_uid']) ? trim((string)$data['firebase_uid']) : '');
     $role_requested = isset($data['role']) ? strtolower(trim((string)$data['role'])) : '';
+    if ($role_requested === 'student') {
+        $role_requested = 'learner';
+    }
 
     // 6. Basic Validation
     if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -73,7 +88,6 @@ try {
             "success" => false,
             "message" => "Please provide a valid email address."
         ]);
-        if (isset($conn) && $conn instanceof mysqli) $conn->close();
         exit();
     }
 
@@ -83,7 +97,6 @@ try {
             "success" => false,
             "message" => "Invalid authentication provider."
         ]);
-        if (isset($conn) && $conn instanceof mysqli) $conn->close();
         exit();
     }
 
@@ -95,8 +108,10 @@ try {
             "success" => false,
             "message" => "Users database table has not been initialized. Please run database setup or sync."
         ]);
-        if (isset($conn) && $conn instanceof mysqli) $conn->close();
         exit();
+    }
+    if ($table_check instanceof mysqli_result) {
+        $table_check->close();
     }
 
     // =========================================================================
@@ -127,7 +142,7 @@ try {
             $lastName = isset($nameParts[1]) ? $nameParts[1] : '';
 
             $newId = 'usr_' . bin2hex(random_bytes(8));
-            $userRole = in_array($role_requested, ['learner', 'instructor', 'admin']) ? $role_requested : 'learner';
+            $userRole = in_array($role_requested, ['learner', 'student', 'instructor', 'admin']) ? $role_requested : 'learner';
             $avatar = !empty($photoURL) ? $photoURL : 'https://ui-avatars.com/api/?name=' . urlencode($displayName ?: $email) . '&background=random&size=128';
             $dummy_hash = '*OAUTH_GOOGLE_ACCOUNT*';
 
@@ -194,7 +209,6 @@ try {
                         "success" => false,
                         "message" => "Failed to create account for Google user: " . ($insert_error ?: "Database insert error.")
                     ]);
-                    $conn->close();
                     exit();
                 }
             }
@@ -237,7 +251,6 @@ try {
                 "isEmailVerified" => (bool)($user['is_email_verified'] ?? 1)
             ]
         ]);
-        $conn->close();
         exit();
     }
 
@@ -250,7 +263,6 @@ try {
             "success" => false,
             "message" => "Please enter your password."
         ]);
-        $conn->close();
         exit();
     }
 
@@ -274,7 +286,6 @@ try {
             "success" => false,
             "message" => "No account found with this email address. Please check your spelling or sign up."
         ]);
-        $conn->close();
         exit();
     }
 
@@ -285,7 +296,6 @@ try {
             "success" => false,
             "message" => "This account was registered using Google. Please click 'Continue with Google' to log in."
         ]);
-        $conn->close();
         exit();
     }
 
@@ -296,7 +306,6 @@ try {
             "success" => false,
             "message" => "Incorrect password. Please try again or reset your password."
         ]);
-        $conn->close();
         exit();
     }
 
@@ -333,10 +342,7 @@ try {
             "isEmailVerified" => (bool)($user['is_email_verified'] ?? 0)
         ]
     ]);
-
-    if (isset($conn) && $conn instanceof mysqli) {
-        $conn->close();
-    }
+    exit();
 
 } catch (\Throwable $e) {
     http_response_code(500);
@@ -344,8 +350,6 @@ try {
         "success" => false,
         "message" => "Server error during authentication: " . $e->getMessage()
     ]);
-    if (isset($conn) && $conn instanceof mysqli) {
-        $conn->close();
-    }
+    exit();
 }
 ?>

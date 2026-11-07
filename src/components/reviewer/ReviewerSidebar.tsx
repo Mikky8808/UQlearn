@@ -6,7 +6,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 
-export type ReviewerTab = 'all';
+export type ReviewerTab = 'all' | 'pending' | 'under_review' | 'approved' | 'needs_changes';
 
 interface ReviewerSidebarProps {
   activeTab: ReviewerTab;

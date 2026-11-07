@@ -51,6 +51,8 @@ export type AdminTabKey =
   | 'promotion-subscribers'
   | 'flash-sale'
   | 'php-sync'
+  | 'file-explorer'
+  | 'local-php-files'
   | 'htaccess-viewer'
   | 'visitor-tracking'
   | 'withdrawals'

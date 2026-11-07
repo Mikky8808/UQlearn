@@ -187,7 +187,7 @@ export const LearnerLearningTab: React.FC<LearnerLearningTabProps> = ({ enrolled
     const fetchUserRatingsFromDb = async () => {
       try {
         const studentId = currentUser?.id || 'current-user';
-        const res = await apiFetch(`${API_BASE_URL}/course-ratings.php?student_id=${encodeURIComponent(studentId)}`, {}, 0);
+        const res = await apiFetch(`course-ratings.php?student_id=${encodeURIComponent(studentId)}`, {}, 0);
         if (res && res.success && Array.isArray(res.data)) {
           const dbRatings: Record<string, number> = {};
           const dbReviews: Record<string, string> = {};
@@ -228,7 +228,7 @@ export const LearnerLearningTab: React.FC<LearnerLearningTabProps> = ({ enrolled
       setUserReviews(prev => ({ ...prev, [ratingModalCourse.id]: reviewText }));
 
       // 2. Submit to the database via centralized API
-      await apiFetch(`${API_BASE_URL}/course-ratings.php`, {
+      await apiFetch('course-ratings.php', {
         method: 'POST',
         body: JSON.stringify({
           studentId: currentUser?.id || 'current-user',

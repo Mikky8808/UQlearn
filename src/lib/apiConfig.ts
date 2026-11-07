@@ -1,6 +1,13 @@
-import { API_BASE_URL, ROOT_URL, DEFAULT_PAYOUT_COUNTRIES, DEFAULT_KENYA_COUNTRY, DEFAULT_KENYA_BANKS, getDefaultKenyaPayoutBanks, GOOGLE_CLIENT_ID, DEFAULT_VIDEO_THUMBNAIL } from './apiConstants';
+import { ROOT_URL, DEFAULT_PAYOUT_COUNTRIES, DEFAULT_KENYA_COUNTRY, DEFAULT_KENYA_BANKS, getDefaultKenyaPayoutBanks, GOOGLE_CLIENT_ID, DEFAULT_VIDEO_THUMBNAIL } from './apiConstants';
 import { resolveImageUrl } from './branding';
-export { API_BASE_URL, ROOT_URL, DEFAULT_PAYOUT_COUNTRIES, DEFAULT_KENYA_COUNTRY, DEFAULT_KENYA_BANKS, getDefaultKenyaPayoutBanks, GOOGLE_CLIENT_ID, DEFAULT_VIDEO_THUMBNAIL } from './apiConstants';
+
+/**
+ * Centralized API Base URL for all backend requests.
+ * Points to the production shared host PHP backend at https://uqlearn.org/api/v1/
+ * to prevent cross-subdomain routing issues.
+ */
+export const API_BASE_URL = 'https://uqlearn.org/api/v1/';
+export { ROOT_URL, DEFAULT_PAYOUT_COUNTRIES, DEFAULT_KENYA_COUNTRY, DEFAULT_KENYA_BANKS, getDefaultKenyaPayoutBanks, GOOGLE_CLIENT_ID, DEFAULT_VIDEO_THUMBNAIL } from './apiConstants';
 export type { PayoutCountry, PayoutBank } from '../types';
 
 export const API_ENDPOINTS = {
@@ -121,8 +128,16 @@ export const getRemindersApi = async (userId: string) => await apiFetch(`${API_E
 export const saveReminderApi = async (data: any) => await apiFetch(API_ENDPOINTS.REMINDERS, { method: 'POST', body: JSON.stringify(data) });
 export const createRequestApi = async (data: any) => await apiFetch(API_ENDPOINTS.REQUESTS, { method: 'POST', body: JSON.stringify(data) });
 export const getCuratedListsApi = async (userId: string) => await apiFetch(`${API_ENDPOINTS.CURATED_LISTS}?userId=${userId}`);
-export const saveCuratedListApi = async (data: any) => await apiFetch(API_ENDPOINTS.CURATED_LISTS, { method: 'POST', body: JSON.stringify(data) });
-export const deleteCuratedListApi = async (id: string) => await apiFetch(`${API_ENDPOINTS.CURATED_LISTS}?id=${id}`, { method: 'DELETE' });
+export const saveCuratedListApi = async (dataOrUserId: any, listData?: any) => {
+  const payload = listData ? { ...listData, userId: dataOrUserId } : dataOrUserId;
+  return await apiFetch(API_ENDPOINTS.CURATED_LISTS, { method: 'POST', body: JSON.stringify(payload) });
+};
+export const deleteCuratedListApi = async (idOrUserId: string, listId?: string) => {
+  const finalId = listId || idOrUserId;
+  const userId = listId ? idOrUserId : undefined;
+  const qs = userId ? `?id=${encodeURIComponent(finalId)}&userId=${encodeURIComponent(userId)}` : `?id=${encodeURIComponent(finalId)}`;
+  return await apiFetch(`${API_ENDPOINTS.CURATED_LISTS}${qs}`, { method: 'DELETE' });
+};
 export const upsertLessonApi = async (data: any) => await apiFetch(API_ENDPOINTS.LESSONS, { method: 'POST', body: JSON.stringify(data) });
 export const getPromotionTiersApi = async (isAdmin?: boolean) => await apiFetch(`${API_ENDPOINTS.PROMOTION_TIERS}${isAdmin ? '?admin=true' : ''}`);
 export const savePromotionTiersApi = async (data: any) => await apiFetch(API_ENDPOINTS.PROMOTION_TIERS, { method: 'POST', body: JSON.stringify(data) });
@@ -261,17 +276,46 @@ export const applySponsoredAdApi = async (data: any) => {
 };
 export const getCourseDescriptionChecklistApi = async (courseId: string) => await apiFetch(`${API_ENDPOINTS.COURSE_DESCRIPTION_CHECKLIST}?course_id=${encodeURIComponent(courseId)}`);
 export const saveCourseDescriptionChecklistApi = async (data: any) => await apiFetch(API_ENDPOINTS.COURSE_DESCRIPTION_CHECKLIST, { method: 'POST', body: JSON.stringify(data) });
-export const fetchVideoFoldersApi = async (courseId: string) => await apiFetch(`${API_ENDPOINTS.VIDEO_FOLDERS}?course_id=${encodeURIComponent(courseId)}`);
-export const createVideoFolderApi = async (data: any) => await apiFetch(API_ENDPOINTS.VIDEO_FOLDERS, { method: 'POST', body: JSON.stringify(data) });
+export const fetchVideoFoldersApi = async (userIdOrCourseId?: string, courseId?: string) => {
+  const q: string[] = [];
+  if (courseId) {
+    q.push(`userId=${encodeURIComponent(userIdOrCourseId || '')}`);
+    q.push(`course_id=${encodeURIComponent(courseId)}`);
+  } else if (userIdOrCourseId) {
+    q.push(`course_id=${encodeURIComponent(userIdOrCourseId)}`);
+  }
+  const qs = q.length ? `?${q.join('&')}` : '';
+  return await apiFetch(`${API_ENDPOINTS.VIDEO_FOLDERS}${qs}`);
+};
+export const createVideoFolderApi = async (nameOrData: any, color?: string, userId?: string, courseId?: string) => {
+  const payload = typeof nameOrData === 'string'
+    ? { name: nameOrData, color: color || '#6366f1', userId, courseId }
+    : nameOrData;
+  return await apiFetch(API_ENDPOINTS.VIDEO_FOLDERS, { method: 'POST', body: JSON.stringify(payload) });
+};
 export const getCourseMessagesApi = async (courseId: string) => await apiFetch(`${API_ENDPOINTS.REVIEWER_CHAT}?course_id=${encodeURIComponent(courseId)}`);
 export const saveCourseMessagesApi = async (data: any) => await apiFetch(API_ENDPOINTS.REVIEWER_CHAT, { method: 'POST', body: JSON.stringify(data) });
 export const getReviewerChatHistoryApi = async () => await apiFetch(API_ENDPOINTS.REVIEWER_CHAT);
 export const renameVideoFolderApi = async (id: string, name: string) => await apiFetch(API_ENDPOINTS.VIDEO_FOLDERS, { method: 'POST', body: JSON.stringify({ action: 'rename', id, name }) });
 export const deleteVideoFolderApi = async (id: string) => await apiFetch(`${API_ENDPOINTS.VIDEO_FOLDERS}?id=${id}`, { method: 'DELETE' });
-export const moveVideoToFolderApi = async (videoId: string, folderId: string) => await apiFetch(API_ENDPOINTS.VIDEO_FOLDERS, { method: 'POST', body: JSON.stringify({ action: 'move', videoId, folderId }) });
+export const moveVideoToFolderApi = async (videoId: string, folderNameOrId: string, folderId?: string | null) => {
+  return await apiFetch(API_ENDPOINTS.VIDEO_FOLDERS, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'move', videoId, folderName: folderNameOrId, folderId: folderId ?? folderNameOrId })
+  });
+};
 export const upsertModuleApi = async (data: any) => await apiFetch(API_ENDPOINTS.COURSE_MODULES, { method: 'POST', body: JSON.stringify(data) });
-export const updateSectionTitleApi = async (id: string, title: string) => await apiFetch(API_ENDPOINTS.COURSE_MODULES, { method: 'POST', body: JSON.stringify({ action: 'update_title', id, title }) });
-export const deleteModuleOrLessonApi = async (id: string, type: 'module' | 'lesson') => await apiFetch(`${API_ENDPOINTS.COURSE_MODULES}?id=${id}&type=${type}`, { method: 'DELETE' });
+export const updateSectionTitleApi = async (idOrData: string | { id: string; title: string; courseId?: string; description?: string; orderIndex?: number }, title?: string) => {
+  const payload = typeof idOrData === 'object'
+    ? { action: 'update_title', ...idOrData }
+    : { action: 'update_title', id: idOrData, title };
+  return await apiFetch(API_ENDPOINTS.COURSE_MODULES, { method: 'POST', body: JSON.stringify(payload) });
+};
+export const deleteModuleOrLessonApi = async (arg1: string, arg2: string) => {
+  const type = (arg1 === 'module' || arg1 === 'lesson') ? arg1 : (arg2 === 'module' || arg2 === 'lesson') ? arg2 : 'module';
+  const id = (arg1 === 'module' || arg1 === 'lesson') ? arg2 : arg1;
+  return await apiFetch(`${API_ENDPOINTS.COURSE_MODULES}?id=${encodeURIComponent(id)}&type=${type}`, { method: 'DELETE' });
+};
 export const fetchIntendedLearnersApi = async (courseId: string) => await apiFetch(`${API_ENDPOINTS.INTENDED_LEARNERS}?courseId=${encodeURIComponent(courseId)}&course_id=${encodeURIComponent(courseId)}`);
 export const saveIntendedLearnersApi = async (courseId: string, data: any) => {
   const payload = Array.isArray(data) 
@@ -279,9 +323,24 @@ export const saveIntendedLearnersApi = async (courseId: string, data: any) => {
     : { courseId, course_id: courseId, ...data };
   return await apiFetch(API_ENDPOINTS.INTENDED_LEARNERS, { method: 'POST', body: JSON.stringify(payload) });
 };
-export const fetchRequestsApi = async (role?: 'admin' | 'instructor') => await apiFetch(`${API_ENDPOINTS.REQUESTS}${role ? `?role=${role}` : ''}`);
-export const updateRequestStatusApi = async (id: string, status: string, replyNote?: string) => await apiFetch(API_ENDPOINTS.REQUESTS, { method: 'PUT', body: JSON.stringify({ id, status, replyNote }) });
-export const saveSignatureApi = async (data: any) => await apiFetch(API_ENDPOINTS.SIGNATURES, { method: 'POST', body: JSON.stringify(data) });
+export const fetchRequestsApi = async (roleOrFilter?: 'admin' | 'instructor' | { recipientType?: string; role?: string }) => {
+  let role = '';
+  if (typeof roleOrFilter === 'string') {
+    role = roleOrFilter;
+  } else if (roleOrFilter && typeof roleOrFilter === 'object') {
+    role = roleOrFilter.recipientType || roleOrFilter.role || '';
+  }
+  return await apiFetch(`${API_ENDPOINTS.REQUESTS}${role ? `?role=${role}` : ''}`);
+};
+export const updateRequestStatusApi = async (id: string, status: string, replyNote?: string, repliedBy?: string) => {
+  return await apiFetch(API_ENDPOINTS.REQUESTS, { method: 'PUT', body: JSON.stringify({ id, status, replyNote, repliedBy }) });
+};
+export const saveSignatureApi = async (dataOrUserId: any, signatureUrl?: string) => {
+  const payload = typeof dataOrUserId === 'string' && signatureUrl
+    ? { userId: dataOrUserId, signature: signatureUrl, signatureUrl, signatureData: signatureUrl }
+    : dataOrUserId;
+  return await apiFetch(API_ENDPOINTS.SIGNATURES, { method: 'POST', body: JSON.stringify(payload) });
+};
 export const getCustomMailPricingApi = async () => await apiFetch(API_ENDPOINTS.CUSTOM_MAIL_PRICING);
 export const saveCustomMailPricingApi = async (data: any) => await apiFetch(API_ENDPOINTS.CUSTOM_MAIL_PRICING, { method: 'POST', body: JSON.stringify(data) });
 export const getAllCustomMailSubscriptionsApi = async () => await apiFetch(API_ENDPOINTS.CUSTOM_MAIL_SUBSCRIPTIONS);
@@ -311,7 +370,13 @@ export const localApiFetch = async (endpoint: string, options: RequestInit = {})
     throw new Error(`Invalid JSON response: ${err?.message || 'Parse error'}`);
   }
 };
-export const getSponsoredAdsApi = async () => await apiFetch(API_ENDPOINTS.SPONSORED_ADS);
+export const getSponsoredAdsApi = async (params?: { instructorId?: string; courseId?: string }) => {
+  const q: string[] = [];
+  if (params?.instructorId) q.push(`instructorId=${encodeURIComponent(params.instructorId)}`);
+  if (params?.courseId) q.push(`courseId=${encodeURIComponent(params.courseId)}`);
+  const qs = q.length ? `?${q.join('&')}` : '';
+  return await apiFetch(`${API_ENDPOINTS.SPONSORED_ADS}${qs}`);
+};
 export const deleteUserApi = async (id: string) => await apiFetch(`${API_ENDPOINTS.USERS}?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
 export const getSponsoredPlansApi = async () => {
   const res = await apiFetch(API_ENDPOINTS.SPONSORED_PLANS, { silent: true }).catch(() => null);
@@ -345,14 +410,14 @@ export const deleteSponsoredAdApi = async (id: string | number) => {
   });
 };
 export const saveTopAdvertApi = async (data: any) => await apiFetch(API_ENDPOINTS.TOP_ADVERTS, { method: 'POST', body: JSON.stringify(data) });
-export const toggleTopAdvertActiveApi = async (id: string, isActive: boolean) => await apiFetch(`${API_ENDPOINTS.TOP_ADVERTS}?id=${id}`, { method: 'PUT', body: JSON.stringify({ action: 'toggle', isActive }) });
-export const deleteTopAdvertApi = async (id: string) => await apiFetch(`${API_ENDPOINTS.TOP_ADVERTS}?id=${id}`, { method: 'DELETE' });
-export const uploadTopAdvertImageApi = async (fileData: string, fileName?: string) => await uploadMediaApi(fileData, fileName, 'assets');
+export const toggleTopAdvertActiveApi = async (id: string | number, isActive: boolean) => await apiFetch(`${API_ENDPOINTS.TOP_ADVERTS}?id=${id}`, { method: 'PUT', body: JSON.stringify({ action: 'toggle', isActive }) });
+export const deleteTopAdvertApi = async (id: string | number) => await apiFetch(`${API_ENDPOINTS.TOP_ADVERTS}?id=${id}`, { method: 'DELETE' });
+export const uploadTopAdvertImageApi = async (fileData: string | File | Blob | FormData, fileName?: string) => await uploadMediaApi(fileData, fileName, 'assets');
 export const saveAdvertApi = async (data: any) => await apiFetch(API_ENDPOINTS.ADVERTS, { method: 'POST', body: JSON.stringify(data) });
-export const toggleAdvertActiveApi = async (id: string, isActive: boolean) => await apiFetch(`${API_ENDPOINTS.ADVERTS}?id=${id}`, { method: 'PUT', body: JSON.stringify({ action: 'toggle', isActive }) });
-export const deleteAdvertApi = async (id: string) => await apiFetch(`${API_ENDPOINTS.ADVERTS}?id=${id}`, { method: 'DELETE' });
-export const uploadAdvertImageApi = async (fileData: string, fileName?: string) => await uploadMediaApi(fileData, fileName, 'assets');
-export const assignCourseToReviewerApi = async (courseId: string, reviewerId: string) => await apiFetch(API_ENDPOINTS.COURSES, { method: 'POST', body: JSON.stringify({ action: 'assign_reviewer', courseId, reviewerId }) });
+export const toggleAdvertActiveApi = async (id: string | number, isActive: boolean) => await apiFetch(`${API_ENDPOINTS.ADVERTS}?id=${id}`, { method: 'PUT', body: JSON.stringify({ action: 'toggle', isActive }) });
+export const deleteAdvertApi = async (id: string | number) => await apiFetch(`${API_ENDPOINTS.ADVERTS}?id=${id}`, { method: 'DELETE' });
+export const uploadAdvertImageApi = async (fileData: string | File | Blob | FormData, fileName?: string) => await uploadMediaApi(fileData, fileName, 'assets');
+export const assignCourseToReviewerApi = async (courseId: string, reviewerId: string, reviewerName?: string, reviewerEmail?: string) => await apiFetch(API_ENDPOINTS.COURSES, { method: 'POST', body: JSON.stringify({ action: 'assign_reviewer', courseId, reviewerId, reviewerName, reviewerEmail }) });
 export const saveReviewerAssignmentsApi = async (courseId: string, reviewers: any[]) => {
   return await apiFetch(API_ENDPOINTS.ASSIGN_COURSE_REVIEWERS, {
     method: 'POST',
@@ -380,15 +445,30 @@ export const apiFetch = async (
     throw new Error(`apiFetch called with invalid endpoint: ${endpoint}`);
   }
 
-  const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
+  const baseUrl = API_BASE_URL.replace(/\/+$/, '');
+  let cleanEndpoint = endpoint.trim();
+  let url: string;
+
+  if (cleanEndpoint.startsWith('http://') || cleanEndpoint.startsWith('https://')) {
+    url = cleanEndpoint.replace(/uqlearn\.org\/api\/v1\/\/+/g, 'uqlearn.org/api/v1/');
+  } else {
+    cleanEndpoint = cleanEndpoint.replace(/^\/?(api\/v1\/)?/, '').replace(/^\/+/, '');
+    url = `${baseUrl}/${cleanEndpoint}`;
+  }
 
   try {
+    const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+    const reqHeaders: Record<string, string> = {
+      ...(!isFormData ? { 'Content-Type': 'application/json' } : {}),
+      ...(options.headers as Record<string, string> || {}),
+    };
+    if (isFormData && reqHeaders['Content-Type']) {
+      delete reqHeaders['Content-Type'];
+    }
+
     const response = await fetch(url, {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers: reqHeaders,
     });
 
     if (!response.ok) {
@@ -418,8 +498,14 @@ export const apiFetch = async (
   }
 };
 
-export const getTopAdvertsApi = async () => await apiFetch(API_ENDPOINTS.TOP_ADVERTS);
-export const getAdvertsApi = async () => await apiFetch(API_ENDPOINTS.ADVERTS);
+export const getTopAdvertsApi = async (activeOnly?: boolean) => await apiFetch(activeOnly ? `${API_ENDPOINTS.TOP_ADVERTS}?active=1` : API_ENDPOINTS.TOP_ADVERTS);
+export const getAdvertsApi = async (slot?: string, activeOnly?: boolean) => {
+  const q: string[] = [];
+  if (slot) q.push(`slot=${encodeURIComponent(slot)}`);
+  if (activeOnly) q.push('active=1');
+  const qs = q.length ? `?${q.join('&')}` : '';
+  return await apiFetch(`${API_ENDPOINTS.ADVERTS}${qs}`);
+};
 export const fetchCourseModulesApi = async (courseId: string) => await apiFetch(`${API_ENDPOINTS.COURSE_MODULES}?course_id=${encodeURIComponent(courseId)}`);
 export const getIntendedLearnersApi = async (courseId: string) => await apiFetch(`${API_ENDPOINTS.INTENDED_LEARNERS}?courseId=${encodeURIComponent(courseId)}&course_id=${encodeURIComponent(courseId)}`);
 export const getWishlistApi = async (userId: string) => await apiFetch(`${API_ENDPOINTS.WISHLIST}?userId=${userId}`);
@@ -467,14 +553,20 @@ export const fetchCoursesApi = async (creatorId?: string) => {
   return await apiFetch(url);
 };
 
-export const deleteCourseApi = async (id: string) => {
-  return await apiFetch(`${API_ENDPOINTS.COURSES}?id=${id}`, { method: 'DELETE' });
+export const deleteCourseApi = async (idOrOptions: string | { id: string; permanent?: boolean; action?: string }) => {
+  const id = typeof idOrOptions === 'string' ? idOrOptions : idOrOptions.id;
+  const isPermanent = typeof idOrOptions === 'object' && idOrOptions.permanent;
+  const url = isPermanent ? `${API_ENDPOINTS.COURSES}?id=${id}&permanent=1` : `${API_ENDPOINTS.COURSES}?id=${id}`;
+  return await apiFetch(url, {
+    method: 'DELETE',
+    ...(typeof idOrOptions === 'object' ? { body: JSON.stringify(idOrOptions) } : {})
+  });
 };
 
 export const fetchCourseCategoriesApi = async () => await apiFetch(API_ENDPOINTS.CATEGORIES);
 export const saveCourseCategoryApi = async (data: any) => await apiFetch(API_ENDPOINTS.CATEGORIES, { method: 'POST', body: JSON.stringify(data) });
 export const deleteCourseCategoryApi = async (id: string) => await apiFetch(`${API_ENDPOINTS.CATEGORIES}?id=${id}`, { method: 'DELETE' });
-export const syncCourseCategoriesApi = async (data: any) => await apiFetch(API_ENDPOINTS.SYNC_CATEGORIES, { method: 'POST', body: JSON.stringify(data) });
+export const syncCourseCategoriesApi = async (data?: any) => await apiFetch(API_ENDPOINTS.SYNC_CATEGORIES, { method: 'POST', body: JSON.stringify(data || {}) });
 
 export const fetchPayoutCountriesApi = async () => await apiFetch(API_ENDPOINTS.PAYOUT_COUNTRIES);
 export const createPayoutCountryApi = async (data: any) => await apiFetch(API_ENDPOINTS.PAYOUT_COUNTRIES, { method: 'POST', body: JSON.stringify(data) });
@@ -601,7 +693,41 @@ export const extractSponsoredCourseIds = (res: any): string[] => {
     .filter(Boolean);
 };
 
-export const uploadMediaApi = async (fileData: string, fileName?: string, folder: 'courses' | 'avatars' | 'assets' = 'courses') => {
+export const uploadMediaApi = async (
+  fileData: string | File | Blob | FormData,
+  fileNameOrProgress?: string | ((percent: number) => void),
+  folder: 'courses' | 'avatars' | 'assets' | 'videos' | 'resources' | string = 'courses'
+): Promise<any> => {
+  const onProgress = typeof fileNameOrProgress === 'function' ? fileNameOrProgress : undefined;
+  let fileName = typeof fileNameOrProgress === 'string' ? fileNameOrProgress : undefined;
+
+  if (typeof FormData !== 'undefined' && fileData instanceof FormData) {
+    return await apiFetch('upload.php', {
+      method: 'POST',
+      body: fileData
+    });
+  }
+
+  if (typeof window !== 'undefined' && (fileData instanceof File || fileData instanceof Blob)) {
+    if (!fileName && 'name' in fileData) {
+      fileName = (fileData as File).name;
+    }
+    if (onProgress) onProgress(30);
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(fileData);
+    });
+    if (onProgress) onProgress(70);
+    const res = await apiFetch('upload.php', {
+      method: 'POST',
+      body: JSON.stringify({ fileData: base64, fileName, folder })
+    });
+    if (onProgress) onProgress(100);
+    return res;
+  }
+
   return await apiFetch('upload.php', {
     method: 'POST',
     body: JSON.stringify({ fileData, fileName, folder })

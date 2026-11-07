@@ -294,7 +294,7 @@ export const CourseEnrollmentPage: React.FC = () => {
       try {
         // Verify with backend
         try {
-          await apiFetch(`${API_BASE_URL}/paystack.php?verify=${encodeURIComponent(verifiedRef)}`, { silent: true }, 1).catch(() => null);
+          await apiFetch(`paystack.php?verify=${encodeURIComponent(verifiedRef)}`, { silent: true }, 1).catch(() => null);
         } catch {}
 
         // Activate course subscription
@@ -351,7 +351,7 @@ export const CourseEnrollmentPage: React.FC = () => {
       let activeRef = reference;
 
       try {
-        const initData = await apiFetch(`${API_BASE_URL}/paystack.php`, {
+        const initData = await apiFetch('paystack.php', {
           method: 'POST',
           body: JSON.stringify({
             email: email,

@@ -1391,12 +1391,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const reorderCategories = (newCategories: CourseCategory[]) => {
     const updated = newCategories.map((c, idx) => ({ ...c, sortOrder: idx + 1 }));
     setCategories(updated);
-    syncCourseCategoriesApi().catch(e => console.warn("Notice syncing reordered categories to API:", e));
+    syncCourseCategoriesApi(updated).catch(e => console.warn("Notice syncing reordered categories to API:", e));
   };
 
   const resetDefaultCategories = () => {
     setCategories(defaultCourseCategories);
-    syncCourseCategoriesApi().catch(e => console.warn("Notice resetting categories in API:", e));
+    syncCourseCategoriesApi(defaultCourseCategories).catch(e => console.warn("Notice resetting categories in API:", e));
   };
 
   // Course Global Configuration Settings

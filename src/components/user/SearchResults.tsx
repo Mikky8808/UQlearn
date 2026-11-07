@@ -75,10 +75,8 @@ export const SearchResults: React.FC<SearchResultsProps> = () => {
       isSponsored: Boolean(
         c.isSponsored === true ||
         (c as any).is_sponsored === true ||
-        c.isSponsored === 1 ||
-        (c as any).is_sponsored === 1 ||
-        c.isSponsored === '1' ||
-        (c as any).is_sponsored === '1' ||
+        (c as any).isSponsored == 1 ||
+        (c as any).is_sponsored == 1 ||
         sponsoredCourseIds.includes(String(c.id)) ||
         sponsoredCourseIds.includes(String((c as any).course_id))
       )

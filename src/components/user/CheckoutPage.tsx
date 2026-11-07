@@ -186,7 +186,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
         try {
           // Verify with backend
           try {
-            await apiFetch(`${API_BASE_URL}/paystack.php?verify=${encodeURIComponent(verifiedRef)}`, { silent: true }, 1).catch(() => null);
+            await apiFetch(`paystack.php?verify=${encodeURIComponent(verifiedRef)}`, { silent: true }, 1).catch(() => null);
           } catch {}
 
           const createdSubs: CourseSubscription[] = [];
@@ -213,7 +213,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             );
             
             // Record purchase in USD
-            await apiFetch(`${API_BASE_URL}/purchases.php`, {
+            await apiFetch('purchases.php', {
               method: 'POST',
               body: JSON.stringify({
                 action: 'create_purchase',
@@ -260,7 +260,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
         let activeRef = reference;
 
         try {
-          const initData = await apiFetch(`${API_BASE_URL}/paystack.php`, {
+          const initData = await apiFetch('paystack.php', {
             method: 'POST',
             body: JSON.stringify({
               email: email,

@@ -49,7 +49,12 @@ const remoteProxy = createProxyMiddleware({
   timeout: 25000,
   proxyTimeout: 25000,
   on: {
-    proxyReq: fixRequestBody,
+    proxyReq: (proxyReq, req: any) => {
+      const contentType = req.headers['content-type'] || '';
+      if (contentType.includes('application/json') || contentType.includes('application/x-www-form-urlencoded')) {
+        return fixRequestBody(proxyReq, req);
+      }
+    },
     proxyRes: (proxyRes, req, res) => {
       // Remove any duplicate or comma-separated Access-Control-Allow-Origin from Apache/PHP
       delete proxyRes.headers['access-control-allow-origin'];
@@ -92,6 +97,7 @@ const handleV1Request = (req: express.Request, res: express.Response, next: expr
     url.includes('dist-files') ||
     url.includes('build') ||
     url.includes('remote-sync') ||
+    url.includes('workspace') ||
     url.includes('paystack-callback') ||
     url.includes('signatures') ||
     url.includes('quizzes') ||
@@ -119,7 +125,12 @@ const remoteProxyV2 = createProxyMiddleware({
   timeout: 25000,
   proxyTimeout: 25000,
   on: {
-    proxyReq: fixRequestBody,
+    proxyReq: (proxyReq, req: any) => {
+      const contentType = req.headers['content-type'] || '';
+      if (contentType.includes('application/json') || contentType.includes('application/x-www-form-urlencoded')) {
+        return fixRequestBody(proxyReq, req);
+      }
+    },
     proxyRes: (proxyRes, req, res) => {
       delete proxyRes.headers['access-control-allow-origin'];
       delete (proxyRes.headers as any)['Access-Control-Allow-Origin'];

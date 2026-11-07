@@ -1195,6 +1195,162 @@ v1Router.get('/remote-sync/local-files', (req: Request, res: Response) => {
   }
 });
 
+// GET /api/v1/workspace/local-php-files - List all local PHP files in the workspace at api/v1
+v1Router.get(['/workspace/local-php-files', '/local-php-files'], (req: Request, res: Response) => {
+  try {
+    const v1Dir = path.join(process.cwd(), 'api', 'v1');
+    if (!fs.existsSync(v1Dir)) {
+      return res.json({ success: true, files: [], totalFiles: 0 });
+    }
+
+    const entries = fs.readdirSync(v1Dir, { withFileTypes: true });
+    const files: Array<{
+      name: string;
+      relativePath: string;
+      size: number;
+      lines: number;
+      lastModified: string;
+      extension: string;
+      isProtected: boolean;
+      category: string;
+    }> = [];
+
+    const categorizeFile = (fname: string) => {
+      const lower = fname.toLowerCase();
+      if (lower.includes('login') || lower.includes('register') || lower.includes('user') || lower.includes('otp') || lower.includes('password') || lower.includes('verify')) {
+        return 'Auth & Users';
+      }
+      if (lower.includes('course') || lower.includes('lesson') || lower.includes('module') || lower.includes('curated') || lower.includes('quiz') || lower.includes('certificate')) {
+        return 'Courses & Content';
+      }
+      if (lower.includes('payment') || lower.includes('paystack') || lower.includes('payout') || lower.includes('purchase') || lower.includes('transaction') || lower.includes('subscription') || lower.includes('currency') || lower.includes('coupon')) {
+        return 'Payments & Finance';
+      }
+      if (lower.includes('upload') || lower.includes('media') || lower.includes('video') || lower.includes('banner') || lower.includes('advert') || lower.includes('logo') || lower.includes('image')) {
+        return 'Media & Ads';
+      }
+      if (lower.includes('review') || lower.includes('message') || lower.includes('chat') || lower.includes('qna') || lower.includes('note') || lower.includes('reminder') || lower.includes('appeal')) {
+        return 'Reviews & Messages';
+      }
+      return 'Core & System';
+    };
+
+    for (const entry of entries) {
+      if (entry.isFile()) {
+        const ext = path.extname(entry.name).toLowerCase().replace('.', '');
+        if (ext === 'php' || ext === 'sql' || entry.name === '.htaccess') {
+          const filePath = path.join(v1Dir, entry.name);
+          const stat = fs.statSync(filePath);
+          let lines = 0;
+          try {
+            const buf = fs.readFileSync(filePath, 'utf-8');
+            lines = buf.split('\n').length;
+          } catch {}
+
+          const isProt = entry.name === 'deploy.php' || entry.name === 'db.php' || entry.name === 'root_deploy.php';
+
+          files.push({
+            name: entry.name,
+            relativePath: `api/v1/${entry.name}`,
+            size: stat.size,
+            lines: lines || Math.round(stat.size / 35),
+            lastModified: stat.mtime.toISOString(),
+            extension: ext || 'htaccess',
+            isProtected: isProt,
+            category: categorizeFile(entry.name)
+          });
+        }
+      }
+    }
+
+    files.sort((a, b) => a.name.localeCompare(b.name));
+
+    return res.json({
+      success: true,
+      directory: 'api/v1',
+      totalFiles: files.length,
+      files
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err?.message || 'Error reading api/v1 files' });
+  }
+});
+
+// GET /api/v1/workspace/local-php-file - Read a specific local PHP file in api/v1 on demand
+v1Router.get(['/workspace/local-php-file', '/local-php-file'], (req: Request, res: Response) => {
+  try {
+    const fileName = (req.query.file as string || req.query.name as string || '').trim();
+    if (!fileName) {
+      return res.status(400).json({ success: false, message: 'Missing file query parameter' });
+    }
+
+    const cleanFileName = path.basename(fileName);
+    const v1Dir = path.join(process.cwd(), 'api', 'v1');
+    const fullPath = path.join(v1Dir, cleanFileName);
+
+    if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isFile()) {
+      return res.status(404).json({ success: false, message: `File not found in api/v1: ${cleanFileName}` });
+    }
+
+    const stat = fs.statSync(fullPath);
+    const content = fs.readFileSync(fullPath, 'utf-8');
+
+    return res.json({
+      success: true,
+      name: cleanFileName,
+      path: `api/v1/${cleanFileName}`,
+      size: stat.size,
+      lines: content.split('\n').length,
+      lastModified: stat.mtime.toISOString(),
+      isProtected: cleanFileName === 'deploy.php' || cleanFileName === 'db.php' || cleanFileName === 'root_deploy.php',
+      content
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err?.message || 'Error reading file' });
+  }
+});
+
+// POST /api/v1/workspace/local-php-file - Save/update a local file in api/v1
+v1Router.post(['/workspace/local-php-file', '/local-php-file'], (req: Request, res: Response) => {
+  try {
+    const fileName = (req.body?.file as string || req.body?.name as string || '').trim();
+    const content = req.body?.content;
+    if (!fileName) {
+      return res.status(400).json({ success: false, message: 'Missing file name parameter' });
+    }
+    if (typeof content !== 'string') {
+      return res.status(400).json({ success: false, message: 'Missing or invalid file content' });
+    }
+
+    const cleanFileName = path.basename(fileName);
+    if (cleanFileName === 'deploy.php' || cleanFileName === 'db.php' || cleanFileName === 'root_deploy.php') {
+      return res.status(403).json({ 
+        success: false, 
+        message: `Editing '${cleanFileName}' is locked because it is a protected core system file.` 
+      });
+    }
+
+    const v1Dir = path.join(process.cwd(), 'api', 'v1');
+    const fullPath = path.join(v1Dir, cleanFileName);
+
+    fs.writeFileSync(fullPath, content, 'utf-8');
+    const stat = fs.statSync(fullPath);
+
+    return res.json({
+      success: true,
+      message: `File '${cleanFileName}' saved successfully`,
+      name: cleanFileName,
+      path: `api/v1/${cleanFileName}`,
+      size: stat.size,
+      lines: content.split('\n').length,
+      lastModified: stat.mtime.toISOString(),
+      isProtected: false
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err?.message || 'Error saving file' });
+  }
+});
+
 // GET /api/v1/remote-sync/remote-status - Check live status of uqlearn.org
 v1Router.get('/remote-sync/remote-status', async (req: Request, res: Response) => {
   const targetUrl = (req.query.url as string) || 'https://uqlearn.org/deploy.php';
@@ -1254,8 +1410,15 @@ v1Router.post('/remote-sync/get-api-payload', (req: Request, res: Response) => {
     const apiDir = path.join(process.cwd(), 'api');
     const allFiles = getAllApiFilesRecursive(apiDir, apiDir);
     const filesToUpload: Record<string, string> = {};
+    const isProtectedFile = (name: string) => {
+      const b = path.basename(name).toLowerCase();
+      return b === 'deploy.php' || b === 'db.php' || b === 'root_deploy.php';
+    };
 
     for (const f of allFiles) {
+      if (isProtectedFile(f.name)) {
+        continue;
+      }
       if (selectedFileNames && selectedFileNames.length > 0 && !selectedFileNames.includes(f.name)) {
         continue;
       }
@@ -1321,12 +1484,25 @@ v1Router.post('/remote-sync/push', async (req: Request, res: Response) => {
     const apiDir = path.join(process.cwd(), 'api');
     const allFiles = getAllApiFilesRecursive(apiDir, apiDir);
     const filesToUpload: Record<string, string> = {};
+    const isProtectedFile = (name: string) => {
+      const b = path.basename(name).toLowerCase();
+      return b === 'deploy.php' || b === 'db.php' || b === 'root_deploy.php';
+    };
 
     for (const f of allFiles) {
+      if (isProtectedFile(f.name)) {
+        continue;
+      }
       if (selectedFileNames && selectedFileNames.length > 0 && !selectedFileNames.includes(f.name)) {
         continue;
       }
-      filesToUpload[f.name] = f.content;
+      // If target is api/v1/deploy.php where targetDir is __DIR__ (public_html/api/v1),
+      // strip any leading 'v1/' so files write to public_html/api/v1/filename.php directly
+      const cleanTargetKey = (targetUrl.includes('/api/v1/deploy.php') && f.name.startsWith('v1/'))
+        ? f.name.replace(/^v1\//, '')
+        : f.name;
+
+      filesToUpload[cleanTargetKey] = f.content;
     }
 
     const fileEntries = Object.entries(filesToUpload);
@@ -1361,15 +1537,17 @@ v1Router.post('/remote-sync/push', async (req: Request, res: Response) => {
         clearTimeout(timeoutId);
 
         const latencyMs = Date.now() - startMs;
+        const contentStr = String(fileContent || '');
         if (remoteRes.ok) {
           uploadedFiles.push(filePath);
-          fileTraces.push({ path: filePath, size: Buffer.byteLength(fileContent, 'utf-8'), status: 'ok', latencyMs });
+          fileTraces.push({ path: filePath, size: Buffer.byteLength(contentStr, 'utf-8'), status: 'ok', latencyMs });
         } else {
-          fileTraces.push({ path: filePath, size: Buffer.byteLength(fileContent, 'utf-8'), status: `HTTP ${remoteRes.status}`, latencyMs });
+          fileTraces.push({ path: filePath, size: Buffer.byteLength(contentStr, 'utf-8'), status: `HTTP ${remoteRes.status}`, latencyMs });
         }
       } catch (err: any) {
         const latencyMs = Date.now() - startMs;
-        fileTraces.push({ path: filePath, size: Buffer.byteLength(fileContent, 'utf-8'), status: err.message || 'error', latencyMs });
+        const contentStr = String(fileContent || '');
+        fileTraces.push({ path: filePath, size: Buffer.byteLength(contentStr, 'utf-8'), status: err.message || 'error', latencyMs });
       }
     }
 
@@ -1558,6 +1736,7 @@ v1Router.post('/remote-sync/deploy-dist', async (req: Request, res: Response) =>
       let fileSuccess = true;
       let totalBytesTransmitted = 0;
       const fileStart = Date.now();
+      let remoteRes: any = null;
 
       for (let c = 0; c < totalChunks; c++) {
         const chunkData = b64Data.slice(c * maxChunkSize, (c + 1) * maxChunkSize);
@@ -1575,7 +1754,6 @@ v1Router.post('/remote-sync/deploy-dist', async (req: Request, res: Response) =>
           clean_assets: (i === 0 && c === 0) ? cleanAssets : false
         });
 
-        let remoteRes: any = null;
         let lastFetchErr: any = null;
 
         for (let attempt = 1; attempt <= 3; attempt++) {

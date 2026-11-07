@@ -36,7 +36,8 @@ import {
   Sliders,
   Star,
   Flame,
-  Clock
+  Clock,
+  FileCode
 } from 'lucide-react';
 import { AdminTabKey } from './AdminNavbar';
 
@@ -197,7 +198,7 @@ export const AdminSidebarDrawer: React.FC<AdminSidebarDrawerProps> = ({
       badgeText: null,
       items: [
         { id: 'php-sync' as AdminTabKey, label: 'PHP Deployment & Sync', icon: CloudUpload },
-        { id: 'htaccess-viewer' as AdminTabKey, label: 'View .htaccess File', icon: Terminal },
+        { id: 'file-explorer' as AdminTabKey, label: 'File Explorer (api/v1)', icon: FileCode, badge: 'api/v1' },
       ]
     },
     {

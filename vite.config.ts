@@ -21,9 +21,9 @@ export default defineConfig({
         instructor: path.resolve(__dirname, 'instructor/instructor.html'),
       },
       output: {
-        entryFileNames: 'assets/[name]-[hash].js',
-        chunkFileNames: 'assets/[name]-[hash].js',
-        assetFileNames: 'assets/[name]-[hash].[ext]',
+        entryFileNames: '[name]-[hash].js',
+        chunkFileNames: '[name]-[hash].js',
+        assetFileNames: '[name]-[hash].[ext]',
         manualChunks: (id) => {
           if (id.includes('node_modules')) {
             if (id.includes('lucide-react')) return 'vendor-icons';

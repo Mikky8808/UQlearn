@@ -38,24 +38,19 @@ export const CourseCard: React.FC<CourseCardProps> = ({
     (course as any).bestseller === true ||
     (course as any).isBestseller === true ||
     (course as any).is_bestseller === true ||
-    course.bestSeller === 1 ||
-    (course as any).bestseller === 1 ||
-    (course as any).bestseller === '1' ||
-    course.bestSeller === '1' ||
-    (course as any).is_bestseller === '1' ||
-    (course as any).isBestseller === '1'
+    (course as any).bestSeller == 1 ||
+    (course as any).bestseller == 1 ||
+    (course as any).is_bestseller == 1 ||
+    (course as any).isBestseller == 1
   );
 
   const isPremiumCourse = Boolean(
     course.isPremium === true ||
     (course as any).is_premium === true ||
     (course as any).premium === true ||
-    course.isPremium === 1 ||
-    (course as any).is_premium === 1 ||
-    (course as any).premium === 1 ||
-    course.isPremium === '1' ||
-    (course as any).is_premium === '1' ||
-    (course as any).premium === '1'
+    (course as any).isPremium == 1 ||
+    (course as any).is_premium == 1 ||
+    (course as any).premium == 1
   );
 
   const isSponsoredCourse = Boolean(
@@ -66,21 +61,14 @@ export const CourseCard: React.FC<CourseCardProps> = ({
     (course as any).is_sponsored_ad === true ||
     (course as any).promoted === true ||
     (course as any).is_ad === true ||
-    course.isSponsored === 1 ||
-    (course as any).is_sponsored === 1 ||
-    (course as any).sponsored === 1 ||
-    (course as any).isSponsoredAd === 1 ||
-    (course as any).is_sponsored_ad === 1 ||
-    (course as any).promoted === 1 ||
-    (course as any).is_ad === 1 ||
-    course.isSponsored === '1' ||
-    (course as any).is_sponsored === '1' ||
-    (course as any).sponsored === '1' ||
-    (course as any).isSponsoredAd === '1' ||
-    (course as any).is_sponsored_ad === '1' ||
-    (course as any).promoted === '1' ||
-    (course as any).is_ad === '1' ||
-    course.isSponsored === 'true' ||
+    (course as any).isSponsored == 1 ||
+    (course as any).is_sponsored == 1 ||
+    (course as any).sponsored == 1 ||
+    (course as any).isSponsoredAd == 1 ||
+    (course as any).is_sponsored_ad == 1 ||
+    (course as any).promoted == 1 ||
+    (course as any).is_ad == 1 ||
+    (course as any).isSponsored === 'true' ||
     (course as any).is_sponsored === 'true' ||
     (course as any).sponsored === 'true'
   );

@@ -71,6 +71,7 @@ export interface Course {
   rating: number;
   reviewCount: number;
   learnersEnrolled: number;
+  learners_enrolled?: number;
   learnersCount?: number;
   image: string;
   thumbnail?: string;

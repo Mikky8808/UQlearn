@@ -30,7 +30,6 @@ import { InstructorAnalyticsViews } from './InstructorAnalyticsViews';
 import { InstructorCommunicationViews } from './InstructorCommunicationViews';
 import { InstructorAdminSettingsViews } from './InstructorAdminSettingsViews';
 import { InstructorProViews } from './InstructorProViews';
-import { InstructorPhpSyncTab } from './InstructorPhpSyncTab';
 import { InstructorComplianceTab } from './InstructorComplianceTab';
 import { InstructorSponsoredAdsTab } from './InstructorSponsoredAdsTab';
 import { InstructorRequestWithdrawalPage } from './InstructorRequestWithdrawalPage';
@@ -150,7 +149,6 @@ export const InstructorStudio: React.FC<InstructorStudioProps> = ({
     if (path.includes('/sponsored') || path.includes('/boost')) return 'sponsored-ads';
     if (path.includes('/terms-of-service') || path.includes('/terms')) return 'terms-of-service';
     if (path.includes('/request-withdrawal') || path.includes('/withdraw')) return 'request-withdrawal';
-    if (path.includes('/php-sync') || path.includes('/remote-deploy')) return 'dashboard';
     if (path.includes('/module')) return 'module-editor';
     if (path.includes('/lesson')) return 'lesson-editor';
     if (path.includes('/courses')) return 'courses';
@@ -608,10 +606,6 @@ export const InstructorStudio: React.FC<InstructorStudioProps> = ({
               />
             )}
 
-            {/* PHP Backend Deployment & Synchronization View */}
-            {activeTab === ('php-sync' as any) && (
-              <InstructorPhpSyncTab />
-            )}
 
           </div>
 

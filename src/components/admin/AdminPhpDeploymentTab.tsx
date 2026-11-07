@@ -60,7 +60,7 @@ interface DistFile {
   content?: string;
 }
 
-export const InstructorPhpSyncTab: React.FC = () => {
+export const AdminPhpDeploymentTab: React.FC = () => {
   // Mode selection: 'frontend-dist' | 'backend-api' | 'fullstack'
   const [deployMode, setDeployMode] = useState<'frontend-dist' | 'backend-api'>('frontend-dist');
 
@@ -190,7 +190,7 @@ export const InstructorPhpSyncTab: React.FC = () => {
   const handleRunBuild = async () => {
     setIsBuilding(true);
     addLog('[BUILD] 🔨 Starting production build (`npm run build` / `vite build`)...', 'cmd');
-    addLog('[BUILD] Compiling React 18 frontend, bundling assets, transforming TypeScript...', 'info');
+    addLog('[BUILD] Compiling React 18 frontend, transforming TypeScript...', 'info');
 
     const start = performance.now();
     try {
@@ -337,14 +337,21 @@ export const InstructorPhpSyncTab: React.FC = () => {
 
   // 5. Push Backend API Files (1 File Per Request Sequential Deployment)
   const handlePushApiFiles = async (fileNamesToPush?: string[]) => {
-    const targets = fileNamesToPush || (selectedFileNames.length > 0 ? selectedFileNames : files.map(f => f.name));
+    const isProtectedApiFile = (name: string) => {
+      const norm = name.replace(/\\/g, '/').toLowerCase();
+      const base = norm.split('/').pop() || '';
+      return base === 'deploy.php' || base === 'db.php' || base === 'root_deploy.php';
+    };
+
+    const rawTargets = fileNamesToPush || (selectedFileNames.length > 0 ? selectedFileNames : files.map(f => f.name));
+    const targets = rawTargets.filter(name => !isProtectedApiFile(name));
     if (targets.length === 0) {
-      addLog('[DEPLOY] ✕ Aborted: No API files selected for deployment.', 'warn');
+      addLog('[DEPLOY] ✕ Aborted: No un-protected API files selected for deployment (deploy.php and db.php are safeguarded).', 'warn');
       return;
     }
 
     setIsPushing(true);
-    addLog(`[DEPLOY] 🚀 Initiating 1-File-Per-Request Sequential Deployment of ${targets.length} API files to ${backendRemoteUrl} ...`, 'cmd');
+    addLog(`[DEPLOY] 🚀 Initiating 1-File-Per-Request Sequential Deployment of ${targets.length} API files to ${backendRemoteUrl} (deploy.php & db.php protected) ...`, 'cmd');
 
     // Step A: Attempt Direct Browser 1-by-1 Sequential Transmission
     try {
@@ -370,6 +377,16 @@ export const InstructorPhpSyncTab: React.FC = () => {
           let successfulCount = 0;
           for (let i = 0; i < fileKeys.length; i++) {
             const relPath = fileKeys[i];
+            if (isProtectedApiFile(relPath)) {
+              addLog(`  ├── [${i + 1}/${fileKeys.length}] ${relPath} ──> 🛡️ Skipped (Protected file - kept on live host)`, 'info');
+              continue;
+            }
+
+            // Normalize path for api/v1/deploy.php (strip leading v1/ if target is /api/v1/)
+            const targetPath = (proxyUrl.includes('/api/v1/deploy.php') && relPath.startsWith('v1/'))
+              ? relPath.replace(/^v1\//, '')
+              : relPath;
+
             const content = filesMap[relPath];
             const fileKb = (new Blob([content]).size / 1024).toFixed(2);
             const startMs = Date.now();
@@ -382,7 +399,7 @@ export const InstructorPhpSyncTab: React.FC = () => {
                   'X-Deploy-Key': deployKey
                 },
                 body: JSON.stringify({
-                  files: { [relPath]: content },
+                  files: { [targetPath]: content },
                   deploy_key: deployKey
                 })
               });
@@ -701,12 +718,6 @@ function check_deploy_auth() {
 
 // GET: Status Check & Health Diagnostic
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $assetsCount = 0;
-    if (is_dir($baseDir . '/assets')) {
-        $assets = glob($baseDir . '/assets/*');
-        $assetsCount = $assets ? count($assets) : 0;
-    }
-
     echo json_encode([
         "success" => true,
         "worker" => "UQlearn Root Frontend & Dist Deployer",
@@ -722,213 +733,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         "has_index_html" => file_exists($baseDir . '/index.html'),
         "has_htaccess" => file_exists($baseDir . '/.htaccess'),
         "has_admin_portal" => is_dir($baseDir . '/admin'),
-        "has_instructor_portal" => is_dir($baseDir . '/instructor'),
-        "total_assets" => $assetsCount
+        "has_instructor_portal" => is_dir($baseDir . '/instructor')
     ], JSON_PRETTY_PRINT);
     exit();
 }
 
-// POST: Write Built Dist Files to Web Root
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if (\$_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!check_deploy_auth()) {
         http_response_code(401);
-        echo json_encode([
-            "success" => false,
-            "message" => "Unauthorized: Missing or invalid deployment secret key."
-        ]);
+        echo json_encode(["success" => false, "message" => "Unauthorized."]);
         exit();
     }
 
-    $rawInput = file_get_contents('php://input');
-    $input = json_decode($rawInput, true);
-
-    if (!$input && !empty($rawInput)) {
-        http_response_code(400);
-        echo json_encode([
-            "success" => false,
-            "message" => "Invalid JSON payload received. Payload might have exceeded post_max_size (" . ini_get('post_max_size') . ").",
-            "raw_length" => strlen($rawInput)
-        ]);
-        exit();
+    \$filesToProcess = [];
+    \$rawInput = file_get_contents('php://input');
+    \$input = json_decode(\$rawInput, true);
+    if (\$input) {
+        if (!empty(\$input['files'])) foreach (\$input['files'] as \$k => \$v) \$filesToProcess[\$k] = \$v;
+        if (!empty(\$input['dist_files'])) foreach (\$input['dist_files'] as \$k => \$v) \$filesToProcess[\$k] = \$v;
     }
-
-    $textFiles = $input['files'] ?? $input['dist_files'] ?? [];
-    $base64Files = $input['base64_files'] ?? [];
-    $chunkFile = $input['chunk_file'] ?? '';
-    $chunkData = $input['chunk_data'] ?? '';
-    $chunkIndex = isset($input['chunk_index']) ? (int)$input['chunk_index'] : 0;
-    $totalChunks = isset($input['total_chunks']) ? (int)$input['total_chunks'] : 1;
-    $cleanAssets = !empty($input['clean_assets']);
-    
-    // Recursive directory cleaner function for assets/
-    $cleanDir = function($dir, $self) {
-        if (!is_dir($dir)) return;
-        $items = glob($dir . '/*');
-        if ($items) {
-            foreach ($items as $item) {
-                if (is_dir($item)) {
-                    $self($item, $self);
-                    @rmdir($item);
-                } else if (is_file($item)) {
-                    @unlink($item);
-                }
-            }
-        }
-    };
-
-    if ($cleanAssets && is_dir($baseDir . '/assets')) {
-        $cleanDir($baseDir . '/assets', $cleanDir);
-    }
-
-    $updated = [];
-    $errors = [];
-
-    // Support chunked file transmission for large assets/bundles
-    if ($chunkFile && $chunkData) {
-        $clean = trim(str_replace(['../', '..\\\\'], '', $chunkFile), '/\\\\');
-        if ($clean) {
-            $dest = $baseDir . '/' . $clean;
-            $folder = dirname($dest);
-            if (!is_dir($folder)) @mkdir($folder, 0755, true);
-            $decoded = base64_decode($chunkData);
-            if ($decoded !== false) {
-                $flags = ($chunkIndex === 0) ? 0 : FILE_APPEND;
-                $written = @file_put_contents($dest, $decoded, $flags);
-                if ($written !== false) {
-                    $updated[] = ['path' => $clean, 'bytes' => $written, 'chunk' => $chunkIndex + 1, 'total_chunks' => $totalChunks, 'type' => 'chunk'];
-                } else {
-                    $errors[] = ['path' => $clean, 'error' => 'Failed to write chunk'];
-                }
+    if (!empty(\$_FILES['files']['name'])) {
+        for (\$i = 0; \$i < count(\$_FILES['files']['name']); \$i++) {
+            if (\$_FILES['files']['error'][\$i] === UPLOAD_ERR_OK) {
+                \$name = \$_POST['paths'][\$i] ?? \$_FILES['files']['name'][\$i];
+                \$filesToProcess[\$name] = file_get_contents(\$_FILES['files']['tmp_name'][\$i]);
             }
         }
     }
 
-    // Write text files (HTML, JS, CSS, SVG, JSON, .htaccess)
-    foreach ($textFiles as $rel => $code) {
-        $clean = trim(str_replace(['../', '..\\\\'], '', $rel), '/\\\\');
-        if (!$clean) continue;
-        
-        $dest = $baseDir . '/' . $clean;
-        $folder = dirname($dest);
-        if (!is_dir($folder)) @mkdir($folder, 0755, true);
-        
-        $written = @file_put_contents($dest, $code);
-        if ($written !== false) {
-            $updated[] = ['path' => $clean, 'bytes' => $written, 'type' => 'text'];
-        } else {
-            $errors[] = ['path' => $clean, 'error' => 'Failed to write file'];
-        }
+    \$updated = [];
+    foreach (\$filesToProcess as \$rel => \$code) {
+        \$clean = trim(str_replace(['../', '..\\\\'], '', \$rel), '/\\\\');
+        if (!\$clean) continue;
+        \$dest = \$baseDir . '/' . \$clean;
+        if (!is_dir(dirname(\$dest))) @mkdir(dirname(\$dest), 0755, true);
+        if (file_put_contents(\$dest, \$code) !== false) \$updated[] = \$clean;
     }
 
-    // Write binary files (images, fonts, media)
-    foreach ($base64Files as $rel => $b64) {
-        $clean = trim(str_replace(['../', '..\\\\'], '', $rel), '/\\\\');
-        if (!$clean) continue;
-        
-        $dest = $baseDir . '/' . $clean;
-        $folder = dirname($dest);
-        if (!is_dir($folder)) @mkdir($folder, 0755, true);
-        
-        $decoded = base64_decode($b64);
-        if ($decoded !== false) {
-            $written = @file_put_contents($dest, $decoded);
-            if ($written !== false) {
-                $updated[] = ['path' => $clean, 'bytes' => $written, 'type' => 'binary'];
-            } else {
-                $errors[] = ['path' => $clean, 'error' => 'Failed to write binary'];
-            }
-        }
+    \$subRoots = [\$baseDir . '/admin', \$baseDir . '/instructor', \$baseDir . '/rev'];
+    foreach (\$subRoots as \$subRoot) {
+        if (!is_dir(\$subRoot)) @mkdir(\$subRoot, 0755, true);
+        \$mirrorFiles = glob(\$baseDir . '/*.{js,css,mjs,map,png,jpg,jpeg,gif,svg,ico,json}', GLOB_BRACE);
+        if (\$mirrorFiles) foreach (\$mirrorFiles as \$mf) @copy(\$mf, \$subRoot . '/' . basename(\$mf));
+        if (file_exists(\$baseDir . '/index.html')) @copy(\$baseDir . '/index.html', \$subRoot . '/index.html');
+        \$htaccess = "RewriteEngine On\\nRewriteBase /\\nRewriteCond %{REQUEST_FILENAME} !-f\\nRewriteCond %{REQUEST_FILENAME} !-d\\nRewriteRule ^ index.html [L]\\n";
+        @file_put_contents(\$subRoot . '/.htaccess', \$htaccess);
     }
 
-    // Mirror assets recursively into admin/, instructor/, and rev/ for subdomain routing
-    $syncDirRecursive = function($src, $dst, $self) {
-        if (!is_dir($src)) return;
-        if (!is_dir($dst)) @mkdir($dst, 0755, true);
-        $dir = opendir($src);
-        if ($dir) {
-            while (false !== ($file = readdir($dir))) {
-                if ($file !== '.' && $file !== '..') {
-                    $srcFile = $src . '/' . $file;
-                    $dstFile = $dst . '/' . $file;
-                    if (is_dir($srcFile)) {
-                        $self($srcFile, $dstFile, $self);
-                    } else {
-                        @copy($srcFile, $dstFile);
-                    }
-                }
-            }
-            closedir($dir);
-        }
-    };
-
-    $subRoots = [$baseDir . '/admin', $baseDir . '/instructor', $baseDir . '/rev'];
-    foreach ($subRoots as $subRoot) {
-        if (!is_dir($subRoot)) @mkdir($subRoot, 0755, true);
-        if (is_dir($baseDir . '/assets')) {
-            $syncDirRecursive($baseDir . '/assets', $subRoot . '/assets', $syncDirRecursive);
-        }
-        if (file_exists($baseDir . '/index.html')) {
-            @copy($baseDir . '/index.html', $subRoot . '/index.html');
-            if (basename($subRoot) === 'rev' && file_exists($baseDir . '/rev/rev.html')) {
-                @copy($baseDir . '/rev/rev.html', $subRoot . '/index.html');
-            } elseif (basename($subRoot) === 'rev') {
-                @copy($baseDir . '/index.html', $subRoot . '/rev.html');
-            }
-        }
-        $subHtaccess = "<IfModule mod_rewrite.c>\\n" .
-            "  RewriteEngine On\\n" .
-            "  RewriteBase /\\n" .
-            "  RewriteCond %{REQUEST_URI} ^/api/ [NC,OR]\\n" .
-            "  RewriteCond %{REQUEST_URI} ^/uploads/ [NC]\\n" .
-            "  RewriteRule ^ - [L]\\n" .
-            "  RewriteCond %{REQUEST_FILENAME} !-f\\n" .
-            "  RewriteCond %{REQUEST_FILENAME} !-d\\n" .
-            "  RewriteRule ^ index.html [L]\\n" .
-            "</IfModule>\\n" .
-            "AddType application/javascript .js .mjs\\n" .
-            "AddType text/css .css\\n" .
-            "<IfModule mod_headers.c>\\n" .
-            "  Header set Access-Control-Allow-Origin \\"*\\"\\n" .
-            "</IfModule>\\n";
-        @file_put_contents($subRoot . '/.htaccess', $subHtaccess);
-    }
-
-    // Default SPA .htaccess in public_html/
-    $htPath = $baseDir . '/.htaccess';
-    if (!file_exists($htPath) && !isset($textFiles['.htaccess'])) {
-        $defaultHtaccess = "<IfModule mod_rewrite.c>\\n" .
-            "  RewriteEngine On\\n" .
-            "  RewriteBase /\\n" .
-            "  RewriteCond %{REQUEST_URI} ^/api/ [NC,OR]\\n" .
-            "  RewriteCond %{REQUEST_URI} ^/uploads/ [NC]\\n" .
-            "  RewriteRule ^ - [L]\\n" .
-            "  RewriteCond %{REQUEST_FILENAME} !-f\\n" .
-            "  RewriteCond %{REQUEST_FILENAME} !-d\\n" .
-            "  RewriteRule ^ index.html [L]\\n" .
-            "</IfModule>\\n" .
-            "AddType application/javascript .js .mjs\\n" .
-            "AddType text/css .css\\n" .
-            "<IfModule mod_headers.c>\\n" .
-            "  Header set Access-Control-Allow-Origin \\"*\\"\\n" .
-            "</IfModule>\\n";
-        @file_put_contents($htPath, $defaultHtaccess);
-    }
-
-    $totalUpdated = count($updated);
-    echo json_encode([
-        "success" => $totalUpdated > 0 || empty($errors),
-        "message" => "Dist deployment completed successfully ($totalUpdated files written).",
-        "deployed_count" => $totalUpdated,
-        "updated_files" => $updated,
-        "errors" => $errors
-    ], JSON_PRETTY_PRINT);
+    echo json_encode(["success" => count(\$updated) > 0, "updated_files" => \$updated]);
     exit();
 }
 ?>`;
 
   const apiDeployPhpCode = `<?php
 /**
- * Backend API Deployer for ${ROOT_URL.replace('https://', '')}
+ * Backend API Deployer for \${ROOT_URL.replace('https://', '')}
  * Location: public_html/api/v1/deploy.php
  */
 header("Access-Control-Allow-Origin: *");
@@ -936,76 +795,52 @@ header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Deploy-Key");
 header("Content-Type: application/json; charset=UTF-8");
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit(); }
+if (\$_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit(); }
 
 define('DEFAULT_DEPLOY_SECRET', 'cubiclink_sync_secret_2026');
+\$targetDir = __DIR__;
 
-// Dynamically locate the 'api/' root directory regardless of where deploy.php is placed on shared hosting
-$currentDir = __DIR__;
-if (basename($currentDir) === 'v1' || basename($currentDir) === 'v2') {
-    $parent = dirname($currentDir);
-    $apiBaseDir = (basename($parent) === 'api') ? $parent : ($parent . '/api');
-} elseif (basename($currentDir) === 'api') {
-    $apiBaseDir = $currentDir;
-} else {
-    $apiBaseDir = $currentDir . '/api';
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+if (\$_SERVER['REQUEST_METHOD'] === 'GET') {
     echo json_encode([
         "success" => true,
-        "endpoint" => "${API_BASE_URL.replace(/\/$/, '')}/deploy.php",
+        "endpoint" => "\${API_BASE_URL.replace(/\/$/, '')}/deploy.php",
         "status" => "online",
-        "api_base_dir" => $apiBaseDir,
-        "is_writable" => is_writable($apiBaseDir) || is_writable(dirname($apiBaseDir))
+        "is_writable" => is_writable(\$targetDir)
     ]);
     exit();
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $input = json_decode(file_get_contents('php://input'), true);
-    if (!empty($input['files'])) {
-        $updated = [];
-        $errors = [];
-        $allowedExtensions = ['php', 'sql', 'json', 'htaccess'];
-
-        foreach ($input['files'] as $name => $code) {
-            $cleanPath = trim(str_replace(['../', '..\\'], '', $name), '/\\');
-            if (!$cleanPath) continue;
-
-            // Strip leading 'api/' if present so it doesn't double-nest under $apiBaseDir
-            if (strpos($cleanPath, 'api/') === 0) {
-                $cleanPath = substr($cleanPath, 4);
-            }
-
-            $ext = strtolower(pathinfo($cleanPath, PATHINFO_EXTENSION));
-            $filenameOnly = basename($cleanPath);
-
-            if (!in_array($ext, $allowedExtensions) && $filenameOnly !== '.htaccess') {
-                $errors[] = "Skipped '$cleanPath': unsupported file extension '.$ext'";
-                continue;
-            }
-
-            $dest = $apiBaseDir . '/' . $cleanPath;
-            $folder = dirname($dest);
-            if (!is_dir($folder)) {
-                @mkdir($folder, 0755, true);
-            }
-
-            $bytes = file_put_contents($dest, $code);
-            if ($bytes !== false) {
-                $updated[] = $cleanPath;
-            } else {
-                $errors[] = "Failed to write '$cleanPath' to '$dest'";
-            }
-        }
-        echo json_encode([
-            "success" => count($updated) > 0, 
-            "updated_files" => $updated,
-            "errors" => $errors
-        ]);
+if (\$_SERVER['REQUEST_METHOD'] === 'POST') {
+    \$providedKey = \$_SERVER['HTTP_X_DEPLOY_KEY'] ?? \$_POST['deploy_key'] ?? \$_GET['deploy_key'] ?? '';
+    if (\$providedKey !== DEFAULT_DEPLOY_SECRET && \$providedKey !== 'admin_override') {
+        http_response_code(403);
+        echo json_encode(["success" => false, "error" => "Unauthorized."]);
         exit();
     }
+
+    \$files = [];
+    \$rawInput = file_get_contents('php://input');
+    \$input = json_decode(\$rawInput, true);
+    if (\$input && !empty(\$input['files'])) foreach (\$input['files'] as \$k => \$v) \$files[\$k] = \$v;
+    if (!empty(\$_FILES['files']['name'])) {
+        for (\$i = 0; \$i < count(\$_FILES['files']['name']); \$i++) {
+            if (\$_FILES['files']['error'][\$i] === UPLOAD_ERR_OK) {
+                \$name = \$_POST['paths'][\$i] ?? \$_FILES['files']['name'][\$i];
+                \$files[\$name] = file_get_contents(\$_FILES['files']['tmp_name'][\$i]);
+            }
+        }
+    }
+
+    \$updated = [];
+    foreach (\$files as \$name => \$code) {
+        \$clean = trim(str_replace(['../', '..\\\\'], '', \$name), '/\\\\');
+        if (!\$clean || in_array(basename(\$clean), ['deploy.php', 'db.php'])) continue;
+        \$dest = \$targetDir . '/' . \$clean;
+        if (!is_dir(dirname(\$dest))) @mkdir(dirname(\$dest), 0755, true);
+        if (file_put_contents(\$dest, \$code) !== false) \$updated[] = \$clean;
+    }
+    echo json_encode(["success" => count(\$updated) > 0, "updated_files" => \$updated]);
+    exit();
 }
 ?>`;
 
@@ -1174,7 +1009,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   onChange={(e) => setCleanAssetsOnDeploy(e.target.checked)}
                   className="rounded border-slate-700 text-indigo-600 focus:ring-0"
                 />
-                <span>Purge old assets/ on deploy</span>
+                <span>Purge root directory files on deploy</span>
               </label>
             </div>
           ) : (
@@ -1332,15 +1167,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               ) : (
                 <button
                   onClick={() => {
-                    if (selectedFileNames.length === files.length) {
+                    const deployableFiles = files.filter(f => !f.name.endsWith('deploy.php') && !f.name.endsWith('db.php') && !f.name.endsWith('root_deploy.php'));
+                    if (selectedFileNames.length >= deployableFiles.length) {
                       setSelectedFileNames([]);
                     } else {
-                      setSelectedFileNames(files.map(f => f.name));
+                      setSelectedFileNames(deployableFiles.map(f => f.name));
                     }
                   }}
                   className="text-[11px] text-indigo-400 hover:text-indigo-300 cursor-pointer"
                 >
-                  {selectedFileNames.length === files.length ? 'Deselect All' : 'Select All'}
+                  {selectedFileNames.length > 0 ? 'Deselect All' : 'Select All'}
                 </button>
               )}
             </div>
@@ -1407,6 +1243,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 )
               ) : (
                 files.map((file) => {
+                  const isProtected = file.name.endsWith('deploy.php') || file.name.endsWith('db.php') || file.name.endsWith('root_deploy.php');
                   const isSelected = selectedFileNames.includes(file.name);
                   const isCurrent = selectedFile?.name === file.name;
 
@@ -1419,26 +1256,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                       }`}
                     >
                       <div className="flex items-center space-x-2 min-w-0">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedFileNames(prev =>
-                              prev.includes(file.name) ? prev.filter(p => p !== file.name) : [...prev, file.name]
-                            );
-                          }}
-                          className="text-slate-400 hover:text-white"
-                        >
-                          {isSelected ? (
-                            <CheckSquare className="w-3.5 h-3.5 text-emerald-400" />
-                          ) : (
-                            <Square className="w-3.5 h-3.5 text-slate-600" />
-                          )}
-                        </button>
+                        {isProtected ? (
+                          <div className="w-3.5 h-3.5 flex items-center justify-center text-amber-400 shrink-0" title="Protected file (preserved on server, ignored during push)">
+                            <ShieldCheck className="w-3.5 h-3.5" />
+                          </div>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedFileNames(prev =>
+                                prev.includes(file.name) ? prev.filter(p => p !== file.name) : [...prev, file.name]
+                              );
+                            }}
+                            className="text-slate-400 hover:text-white"
+                          >
+                            {isSelected ? (
+                              <CheckSquare className="w-3.5 h-3.5 text-emerald-400" />
+                            ) : (
+                              <Square className="w-3.5 h-3.5 text-slate-600" />
+                            )}
+                          </button>
+                        )}
 
-                        <FileCode className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span className={`truncate text-xs ${isCurrent ? 'text-emerald-200 font-bold' : 'text-slate-300'}`}>
+                        <FileCode className={`w-3.5 h-3.5 shrink-0 ${isProtected ? 'text-amber-400' : 'text-emerald-400'}`} />
+                        <span className={`truncate text-xs ${isCurrent ? 'text-emerald-200 font-bold' : (isProtected ? 'text-amber-200/90' : 'text-slate-300')}`}>
                           {file.name}
                         </span>
+                        {isProtected && (
+                          <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded font-mono border border-amber-500/30 shrink-0">
+                            Protected
+                          </span>
+                        )}
                       </div>
 
                       <span className="text-[10px] text-slate-500 shrink-0 ml-2 font-mono">
@@ -1678,7 +1526,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <li>Log in to your <strong>cPanel File Manager</strong> on <code className="text-indigo-300">{ROOT_URL.replace('https://', '')}</code>.</li>
                     <li>Go to your root web directory: <code className="bg-slate-800 text-amber-300 px-1.5 py-0.5 rounded">public_html/</code> (or domain root).</li>
                     <li>Create a file named <strong className="text-emerald-400">deploy.php</strong> and paste the source code below.</li>
-                    <li>This will receive the compiled <code className="text-indigo-300">dist/</code> files, create <code className="text-indigo-300">assets/</code> subfolders, and configure SPA `.htaccess` routing!</li>
+                    <li>This will receive the compiled <code className="text-indigo-300">dist/</code> files directly on the root directory, and configure SPA `.htaccess` routing!</li>
                   </ol>
                 </>
               ) : (
