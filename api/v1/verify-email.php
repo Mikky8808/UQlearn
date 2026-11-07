@@ -18,7 +18,6 @@ date_default_timezone_set('Africa/Nairobi');
 // =========================================================================
 header("Content-Type: application/json; charset=UTF-8");
 
-
 // Only accept POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -41,13 +40,14 @@ require_once __DIR__ . '/mailer.php';
 $raw_input = file_get_contents("php://input");
 $data = json_decode($raw_input, true);
 
-if (!$data) {
+// Check if the request actually contains valid JSON
+if (json_last_error() !== JSON_ERROR_NONE || !$data) {
     http_response_code(400);
     echo json_encode([
         "success" => false,
-        "message" => "Invalid JSON payload."
+        "message" => "Invalid JSON payload provided. Ensure you are sending raw JSON with Content-Type: application/json."
     ]);
-    $conn->close();
+    if (isset($conn)) $conn->close();
     exit();
 }
 
@@ -67,7 +67,7 @@ if (empty($action) || !in_array($action, ['verify', 'resend'])) {
         "success" => false,
         "message" => "Valid action is required: 'verify' or 'resend'."
     ]);
-    $conn->close();
+    if (isset($conn)) $conn->close();
     exit();
 }
 
@@ -77,7 +77,7 @@ if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         "success" => false,
         "message" => "A valid email address is required."
     ]);
-    $conn->close();
+    if (isset($conn)) $conn->close();
     exit();
 }
 
@@ -93,7 +93,7 @@ if ($action === 'verify') {
             "success" => false,
             "message" => "A valid 6-digit OTP is required."
         ]);
-        $conn->close();
+        if (isset($conn)) $conn->close();
         exit();
     }
 
@@ -110,7 +110,7 @@ if ($action === 'verify') {
             "message" => "No account found with this email address."
         ]);
         $user_check->close();
-        $conn->close();
+        if (isset($conn)) $conn->close();
         exit();
     }
 
@@ -124,11 +124,11 @@ if ($action === 'verify') {
             "success" => false,
             "message" => "This email is already verified."
         ]);
-        $conn->close();
+        if (isset($conn)) $conn->close();
         exit();
     }
 
-    // Find the OTP record
+    // Verify OTP
     $otp_check = $conn->prepare("
         SELECT id, otp_code, is_used, expires_at 
         FROM email_verifications 
@@ -146,7 +146,7 @@ if ($action === 'verify') {
             "message" => "No verification code found. Please request a new one."
         ]);
         $otp_check->close();
-        $conn->close();
+        if (isset($conn)) $conn->close();
         exit();
     }
 
@@ -161,7 +161,7 @@ if ($action === 'verify') {
             "success" => false,
             "message" => "Verification code has expired. Please request a new one."
         ]);
-        $conn->close();
+        if (isset($conn)) $conn->close();
         exit();
     }
 
@@ -172,21 +172,20 @@ if ($action === 'verify') {
             "success" => false,
             "message" => "Invalid verification code. Please try again."
         ]);
-        $conn->close();
+        if (isset($conn)) $conn->close();
         exit();
     }
+    
+    // Mark OTP as used
+    $mark_used = $conn->prepare("UPDATE email_verifications SET is_used = 1 WHERE id = ?");
+    $mark_used->bind_param("s", $otp_record['id']);
+    $mark_used->execute();
+    $mark_used->close();
 
-    // Mark OTP as used and update user
+    // Update user as verified
     $conn->begin_transaction();
 
     try {
-        // Mark OTP as used
-        $mark_used = $conn->prepare("UPDATE email_verifications SET is_used = 1 WHERE id = ?");
-        $mark_used->bind_param("s", $otp_record['id']);
-        $mark_used->execute();
-        $mark_used->close();
-
-        // Update user as verified
         $update_user = $conn->prepare("UPDATE users SET is_email_verified = 1, updated_at = NOW() WHERE email = ?");
         $update_user->bind_param("s", $email);
         $update_user->execute();
@@ -221,7 +220,7 @@ if ($action === 'verify') {
         ]);
     }
 
-    $conn->close();
+    if (isset($conn)) $conn->close();
     exit();
 }
 
@@ -240,7 +239,7 @@ if ($action === 'resend') {
             "message" => "No account found with this email address."
         ]);
         $user_check->close();
-        $conn->close();
+        if (isset($conn)) $conn->close();
         exit();
     }
 
@@ -254,7 +253,7 @@ if ($action === 'resend') {
             "success" => false,
             "message" => "This email is already verified."
         ]);
-        $conn->close();
+        if (isset($conn)) $conn->close();
         exit();
     }
 
@@ -275,21 +274,28 @@ if ($action === 'resend') {
             "success" => false,
             "message" => "Too many requests. Please wait 1 minute before trying again."
         ]);
-        $conn->close();
+        if (isset($conn)) $conn->close();
         exit();
+    }
+
+    // Invalidate prior unused OTPs for this email address
+    $stmt_inv = $conn->prepare("UPDATE email_verifications SET is_used = 1 WHERE email = ? AND is_used = 0");
+    if ($stmt_inv) {
+        $stmt_inv->bind_param("s", $email);
+        $stmt_inv->execute();
+        $stmt_inv->close();
     }
 
     // Generate new OTP
     $new_otp = str_pad(random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
-    $verification_id = 'ver_' . bin2hex(random_bytes(8));
     $expires_at = date('Y-m-d H:i:s', time() + 3600);
 
-    // Store new OTP
+    // Store new OTP (ID is now auto-generated by the database)
     $insert_otp = $conn->prepare("
-        INSERT INTO email_verifications (id, email, otp_code, expires_at, created_at) 
-        VALUES (?, ?, ?, ?, NOW())
+        INSERT INTO email_verifications (email, otp_code, is_used, expires_at, created_at) 
+        VALUES (?, ?, 0, ?, NOW())
     ");
-    $insert_otp->bind_param("ssss", $verification_id, $email, $new_otp, $expires_at);
+    $insert_otp->bind_param("sss", $email, $new_otp, $expires_at);
 
     if ($insert_otp->execute()) {
         $insert_otp->close();
@@ -302,8 +308,8 @@ if ($action === 'resend') {
         $html_message = '
         <!DOCTYPE html>
         <html>
-        <head>
-            <meta charset="UTF-8">
+        <head><meta charset="utf-8">
+            
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>New Verification Code - AQLEARN</title>
             <style>
@@ -342,14 +348,14 @@ if ($action === 'resend') {
                 </div>
                 <div class="content">
                     <h2>New Verification Code</h2>
-                    <p class="greeting">Hello <strong>' . $user['first_name'] . '</strong>,</p>
+                    <p class="greeting">Hello <strong>' . htmlspecialchars($user['first_name']) . '</strong>,</p>
                     <p>You requested a new verification code for your <strong>AQLEARN</strong> account.</p>
                     <div class="otp-box">
                         <div class="otp-code">' . $new_otp . '</div>
                         <div class="otp-label">Verification Code - Valid for 1 hour</div>
                     </div>
                     <div class="info-box">
-                        <p><strong>📧 Email:</strong> ' . $email . '</p>
+                        <p><strong>📧 Email:</strong> ' . htmlspecialchars($email) . '</p>
                         <p><strong>⏰ Expires:</strong> 1 hour from now</p>
                     </div>
                     <p style="text-align: center;">
@@ -389,10 +395,10 @@ if ($action === 'resend') {
                 "expiresIn" => 3600
             ]);
         } else {
-            http_response_code(200);
+            http_response_code(500); // Changed to 500 so the frontend knows it failed
             echo json_encode([
                 "success" => false,
-                "message" => "Unable to send verification email: Outgoing mail server is not configured. Please contact the site administrator to configure SMTP."
+                "message" => "Unable to send verification email: " . ($mailResult['message'] ?? 'Outgoing mail server error.')
             ]);
         }
     } else {
@@ -403,8 +409,7 @@ if ($action === 'resend') {
         ]);
     }
 
-    $insert_otp->close();
-    $conn->close();
+    if (isset($conn)) $conn->close();
     exit();
 }
 ?>

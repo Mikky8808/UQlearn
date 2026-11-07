@@ -12,7 +12,8 @@
     "lint": "tsc --noEmit",
     "deploy:check": "tsx sync-deploy.ts",
     "deploy:sync": "tsx sync-deploy.ts --deploy",
-    "deploy:dist": "node deploy.js"
+    "deploy:dist": "node deploy.js",
+    "build:full": "rm -rf dist node_modules/.vite && npm run build"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

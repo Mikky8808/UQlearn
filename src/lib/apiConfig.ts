@@ -67,6 +67,7 @@ export const API_ENDPOINTS = {
   CERTIFICATE_TEMPLATES: 'certificate-templates.php',
   STUDY_PLAN: 'study-plan.php',
   SEND_LOGIN_OTP: 'send-login-otp.php',
+  VERIFY_LOGIN_OTP: 'verify-login-otp.php',
   PAYSTACK: 'paystack.php',
   REVIEWERS: 'reviewers.php',
   COURSE_LEARNERS: 'course_learners.php',

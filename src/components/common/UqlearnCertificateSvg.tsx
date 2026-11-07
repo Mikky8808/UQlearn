@@ -377,19 +377,7 @@ export const UqlearnCertificateSvg: React.FC<UqlearnCertificateSvgProps> = ({
       {/* 5. TYPOGRAPHY & HEADER WIDGETS                           */}
       {/* ======================================================== */}
 
-      {/* Brand Label: UQLEARN */}
-      <text
-        x="800"
-        y="262"
-        textAnchor="middle"
-        className="uql-cinzel"
-        fontWeight="700"
-        fontSize="28"
-        letterSpacing="8"
-        fill="#0f172a"
-      >
-        UQLEARN
-      </text>
+      {/* Brand Label: Removed */}
 
       {/* Main Heading: CERTIFICATE */}
       <text

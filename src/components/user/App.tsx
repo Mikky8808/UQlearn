@@ -20,6 +20,7 @@ import { AccessibilityPage } from '../pages/AccessibilityPage';
 import { PrivacyPolicyPage } from '../pages/PrivacyPolicyPage';
 import { SitemapPage } from '../pages/SitemapPage';
 import { TermsPage } from '../pages/TermsPage';
+import { CertificateVerificationPage } from './CertificateVerificationPage';
 import { CourseImageStandardsPage } from '../pages/CourseImageStandardsPage';
 import { CheckoutPage } from './CheckoutPage';
 import { CartCheckoutModal } from './CartCheckoutModal';
@@ -154,6 +155,7 @@ export function UserPortal() {
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/sitemap" element={<SitemapPage />} />
           <Route path="/terms" element={<TermsPage />} />
+          <Route path="/verify" element={<CertificateVerificationPage />} />
           <Route path="/course-image-quality-standards" element={<CourseImageStandardsPage />} />
           <Route path="/guidelines/course-image-quality-standards" element={<CourseImageStandardsPage />} />
           {/* Fallback */}

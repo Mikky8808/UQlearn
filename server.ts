@@ -4,7 +4,7 @@ import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
 import { createProxyMiddleware, fixRequestBody } from "http-proxy-middleware";
-import apiRouter from "./api";
+// REMOVED: import apiRouter from "./api";
 
 dotenv.config();
 
@@ -91,34 +91,14 @@ const rewriteLegacyApiEndpoint = (url: string): string => {
     .replace(/^\/custom-mail-subscriptions\.php\b/, '/custom-mail.php?action=subscriptions');
 };
 
+// Simplified handler: Routes everything to the remote proxy
 const handleApiRequest = (req: express.Request, res: express.Response, next: express.NextFunction) => {
   req.url = rewriteLegacyApiEndpoint(req.url || '');
-  const url = req.url || '';
-  if (
-    url.includes('dist-files') ||
-    url.includes('build') ||
-    url.includes('remote-sync') ||
-    url.includes('workspace') ||
-    url.includes('paystack-callback') ||
-    url.includes('signatures') ||
-    url.includes('quizzes') ||
-    url.includes('analytics') ||
-    url.includes('recently-viewed') ||
-    url.includes('currencies') ||
-    url.includes('flash-sale') ||
-    url.includes('tiktok-pixel')
-  ) {
-    return apiRouter(req, res, next);
-  }
   return remoteProxy(req, res, next);
 };
 
 app.use('/api', handleApiRequest);
-
-// Mount master local API router for routes that are local-only or fallback
-app.use("/api", apiRouter);
-
-
+// REMOVED: app.use("/api", apiRouter);
 
 async function startServer() {
   // Vite middleware for development or static serving in production

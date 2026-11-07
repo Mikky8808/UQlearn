@@ -60,7 +60,7 @@ export const Footer: React.FC = () => {
             </a>
           </div>
           <div className="pt-1 text-[11px] text-slate-500">
-            <span>© 2026 UQlearn Inc. All rights reserved.</span>
+            <span>© 2026 UQlearn limited. All rights reserved.</span>
           </div>
         </div>
 
@@ -154,7 +154,7 @@ export const Footer: React.FC = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500">
-        <p>© 2026 UQlearn Inc. All rights reserved. End-to-end encrypted architecture.</p>
+        <p>© 2026 UQlearn limited. All rights reserved. End-to-end encrypted architecture.</p>
         <div className="flex space-x-6 mt-4 sm:mt-0">
           <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
           <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>

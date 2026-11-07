@@ -58,12 +58,10 @@ export const emailService = {
       throw new Error('Please enter all 6 digits of your verification code.');
     }
 
-    const data = await apiFetch(API_ENDPOINTS.VERIFY_EMAIL, {
+    const data = await apiFetch(API_ENDPOINTS.VERIFY_LOGIN_OTP, {
       method: 'POST',
       body: JSON.stringify({
-        action: 'verify',
         email: cleanEmail,
-        code: cleanCode,
         otp: cleanCode
       })
     });

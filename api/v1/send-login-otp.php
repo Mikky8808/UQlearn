@@ -1,5 +1,8 @@
 <?php
 require_once __DIR__ . '/cors.php';
+// Start session for OTP storage
+session_start();
+
 /**
  * Send Login OTP API Endpoint - API v1
  * Path: /api/v1/send-login-otp.php
@@ -49,39 +52,33 @@ if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
 }
 
 try {
-    // Generate secure 6-digit OTP code
+    // 1. Verify if user exists in the database
+    $stmt = $conn->prepare("SELECT id FROM users WHERE email = ?");
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows === 0) {
+        http_response_code(404);
+        echo json_encode([
+            "success" => false,
+            "message" => "No account found with this email address."
+        ]);
+        $stmt->close();
+        if (isset($conn) && $conn instanceof mysqli) $conn->close();
+        exit();
+    }
+    $stmt->close();
+
+    // 2. Generate secure 6-digit OTP code
     $otp_code = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-    $expires_at = date('Y-m-d H:i:s', time() + 900); // 15 minutes expiry
+    
+    // 3. Store OTP in session
+    $_SESSION['login_otp'] = $otp_code;
+    $_SESSION['login_otp_email'] = $email;
+    $_SESSION['login_otp_expires'] = time() + 900; // 15 minutes expiry
 
-    // Ensure email_verifications table exists
-    $conn->query("CREATE TABLE IF NOT EXISTS email_verifications (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        email VARCHAR(255) NOT NULL,
-        otp_code VARCHAR(10) NOT NULL,
-        is_used TINYINT(1) DEFAULT 0,
-        expires_at DATETIME NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        INDEX idx_email (`email`),
-        INDEX idx_otp (`otp_code`)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-
-    // Invalidate prior unused OTPs for this email address
-    $stmt_inv = $conn->prepare("UPDATE email_verifications SET is_used = 1 WHERE email = ? AND is_used = 0");
-    if ($stmt_inv) {
-        $stmt_inv->bind_param("s", $email);
-        $stmt_inv->execute();
-        $stmt_inv->close();
-    }
-
-    // Insert new OTP record
-    $stmt_ins = $conn->prepare("INSERT INTO email_verifications (email, otp_code, is_used, expires_at, created_at) VALUES (?, ?, 0, ?, NOW())");
-    if ($stmt_ins) {
-        $stmt_ins->bind_param("sss", $email, $otp_code, $expires_at);
-        $stmt_ins->execute();
-        $stmt_ins->close();
-    }
-
-    // Email content with responsive HTML template
+    // 4. Email content with responsive HTML template
     $subject = "Your Sign-In Security Verification Code - UQLearn";
     $html_body = "
         <!DOCTYPE html>
@@ -117,24 +114,6 @@ try {
                                         <div style='font-family: SFMono-Regular, Consolas, \"Liberation Mono\", Menlo, monospace; font-size: 36px; font-weight: 800; letter-spacing: 10px; color: #4f46e5; margin-left: 10px;'>{$otp_code}</div>
                                         <div style='font-size: 11px; color: #64748b; font-weight: 600; margin-top: 8px; text-transform: uppercase; tracking: 1px;'>Valid for 15 Minutes</div>
                                     </div>
-
-                                    <p style='margin: 0 0 20px 0; color: #64748b; font-size: 13px; line-height: 1.5;'>
-                                        If you did not request this verification code, please ignore this email or update your password if you suspect unauthorized activity.
-                                    </p>
-                                    
-                                    <hr style='border: none; border-top: 1px solid #f1f5f9; margin: 24px 0;'>
-                                    
-                                    <p style='margin: 0; color: #94a3b8; font-size: 12px; line-height: 1.5;'>
-                                        This is an automated operational security message. Please do not reply directly to this email.
-                                    </p>
-                                </td>
-                            </tr>
-
-                            <!-- Footer -->
-                            <tr>
-                                <td style='background-color: #f8fafc; border-top: 1px solid #f1f5f9; padding: 20px 32px; text-align: center; color: #94a3b8; font-size: 12px;'>
-                                    &copy; " . date('Y') . " UQLearn Platform. All rights reserved.<br>
-                                    <a href='https://uqlearn.org' style='color: #6366f1; text-decoration: none;'>https://uqlearn.org</a>
                                 </td>
                             </tr>
                         </table>

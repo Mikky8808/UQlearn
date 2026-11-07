@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { motion } from 'motion/react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
   Star,
@@ -722,7 +723,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
         {/* SECTION 4: CIRCULAR CATEGORIES (Jumia Bottom Circles Showcase) */}
         {(isCoursesLoading || allDisplayCategories.length > 0) && (
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-6 border border-purple-100 dark:border-purple-950/60 shadow-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-6 border border-purple-100 dark:border-purple-950/60 shadow-xs overflow-hidden">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
@@ -741,7 +742,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </Link>
             </div>
 
-            <div className="flex items-center gap-4 sm:gap-6 overflow-x-auto pb-2 scrollbar-hide [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <motion.div 
+              className="flex items-center gap-4 sm:gap-6 pb-2"
+              animate={{ x: ['0%', '-50%'] }}
+              transition={{ repeat: Infinity, duration: 60, ease: 'linear' }}
+            >
               {isCoursesLoading && allDisplayCategories.length === 0 ? (
                 Array.from({ length: 6 }).map((_, idx) => (
                   <div key={`cat-skel-${idx}`} className="flex flex-col items-center flex-shrink-0 text-center select-none animate-pulse">
@@ -753,11 +758,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   </div>
                 ))
               ) : (
-                allDisplayCategories.map((cat, idx) => {
+                [...allDisplayCategories, ...allDisplayCategories].map((cat, idx) => {
                   const colorConfig = categoryRingColors[idx % categoryRingColors.length];
                   return (
                     <button
-                      key={cat.name}
+                      key={`${cat.name}-${idx}`}
                       type="button"
                       onClick={() => navigate(`/courses?category=${encodeURIComponent(cat.name)}`)}
                       className="flex flex-col items-center flex-shrink-0 group cursor-pointer text-center select-none"
@@ -783,7 +788,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   );
                 })
               )}
-            </div>
+            </motion.div>
           </div>
         )}
 
