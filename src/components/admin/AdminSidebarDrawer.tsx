@@ -188,6 +188,7 @@ export const AdminSidebarDrawer: React.FC<AdminSidebarDrawerProps> = ({
       items: [
         { id: 'email-settings' as AdminTabKey, label: 'Email & SMTP Delivery', icon: Mail },
         { id: 'custom-mail-pricing' as AdminTabKey, label: 'Custom Mail Pricing & Plans', icon: Mail },
+        { id: 'abandoned-carts' as AdminTabKey, label: 'Abandoned Carts', icon: Mail },
         { id: 'settings' as AdminTabKey, label: 'System & AI Settings', icon: Settings },
       ]
     },

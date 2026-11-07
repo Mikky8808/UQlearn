@@ -87,6 +87,7 @@ import { AdminPromotionSubscribersTab } from './AdminPromotionSubscribersTab';
 import { AdminFlashSaleManager } from './AdminFlashSaleManager';
 import { AdminTopBannerConfigTab } from './AdminTopBannerConfigTab';
 import { AdminWithdrawalsTab } from './AdminWithdrawalsTab';
+import { AdminAbandonedCartsTab } from './AdminAbandonedCartsTab';
 
 interface AdminDashboardProps {
   courses: Course[];
@@ -119,6 +120,7 @@ const normalizeTabFromPath = (path: string): AdminTabKey => {
   if (p.includes('email-settings') || p.includes('email') || p.includes('smtp')) return 'email-settings';
   if (p.includes('php-sync') || p.includes('remote-deploy') || p.includes('deploy') || p.includes('live-sync') || p.includes('sync')) return 'live-sync';
   if (p.includes('visitor-tracking') || p.includes('visitors')) return 'visitor-tracking';
+  if (p.includes('abandoned-carts')) return 'abandoned-carts';
   if (p.includes('courses')) return 'courses';
   if (p.includes('users')) return 'users';
   if (p.includes('settings')) return 'settings';
@@ -658,6 +660,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ courses, onRefre
                 setSelectedUserIdForDetail(userId);
                 setActiveTab('users');
               }} />
+            )}
+            
+            {/* Abandoned Carts TAB */}
+            {activeTab === 'abandoned-carts' && (
+              <AdminAbandonedCartsTab />
             )}
 
             {/* Top Banner Config TAB */}

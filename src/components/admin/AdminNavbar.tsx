@@ -57,7 +57,8 @@ export type AdminTabKey =
   | 'visitor-tracking'
   | 'withdrawals'
   | 'live-sync'
-  | 'top-banner-config';
+  | 'top-banner-config'
+  | 'abandoned-carts';
 
 interface AdminNavbarProps {
   activeTab: AdminTabKey;

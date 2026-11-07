@@ -75,6 +75,7 @@ export const API_ENDPOINTS = {
   COURSE_RATINGS: 'course-ratings.php',
   NOTES: 'notes.php',
   ASSIGN_COURSE_REVIEWERS: 'assign-course-reviewers.php',
+  CARTS: 'carts.php',
 };
 
 export interface PromotionTierConfig {

@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/cors.php';
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/mailer.php';
 
 /**
  * Dynamic Custom Mail & Abandoned Cart Email API
@@ -452,6 +453,29 @@ try {
             'success' => true,
             'data' => $subscriptions
         ]);
+        exit();
+    }
+
+    // -------------------------------------------------------------
+    // 8. SEND TEST MAIL
+    // -------------------------------------------------------------
+    if ($action === 'send_test_mail') {
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $recipient = trim($input['recipient'] ?? '');
+        $template = $input['template'] ?? [];
+
+        if (empty($recipient) || !filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
+            echo json_encode(['success' => false, 'message' => 'Valid recipient email is required']);
+            exit();
+        }
+
+        $subject = $template['subject'] ?? 'Test Email from UQLearn';
+        $body = $template['bodyText'] ?? 'This is a test email.';
+        $html = "<html><body><h1>" . htmlspecialchars($template['headline'] ?? 'Test') . "</h1><p>" . nl2br(htmlspecialchars($body)) . "</p></body></html>";
+
+        $mailResult = AppMailer::send($recipient, $subject, $html, $body, $conn);
+
+        echo json_encode($mailResult);
         exit();
     }
 
