@@ -13,8 +13,8 @@ function fixHtmlFiles(dir) {
       fixHtmlFiles(fullPath);
     } else if (file.endsWith('.html')) {
       let content = fs.readFileSync(fullPath, 'utf8');
-      // Replace relative asset paths (src="assets/...) or (href="assets/...) with absolute paths starting with /
-      content = content.replace(/(src|href)="assets\//g, '$1="/assets/');
+      // Replace relative asset paths (src="assets/...) or (href="assets/...) with absolute paths starting with https://uqlearn.org/assets/
+      content = content.replace(/(src|href)="assets\//g, '$1="https://uqlearn.org/assets/');
       fs.writeFileSync(fullPath, content);
       console.log(`Fixed asset paths in: ${fullPath}`);
     }
