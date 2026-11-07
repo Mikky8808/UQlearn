@@ -56,6 +56,7 @@ export type AdminTabKey =
   | 'htaccess-viewer'
   | 'visitor-tracking'
   | 'withdrawals'
+  | 'live-sync'
   | 'top-banner-config';
 
 interface AdminNavbarProps {

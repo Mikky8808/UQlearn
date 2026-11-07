@@ -17,8 +17,9 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html'),
-        admin: path.resolve(__dirname, 'admin/admin.html'),
-        instructor: path.resolve(__dirname, 'instructor/instructor.html'),
+        admin: path.resolve(__dirname, 'admin.html'),
+        instructor: path.resolve(__dirname, 'instructor.html'),
+        reviewer: path.resolve(__dirname, 'reviewer.html'),
       },
       output: {
         entryFileNames: '[name]-[hash].js',

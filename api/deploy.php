@@ -1,7 +1,7 @@
 <?php
 /**
  * Backend API Deployer for uqlearn.org
- * Location: public_html/api/v1/deploy.php
+ * Location: public_html/api/deploy.php
  */
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
@@ -12,13 +12,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit();
 
 define('DEFAULT_DEPLOY_SECRET', 'cubiclink_sync_secret_2026');
 
-// Using __DIR__ to point directly to public_html/api/v1/
+// Using __DIR__ to point directly to public_html/api/
 $targetDir = __DIR__; 
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     echo json_encode([
         "success" => true,
-        "endpoint" => "https://uqlearn.org/api/v1/deploy.php",
+        "endpoint" => "https://uqlearn.org/api/deploy.php",
         "status" => "online",
         "parent_dir" => $targetDir,
         "is_writable" => is_writable($targetDir),

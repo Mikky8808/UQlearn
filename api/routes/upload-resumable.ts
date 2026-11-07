@@ -52,7 +52,7 @@ async function extractChunkBuffer(req: Request): Promise<Buffer> {
   });
 }
 
-// GET /api/v1/upload-resumable (or ?action=status)
+// GET /api/upload-resumable (or ?action=status)
 resumableRouter.get('/', (req: Request, res: Response) => {
   const uploadId = (req.query.upload_id as string) || (req.headers['x-upload-id'] as string) || '';
 
@@ -98,7 +98,7 @@ resumableRouter.get('/', (req: Request, res: Response) => {
   });
 });
 
-// POST or PUT /api/v1/upload-resumable (Upload chunk)
+// POST or PUT /api/upload-resumable (Upload chunk)
 const handleChunkUpload = async (req: Request, res: Response) => {
   try {
     const uploadId =

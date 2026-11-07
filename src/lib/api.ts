@@ -1,8 +1,8 @@
-// Frontend API Client utility for backend communication with uqlearn.org/api/v1/...
+// Frontend API Client utility for backend communication with uqlearn.org/api/...
 import { API_BASE_URL, API_ENDPOINTS, apiFetch, uploadMediaApi } from './apiConfig';
 
 export const apiClient = {
-  // Courses API (Connected directly to uqlearn.org/api/v1/courses.php)
+  // Courses API (Connected directly to uqlearn.org/api/courses.php)
   courses: {
     getAll: async (params?: { category?: string; search?: string; instructor?: string }) => {
       try {

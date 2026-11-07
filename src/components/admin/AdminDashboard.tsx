@@ -74,8 +74,6 @@ import { AdminCustomMailPricingTab } from './AdminCustomMailPricingTab';
 import { AdminPriceAdjustmentNoticesTab } from './AdminPriceAdjustmentNoticesTab';
 import { AdminComplianceTab } from './AdminComplianceTab';
 import { AdminReviewersTab } from './AdminReviewersTab';
-import { AdminLocalPhpFilesViewer } from './AdminLocalPhpFilesViewer';
-import { FileExplorer } from './FileExplorer';
 import { AdminVisitorTrackingTab } from './AdminVisitorTrackingTab';
 import { AdminSubscriptionsTab } from './AdminSubscriptionsTab';
 import { AdminRevenueTrendsChart } from './AdminRevenueTrendsChart';
@@ -119,8 +117,7 @@ const normalizeTabFromPath = (path: string): AdminTabKey => {
   if (p.includes('withdrawals')) return 'withdrawals';
   if (p.includes('custom-mail') || p.includes('custom-mail-pricing')) return 'custom-mail-pricing';
   if (p.includes('email-settings') || p.includes('email') || p.includes('smtp')) return 'email-settings';
-  if (p.includes('php-sync') || p.includes('remote-deploy') || p.includes('deploy')) return 'php-sync';
-  if (p.includes('file-explorer') || p.includes('local-php-files') || p.includes('local-php') || p.includes('php-files') || p.includes('htaccess-viewer') || p.includes('htaccess')) return 'file-explorer';
+  if (p.includes('php-sync') || p.includes('remote-deploy') || p.includes('deploy') || p.includes('live-sync') || p.includes('sync')) return 'live-sync';
   if (p.includes('visitor-tracking') || p.includes('visitors')) return 'visitor-tracking';
   if (p.includes('courses')) return 'courses';
   if (p.includes('users')) return 'users';
@@ -1431,7 +1428,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ courses, onRefre
               <AdminCustomMailPricingTab />
             )}
 
-            {activeTab === 'php-sync' && (
+            {activeTab === 'live-sync' && (
               <AdminPhpDeploymentTab />
             )}
 
@@ -1442,9 +1439,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ courses, onRefre
               />
             )}
 
-            {(activeTab === 'file-explorer' || activeTab === 'local-php-files' || activeTab === 'htaccess-viewer') && (
-              <FileExplorer />
-            )}
 
             {activeTab === 'visitor-tracking' && (
               <AdminVisitorTrackingTab />

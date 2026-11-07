@@ -109,7 +109,7 @@ export const AdminPhpDeploymentTab: React.FC = () => {
   const [copiedFileName, setCopiedFileName] = useState<string | null>(null);
   const [copiedDeployCode, setCopiedDeployCode] = useState(false);
   const [showSetupModal, setShowSetupModal] = useState(false);
-  const [setupModalTab, setSetupModalTab] = useState<'root-dist' | 'api-v1'>('root-dist');
+  const [setupModalTab, setSetupModalTab] = useState<'root-dist' | 'api-root'>('root-dist');
   const [showConfigDrawer, setShowConfigDrawer] = useState(false);
   const [terminalFullscreen, setTerminalFullscreen] = useState(false);
 
@@ -126,12 +126,12 @@ export const AdminPhpDeploymentTab: React.FC = () => {
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [logs]);
 
-  // 1. Fetch Local Workspace /api/v1/ Files
+  // 1. Fetch Local Workspace /api/ Files
   const fetchLocalFiles = async () => {
     setLoadingFiles(true);
     addLog('[FS] Reading local /api/ directory tree recursively...', 'info');
     try {
-      const data = await localApiFetch('/api/v1/remote-sync/local-files', { silent: true } as any);
+      const data = await localApiFetch('/api/remote-sync/local-files', { silent: true } as any);
       if (data && data.success && Array.isArray(data.files)) {
         setFiles(data.files);
         setSelectedFileNames(data.files.map((f: ApiFile) => f.name));
@@ -152,7 +152,7 @@ export const AdminPhpDeploymentTab: React.FC = () => {
     setLoadingDistFiles(true);
     let list: DistFile[] = [];
     try {
-      const data = await localApiFetch('/api/v1/dist-files', { silent: true } as any);
+      const data = await localApiFetch('/api/dist-files', { silent: true } as any);
       if (data && data.success) {
         setHasBuiltDist(data.hasBuilt && data.files?.length > 0);
         list = data.files || [];
@@ -183,7 +183,7 @@ export const AdminPhpDeploymentTab: React.FC = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    addLog(`[EXPORT] ✓ Downloaded deploy.php for ${type === 'root' ? 'cPanel Web Root (public_html/)' : 'API Endpoint (public_html/api/v1/)'}.`, 'success');
+    addLog(`[EXPORT] ✓ Downloaded deploy.php for ${type === 'root' ? 'cPanel Web Root (public_html/)' : 'API Endpoint (public_html/api/)'}.`, 'success');
   };
 
   // 4. Trigger Production Build (npm run build)
@@ -194,7 +194,7 @@ export const AdminPhpDeploymentTab: React.FC = () => {
 
     const start = performance.now();
     try {
-      const data = await localApiFetch('/api/v1/build', {
+      const data = await localApiFetch('/api/build', {
         method: 'POST'
       });
       const elapsed = Math.round(performance.now() - start);
@@ -286,7 +286,7 @@ export const AdminPhpDeploymentTab: React.FC = () => {
 
     // Method B: Server Proxy Fetch
     try {
-      const data = await localApiFetch(`/api/v1/remote-sync/remote-status?url=${encodeURIComponent(url)}&key=${encodeURIComponent(deployKey)}`, { silent: true } as any);
+      const data = await localApiFetch(`/api/remote-sync/remote-status?url=${encodeURIComponent(url)}&key=${encodeURIComponent(deployKey)}`, { silent: true } as any);
       const elapsed = Math.round(performance.now() - startTime);
 
       if (data && data.success && data.reachable) {
@@ -355,7 +355,7 @@ export const AdminPhpDeploymentTab: React.FC = () => {
 
     // Step A: Attempt Direct Browser 1-by-1 Sequential Transmission
     try {
-      const payloadRes = await localApiFetch('/api/v1/remote-sync/get-api-payload', {
+      const payloadRes = await localApiFetch('/api/remote-sync/get-api-payload', {
         method: 'POST',
         body: JSON.stringify({ fileNames: targets })
       });
@@ -371,7 +371,7 @@ export const AdminPhpDeploymentTab: React.FC = () => {
           let proxyUrl = backendRemoteUrl;
           const isLiveHost = typeof window !== 'undefined' && (window.location.hostname === 'uqlearn.org' || window.location.hostname.endsWith('.uqlearn.org'));
           if (!isLiveHost && proxyUrl.startsWith(API_BASE_URL.replace(/\/$/, ''))) {
-            proxyUrl = proxyUrl.replace(API_BASE_URL.replace(/\/$/, ''), '/api/v1');
+            proxyUrl = proxyUrl.replace(API_BASE_URL.replace(/\/$/, ''), '/api');
           }
 
           let successfulCount = 0;
@@ -382,8 +382,8 @@ export const AdminPhpDeploymentTab: React.FC = () => {
               continue;
             }
 
-            // Normalize path for api/v1/deploy.php (strip leading v1/ if target is /api/v1/)
-            const targetPath = (proxyUrl.includes('/api/v1/deploy.php') && relPath.startsWith('v1/'))
+            // Normalize path for api/deploy.php (strip leading v1/ if target is /api/)
+            const targetPath = (proxyUrl.includes('/api/deploy.php') && relPath.startsWith('v1/'))
               ? relPath.replace(/^v1\//, '')
               : relPath;
 
@@ -429,7 +429,7 @@ export const AdminPhpDeploymentTab: React.FC = () => {
 
     // Step B: Server Proxy Fallback (Sequential 1-by-1 inside Express server)
     try {
-      const data = await localApiFetch('/api/v1/remote-sync/push', {
+      const data = await localApiFetch('/api/remote-sync/push', {
         method: 'POST',
         body: JSON.stringify({
           remoteUrl: backendRemoteUrl,
@@ -493,7 +493,7 @@ export const AdminPhpDeploymentTab: React.FC = () => {
 
     // Step A: Server-side Sequential Deployment with Itemized File Traces
     try {
-      const data = await localApiFetch('/api/v1/remote-sync/deploy-dist', {
+      const data = await localApiFetch('/api/remote-sync/deploy-dist', {
         method: 'POST',
         body: JSON.stringify({
           remoteUrl: frontendRemoteUrl,
@@ -535,7 +535,7 @@ export const AdminPhpDeploymentTab: React.FC = () => {
 
     // Step B: Direct Browser Fallback via deployDistSequentially utility (Transmit 1 File Per Request)
     try {
-      const payloadRes = await localApiFetch('/api/v1/remote-sync/get-dist-payload', {
+      const payloadRes = await localApiFetch('/api/remote-sync/get-dist-payload', {
         method: 'POST',
         body: JSON.stringify({ filePaths: targets })
       });
@@ -578,7 +578,7 @@ export const AdminPhpDeploymentTab: React.FC = () => {
     await handleDeployDist();
 
     // Step 3: Deploy API
-    addLog(`[PIPELINE] Step 3/3: Deploying Backend /api/v1/ to ${API_BASE_URL.replace('https://', '').replace(/\/$/, '')}/deploy.php...`, 'info');
+    addLog(`[PIPELINE] Step 3/3: Deploying Backend /api/ to ${API_BASE_URL.replace('https://', '').replace(/\/$/, '')}/deploy.php...`, 'info');
     await handlePushApiFiles();
 
     addLog('[PIPELINE] ✓ Full-Stack Pipeline completed successfully!', 'success');
@@ -624,7 +624,7 @@ export const AdminPhpDeploymentTab: React.FC = () => {
       addLog('Available Terminal Commands:', 'info');
       addLog('  build               - Execute `npm run build` to generate dist/ files', 'info');
       addLog(`  deploy:dist         - Deploy built dist files to ${ROOT_URL.replace('https://', '')}/deploy.php`, 'info');
-      addLog(`  deploy:api          - Deploy backend /api/v1/ files to ${API_BASE_URL.replace('https://', '').replace(/\/$/, '')}/deploy.php`, 'info');
+      addLog(`  deploy:api          - Deploy backend /api/ files to ${API_BASE_URL.replace('https://', '').replace(/\/$/, '')}/deploy.php`, 'info');
       addLog('  deploy:all          - Run build + deploy frontend dist + deploy backend API', 'info');
       addLog('  push                - Deploy current mode selection', 'info');
       addLog('  ls / dir            - List files in current view', 'info');
@@ -655,7 +655,7 @@ export const AdminPhpDeploymentTab: React.FC = () => {
           addLog(`  ${isSel} ${(f.size / 1024).toFixed(1).padStart(6, ' ')} KB  ${f.path}`, 'info');
         });
       } else {
-        addLog(`API Directory: /api/v1/ (${files.length} files):`, 'info');
+        addLog(`API Directory: /api/ (${files.length} files):`, 'info');
         files.forEach(f => {
           const isSel = selectedFileNames.includes(f.name) ? '[*]' : '[ ]';
           addLog(`  ${isSel} ${(f.size / 1024).toFixed(1).padStart(6, ' ')} KB  ${f.lines.toString().padStart(4, ' ')} lines  ${f.name}`, 'info');
@@ -677,8 +677,8 @@ export const AdminPhpDeploymentTab: React.FC = () => {
  * Target Location: Place at your cPanel web root: /home/uqlearno/public_html/deploy.php
  * Endpoint URL: ${ROOT_URL}/deploy.php
  *
- * Handles 1-Click synchronization of all React single-page app bundles,
- * sub-portals (admin, instructor, rev), CSS/JS assets, and .htaccess rewrite rules.
+ * Handles synchronization of all flattened production build files (index.html, admin.html, etc.)
+ * directly to your live server web root.
  */
 
 // 1. Server Limits & Configuration
@@ -732,8 +732,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         "memory_limit" => ini_get('memory_limit'),
         "has_index_html" => file_exists($baseDir . '/index.html'),
         "has_htaccess" => file_exists($baseDir . '/.htaccess'),
-        "has_admin_portal" => is_dir($baseDir . '/admin'),
-        "has_instructor_portal" => is_dir($baseDir . '/instructor')
+        "has_admin_html" => file_exists($baseDir . '/admin.html'),
+        "has_instructor_html" => file_exists($baseDir . '/instructor.html')
     ], JSON_PRETTY_PRINT);
     exit();
 }
@@ -770,15 +770,7 @@ if (\$_SERVER['REQUEST_METHOD'] === 'POST') {
         if (file_put_contents(\$dest, \$code) !== false) \$updated[] = \$clean;
     }
 
-    \$subRoots = [\$baseDir . '/admin', \$baseDir . '/instructor', \$baseDir . '/rev'];
-    foreach (\$subRoots as \$subRoot) {
-        if (!is_dir(\$subRoot)) @mkdir(\$subRoot, 0755, true);
-        \$mirrorFiles = glob(\$baseDir . '/*.{js,css,mjs,map,png,jpg,jpeg,gif,svg,ico,json}', GLOB_BRACE);
-        if (\$mirrorFiles) foreach (\$mirrorFiles as \$mf) @copy(\$mf, \$subRoot . '/' . basename(\$mf));
-        if (file_exists(\$baseDir . '/index.html')) @copy(\$baseDir . '/index.html', \$subRoot . '/index.html');
-        \$htaccess = "RewriteEngine On\\nRewriteBase /\\nRewriteCond %{REQUEST_FILENAME} !-f\\nRewriteCond %{REQUEST_FILENAME} !-d\\nRewriteRule ^ index.html [L]\\n";
-        @file_put_contents(\$subRoot . '/.htaccess', \$htaccess);
-    }
+    // Sub-directory mirroring logic removed as per flattened deployment request.
 
     echo json_encode(["success" => count(\$updated) > 0, "updated_files" => \$updated]);
     exit();
@@ -788,7 +780,7 @@ if (\$_SERVER['REQUEST_METHOD'] === 'POST') {
   const apiDeployPhpCode = `<?php
 /**
  * Backend API Deployer for \${ROOT_URL.replace('https://', '')}
- * Location: public_html/api/v1/deploy.php
+ * Location: public_html/api/deploy.php
  */
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
@@ -879,7 +871,7 @@ if (\$_SERVER['REQUEST_METHOD'] === 'POST') {
             <div className="flex items-center space-x-2 text-xs">
               <TerminalIcon className="w-4 h-4 text-emerald-400 shrink-0" />
               <span className="text-slate-300 font-bold hidden sm:inline">deployment@cubiclink:</span>
-              <span className="text-indigo-400 font-semibold">{deployMode === 'frontend-dist' ? '~/dist' : '~/api/v1'}</span>
+              <span className="text-indigo-400 font-semibold">{deployMode === 'frontend-dist' ? '~/dist' : '~/api'}</span>
               <span className="text-slate-500 text-[11px] hidden md:inline">
                 ({deployMode === 'frontend-dist' ? 'Vite Production Dist' : 'PHP API Endpoints'})
               </span>
@@ -949,7 +941,7 @@ if (\$_SERVER['REQUEST_METHOD'] === 'POST') {
               }`}
             >
               <Server className="w-3.5 h-3.5" />
-              <span>Backend API (/api/v1/)</span>
+              <span>Backend API (/api/)</span>
               <span className="text-[10px] px-1.5 py-0.2 bg-slate-800 text-slate-300 rounded-full">
                 {files.length}
               </span>
@@ -998,7 +990,7 @@ if (\$_SERVER['REQUEST_METHOD'] === 'POST') {
                 className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-950/50 transition-all flex items-center space-x-2 cursor-pointer border border-emerald-500/40"
               >
                 <CloudUpload className={`w-4 h-4 ${isPushing ? 'animate-bounce' : ''}`} />
-                <span>{isPushing ? 'Deploying...' : `Deploy All Dist Files (${distFiles.length}) to ${ROOT_URL.replace('https://', '')}`}</span>
+                <span>{isPushing ? 'Pushing...' : `Push to Live (Frontend Dist)`}</span>
               </button>
 
               {/* CLEAN ASSETS TOGGLE */}
@@ -1021,7 +1013,7 @@ if (\$_SERVER['REQUEST_METHOD'] === 'POST') {
                 className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-950/50 transition-all flex items-center space-x-2 cursor-pointer border border-emerald-500/40"
               >
                 <CloudUpload className={`w-4 h-4 ${isPushing ? 'animate-bounce' : ''}`} />
-                <span>{isPushing ? 'Pushing...' : `Push API Files (${selectedFileNames.length})`}</span>
+                <span>{isPushing ? 'Pushing...' : `Push to Live (Backend API)`}</span>
               </button>
 
               {/* REFRESH API FILES */}
@@ -1044,7 +1036,7 @@ if (\$_SERVER['REQUEST_METHOD'] === 'POST') {
             title="Automatically run build, push frontend dist, and push backend API"
           >
             <Zap className="w-3.5 h-3.5 text-amber-300" />
-            <span>Full-Stack Build & Deploy All</span>
+            <span>Push to Live (Full-Stack Sync)</span>
           </button>
         </div>
 
@@ -1111,7 +1103,7 @@ if (\$_SERVER['REQUEST_METHOD'] === 'POST') {
                 <p className="text-[11px] text-amber-300/80">
                   {deployMode === 'frontend-dist'
                     ? 'Upload deploy.php to your cPanel web root (/home/uqlearno/public_html/deploy.php) to enable 1-click frontend dist deployments.'
-                    : 'Upload deploy.php to your cPanel API directory (/home/uqlearno/public_html/api/v1/deploy.php) to enable 1-click backend sync.'}
+                    : 'Upload deploy.php to your cPanel API directory (/home/uqlearno/public_html/api/deploy.php) to enable 1-click backend sync.'}
                 </p>
               </div>
             </div>
@@ -1264,9 +1256,13 @@ if (\$_SERVER['REQUEST_METHOD'] === 'POST') {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setSelectedFileNames(prev =>
-                                prev.includes(file.name) ? prev.filter(p => p !== file.name) : [...prev, file.name]
-                              );
+                              setSelectedFileNames(prev => {
+                                if (!prev.includes(file.name) && prev.length >= 20) {
+                                  addLog('[LIMIT] ✕ Maximum 20 files can be selected for sync.', 'warn');
+                                  return prev;
+                                }
+                                return prev.includes(file.name) ? prev.filter(p => p !== file.name) : [...prev, file.name];
+                              });
                             }}
                             className="text-slate-400 hover:text-white"
                           >
@@ -1503,14 +1499,14 @@ if (\$_SERVER['REQUEST_METHOD'] === 'POST') {
                 1. Web Root Deployer ({ROOT_URL.replace('https://', '')}/deploy.php)
               </button>
               <button
-                onClick={() => setSetupModalTab('api-v1')}
+                onClick={() => setSetupModalTab('api-root')}
                 className={`flex-1 py-2 rounded-lg font-bold transition-all text-center cursor-pointer ${
-                  setupModalTab === 'api-v1'
+                  setupModalTab === 'api-root'
                     ? 'bg-indigo-600 text-white'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                2. API v1 Deployer ({API_BASE_URL.replace('https://', '').replace(/\/$/, '')}/deploy.php)
+                2. API Deployer ({API_BASE_URL.replace('https://', '').replace(/\/$/, '')}/deploy.php)
               </button>
             </div>
 
@@ -1537,7 +1533,7 @@ if (\$_SERVER['REQUEST_METHOD'] === 'POST') {
                   </p>
                   <ol className="list-decimal list-inside space-y-1 text-[11px] text-slate-300">
                     <li>Log in to your <strong>cPanel File Manager</strong> on <code className="text-indigo-300">{ROOT_URL.replace('https://', '')}</code>.</li>
-                    <li>Go to the API folder: <code className="bg-slate-800 text-amber-300 px-1.5 py-0.5 rounded">public_html/api/v1/</code>.</li>
+                    <li>Go to the API folder: <code className="bg-slate-800 text-amber-300 px-1.5 py-0.5 rounded">public_html/api/</code>.</li>
                     <li>Create a file named <strong className="text-emerald-400">deploy.php</strong> and paste the code below.</li>
                     <li>This allows synchronizing all <code className="text-emerald-300">courses.php</code>, <code className="text-emerald-300">db.php</code>, <code className="text-emerald-300">schema.sql</code>, etc.</li>
                   </ol>
@@ -1549,7 +1545,7 @@ if (\$_SERVER['REQUEST_METHOD'] === 'POST') {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-bold text-slate-300">
-                  {setupModalTab === 'root-dist' ? 'Root deploy.php Source:' : 'API v1 deploy.php Source:'}
+                  {setupModalTab === 'root-dist' ? 'Root deploy.php Source:' : 'API deploy.php Source:'}
                 </span>
                 <div className="flex items-center space-x-2">
                   <button

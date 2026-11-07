@@ -130,7 +130,7 @@ function saveLocalErrorLogFallback(record: Record<string, unknown>) {
 
 /**
  * Centralized logging utility to capture and store API error responses
- * from the 'uqlearn.org/api/v1/' domain into the 'error_logs' Firestore collection.
+ * from the 'uqlearn.org/api/' domain into the 'error_logs' Firestore collection.
  */
 export async function logApiError(input: ApiErrorLogInput): Promise<void> {
   const timestamp = new Date().toISOString();

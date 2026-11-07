@@ -98,12 +98,12 @@ v1Router.get('/health', (req: Request, res: Response) => {
     databaseConfig: {
       host: 'localhost',
       database: 'uqlearno_lms',
-      connectionScript: '/api/v1/db.php'
+      connectionScript: '/api/db.php'
     }
   });
 });
 
-// POST /api/v1/login - Authentication Endpoint matching /api/v1/login.php
+// POST /api/login - Authentication Endpoint matching /api/login.php
 v1Router.post('/login', (req: Request, res: Response) => {
   const { email, password, authProvider = 'email', firebaseUid } = req.body;
 
@@ -183,7 +183,7 @@ v1Router.post('/login', (req: Request, res: Response) => {
   });
 });
 
-// POST /api/v1/register - User Registration Endpoint matching /api/v1/register.php
+// POST /api/register - User Registration Endpoint matching /api/register.php
 v1Router.post('/register', (req: Request, res: Response) => {
   const {
     role = 'learner',
@@ -257,7 +257,7 @@ v1Router.post('/register', (req: Request, res: Response) => {
   });
 });
 
-// POST /api/v1/verify-email - Email OTP Verification matching /api/v1/verify-email.php
+// POST /api/verify-email - Email OTP Verification matching /api/verify-email.php
 v1Router.post('/verify-email', (req: Request, res: Response) => {
   const { action, email, otp } = req.body;
 
@@ -309,7 +309,7 @@ v1Router.post('/verify-email', (req: Request, res: Response) => {
   }
 });
 
-// POST /api/v1/send-login-otp - Send Login OTP code
+// POST /api/send-login-otp - Send Login OTP code
 v1Router.post(['/send-login-otp', '/send-login-otp.php'], (req: Request, res: Response) => {
   const { email } = req.body;
 
@@ -348,7 +348,7 @@ v1Router.get(['/courses', '/courses.php'], (req: Request, res: Response) => {
   res.json({ success: true, data: filtered });
 });
 
-// DELETE /api/v1/courses (or /api/v1/courses.php)
+// DELETE /api/courses (or /api/courses.php)
 v1Router.delete(['/courses', '/courses.php'], (req: Request, res: Response) => {
   const courseId = (req.query.id as string) || (req.query.course_id as string) || req.body.id || req.body.course_id;
   const permanent = req.query.permanent === '1' || req.query.permanent === 'true' || req.body.permanent === true;
@@ -390,7 +390,7 @@ v1Router.delete(['/courses', '/courses.php'], (req: Request, res: Response) => {
   }
 });
 
-// Dedicated Soft-Delete & Restore Endpoint: /api/v1/delete-course and /api/v1/delete-course.php
+// Dedicated Soft-Delete & Restore Endpoint: /api/delete-course and /api/delete-course.php
 const handleDeleteCourse = (req: Request, res: Response) => {
   const courseId = (req.query.id as string) || (req.query.course_id as string) || req.body.id || req.body.course_id;
   const action = (req.query.action as string || req.body.action || 'soft_delete').toLowerCase();
@@ -401,9 +401,9 @@ const handleDeleteCourse = (req: Request, res: Response) => {
       success: false,
       message: "Course ID is required. Pass 'id' or 'course_id' in URL query or JSON body.",
       usage: {
-        soft_delete: "POST /api/v1/delete-course with {\"id\": \"course-123\"} or DELETE /api/v1/courses?id=course-123",
-        restore: "POST /api/v1/delete-course with {\"id\": \"course-123\", \"action\": \"restore\"}",
-        permanent_delete: "POST /api/v1/delete-course with {\"id\": \"course-123\", \"permanent\": true}"
+        soft_delete: "POST /api/delete-course with {\"id\": \"course-123\"} or DELETE /api/courses?id=course-123",
+        restore: "POST /api/delete-course with {\"id\": \"course-123\", \"action\": \"restore\"}",
+        permanent_delete: "POST /api/delete-course with {\"id\": \"course-123\", \"permanent\": true}"
       }
     });
   }
@@ -470,7 +470,7 @@ const handleDeleteCourse = (req: Request, res: Response) => {
     action: 'soft_delete',
     isDeleted: true,
     deletedAt: new Date().toISOString(),
-    recoveryHint: "To restore this course, call /api/v1/delete-course with action='restore'."
+    recoveryHint: "To restore this course, call /api/delete-course with action='restore'."
   });
 };
 
@@ -552,7 +552,7 @@ let courseCategories: any[] = [
   { id: 'cat-6', name: 'Personal Growth', slug: 'personal-growth', description: 'Leadership mastery, productivity habits, communication & public speaking', icon: '🌟', color: 'bg-rose-50 text-rose-600 dark:bg-rose-950 dark:text-rose-400', orderIndex: 5, order_index: 5, isActive: true, is_active: 1, isFeatured: false, is_featured: 0 },
 ];
 
-// GET /api/v1/course-categories and /api/v1/course-categories.php
+// GET /api/course-categories and /api/course-categories.php
 v1Router.get(['/course-categories', '/course-categories.php'], (req: Request, res: Response) => {
   const id = req.query.id as string;
   const slug = req.query.slug as string;
@@ -595,7 +595,7 @@ v1Router.get(['/course-categories', '/course-categories.php'], (req: Request, re
   });
 });
 
-// POST /api/v1/course-categories and /api/v1/course-categories.php
+// POST /api/course-categories and /api/course-categories.php
 v1Router.post(['/course-categories', '/course-categories.php'], (req: Request, res: Response) => {
   const action = req.body.action || req.query.action;
 
@@ -693,7 +693,7 @@ v1Router.post(['/course-categories', '/course-categories.php'], (req: Request, r
   });
 });
 
-// DELETE /api/v1/course-categories and /api/v1/course-categories.php
+// DELETE /api/course-categories and /api/course-categories.php
 v1Router.delete(['/course-categories', '/course-categories.php'], (req: Request, res: Response) => {
   const id = (req.query.id as string) || req.body.id;
   if (!id) {
@@ -713,7 +713,7 @@ v1Router.delete(['/course-categories', '/course-categories.php'], (req: Request,
   });
 });
 
-// GET /api/v1/sync - Database Sync Hub matching /api/v1/sync.php
+// GET /api/sync - Database Sync Hub matching /api/sync.php
 v1Router.get('/sync', (req: Request, res: Response) => {
   const action = (req.query.action as string) || 'status';
   const table = (req.query.table as string) || 'courses';
@@ -932,7 +932,7 @@ v1Router.get('/sync', (req: Request, res: Response) => {
   res.json({ success: true, message: 'Sync action processed' });
 });
 
-// POST /api/v1/sync - Sync data batch and Column Operations
+// POST /api/sync - Sync data batch and Column Operations
 v1Router.post('/sync', (req: Request, res: Response) => {
   const { action = 'sync_upsert', payload, table, column, type, nullable, defaultValue, afterColumn } = req.body;
 
@@ -988,7 +988,7 @@ v1Router.post('/sync', (req: Request, res: Response) => {
   res.json({ success: true, message: 'Sync batch processed' });
 });
 
-// GET /api/v1/debug_htaccess.php - Emulate PHP debug script locally in Express
+// GET /api/debug_htaccess.php - Emulate PHP debug script locally in Express
 v1Router.get('/debug_htaccess.php', (req: Request, res: Response) => {
   res.setHeader('Content-Type', 'text/plain');
   
@@ -1014,7 +1014,7 @@ v1Router.get('/debug_htaccess.php', (req: Request, res: Response) => {
   res.send(output);
 });
 
-// GET /api/v1/importer.php & /api/v1/importer - Mock limits response for local development
+// GET /api/importer.php & /api/importer - Mock limits response for local development
 v1Router.get(['/importer.php', '/importer'], (req: Request, res: Response) => {
   res.json({
     success: true,
@@ -1031,7 +1031,7 @@ v1Router.get(['/importer.php', '/importer'], (req: Request, res: Response) => {
 let localFolders: any[] = [];
 let localAssets: any[] = [];
 
-// GET /api/v1/assets.php & /api/v1/assets
+// GET /api/assets.php & /api/assets
 v1Router.get(['/assets.php', '/assets'], (req: Request, res: Response) => {
   res.json({
     success: true,
@@ -1042,7 +1042,7 @@ v1Router.get(['/assets.php', '/assets'], (req: Request, res: Response) => {
   });
 });
 
-// POST /api/v1/assets.php & /api/v1/assets
+// POST /api/assets.php & /api/assets
 v1Router.post(['/assets.php', '/assets'], (req: Request, res: Response) => {
   const action = req.body.action || req.query.action;
   const userId = req.body.user_id || req.query.user_id || 'admin';
@@ -1086,7 +1086,7 @@ v1Router.post(['/assets.php', '/assets'], (req: Request, res: Response) => {
   res.status(400).json({ success: false, message: "Unknown action" });
 });
 
-// DELETE /api/v1/assets.php & /api/v1/assets
+// DELETE /api/assets.php & /api/assets
 v1Router.delete(['/assets.php', '/assets'], (req: Request, res: Response) => {
   const action = req.query.action || req.body.action;
   const id = parseInt((req.query.id as string) || req.body.id);
@@ -1163,7 +1163,7 @@ function getAllApiFilesRecursive(dir: string, baseDir: string = dir): Array<{
   return results;
 }
 
-// GET /api/v1/remote-sync/local-files - Read all local /api/ files recursively from workspace disk
+// GET /api/remote-sync/local-files - Read all local /api/ files recursively from workspace disk
 v1Router.get('/remote-sync/local-files', (req: Request, res: Response) => {
   try {
     const apiDir = path.join(process.cwd(), 'api');
@@ -1172,8 +1172,8 @@ v1Router.get('/remote-sync/local-files', (req: Request, res: Response) => {
     // Sort files logically
     files.sort((a, b) => {
       const priorityOrder = [
-        'v1/deploy.php', 'v1/course-categories.php', 'v1/courses.php', 'v1/db.php', 'v1/schema.sql', 'v1/sync.php', 'v1/login.php', 'v1/register.php', 'v1/verify-email.php', 'v1/reviewer-chat.php', 'v1/send-login-otp.php',
-        'v2/reviewers.php', 'v2/reviewer-assignments.php', 'v2/assign-reviewer.php'
+        'deploy.php', 'course-categories.php', 'courses.php', 'db.php', 'schema.sql', 'sync.php', 'login.php', 'register.php', 'verify-email.php', 'reviewer-chat.php', 'send-login-otp.php',
+        'reviewers.php', 'reviewer-assignments.php', 'assign-reviewer.php'
       ];
       const aIdx = priorityOrder.indexOf(a.name);
       const bIdx = priorityOrder.indexOf(b.name);
@@ -1195,7 +1195,7 @@ v1Router.get('/remote-sync/local-files', (req: Request, res: Response) => {
   }
 });
 
-// GET /api/v1/workspace/local-php-files - List all local PHP files in the workspace at api/v1
+// GET /api/workspace/local-php-files - List all local PHP files in the workspace at api
 v1Router.get(['/workspace/local-php-files', '/local-php-files'], (req: Request, res: Response) => {
   try {
     const v1Dir = path.join(process.cwd(), 'api', 'v1');
@@ -1251,7 +1251,7 @@ v1Router.get(['/workspace/local-php-files', '/local-php-files'], (req: Request, 
 
           files.push({
             name: entry.name,
-            relativePath: `api/v1/${entry.name}`,
+            relativePath: `api/${entry.name}`,
             size: stat.size,
             lines: lines || Math.round(stat.size / 35),
             lastModified: stat.mtime.toISOString(),
@@ -1267,16 +1267,16 @@ v1Router.get(['/workspace/local-php-files', '/local-php-files'], (req: Request, 
 
     return res.json({
       success: true,
-      directory: 'api/v1',
+      directory: 'api',
       totalFiles: files.length,
       files
     });
   } catch (err: any) {
-    return res.status(500).json({ success: false, message: err?.message || 'Error reading api/v1 files' });
+    return res.status(500).json({ success: false, message: err?.message || 'Error reading api files' });
   }
 });
 
-// GET /api/v1/workspace/local-php-file - Read a specific local PHP file in api/v1 on demand
+// GET /api/workspace/local-php-file - Read a specific local PHP file in api on demand
 v1Router.get(['/workspace/local-php-file', '/local-php-file'], (req: Request, res: Response) => {
   try {
     const fileName = (req.query.file as string || req.query.name as string || '').trim();
@@ -1289,7 +1289,7 @@ v1Router.get(['/workspace/local-php-file', '/local-php-file'], (req: Request, re
     const fullPath = path.join(v1Dir, cleanFileName);
 
     if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isFile()) {
-      return res.status(404).json({ success: false, message: `File not found in api/v1: ${cleanFileName}` });
+      return res.status(404).json({ success: false, message: `File not found in api: ${cleanFileName}` });
     }
 
     const stat = fs.statSync(fullPath);
@@ -1298,7 +1298,7 @@ v1Router.get(['/workspace/local-php-file', '/local-php-file'], (req: Request, re
     return res.json({
       success: true,
       name: cleanFileName,
-      path: `api/v1/${cleanFileName}`,
+      path: `api/${cleanFileName}`,
       size: stat.size,
       lines: content.split('\n').length,
       lastModified: stat.mtime.toISOString(),
@@ -1310,7 +1310,7 @@ v1Router.get(['/workspace/local-php-file', '/local-php-file'], (req: Request, re
   }
 });
 
-// POST /api/v1/workspace/local-php-file - Save/update a local file in api/v1
+// POST /api/workspace/local-php-file - Save/update a local file in api
 v1Router.post(['/workspace/local-php-file', '/local-php-file'], (req: Request, res: Response) => {
   try {
     const fileName = (req.body?.file as string || req.body?.name as string || '').trim();
@@ -1340,7 +1340,7 @@ v1Router.post(['/workspace/local-php-file', '/local-php-file'], (req: Request, r
       success: true,
       message: `File '${cleanFileName}' saved successfully`,
       name: cleanFileName,
-      path: `api/v1/${cleanFileName}`,
+      path: `api/${cleanFileName}`,
       size: stat.size,
       lines: content.split('\n').length,
       lastModified: stat.mtime.toISOString(),
@@ -1351,7 +1351,7 @@ v1Router.post(['/workspace/local-php-file', '/local-php-file'], (req: Request, r
   }
 });
 
-// GET /api/v1/remote-sync/remote-status - Check live status of uqlearn.org
+// GET /api/remote-sync/remote-status - Check live status of uqlearn.org
 v1Router.get('/remote-sync/remote-status', async (req: Request, res: Response) => {
   const targetUrl = (req.query.url as string) || 'https://uqlearn.org/deploy.php';
   const deployKey = (req.query.key as string) || 'cubiclink_sync_secret_2026';
@@ -1403,7 +1403,7 @@ v1Router.get('/remote-sync/remote-status', async (req: Request, res: Response) =
   }
 });
 
-// POST /api/v1/remote-sync/get-api-payload - Prepare local PHP/SQL files for direct browser deployment
+// POST /api/remote-sync/get-api-payload - Prepare local PHP/SQL files for direct browser deployment
 v1Router.post('/remote-sync/get-api-payload', (req: Request, res: Response) => {
   const selectedFileNames: string[] | undefined = req.body?.fileNames;
   try {
@@ -1435,7 +1435,7 @@ v1Router.post('/remote-sync/get-api-payload', (req: Request, res: Response) => {
   }
 });
 
-// POST /api/v1/remote-sync/get-dist-payload - Prepare all dist files in a single payload for direct browser deployment
+// POST /api/remote-sync/get-dist-payload - Prepare all dist files in a single payload for direct browser deployment
 v1Router.post('/remote-sync/get-dist-payload', (req: Request, res: Response) => {
   const selectedPaths: string[] | undefined = req.body?.filePaths;
   try {
@@ -1474,9 +1474,9 @@ v1Router.post('/remote-sync/get-dist-payload', (req: Request, res: Response) => 
   }
 });
 
-// POST /api/v1/remote-sync/push - Push local /api/ files 1-by-1 sequentially to uqlearn.org
+// POST /api/remote-sync/push - Push local /api/ files 1-by-1 sequentially to uqlearn.org
 v1Router.post('/remote-sync/push', async (req: Request, res: Response) => {
-  const targetUrl = req.body.remoteUrl || 'https://uqlearn.org/api/v1/deploy.php';
+  const targetUrl = req.body.remoteUrl || 'https://uqlearn.org/api/deploy.php';
   const deployKey = req.body.deployKey || 'cubiclink_sync_secret_2026';
   const selectedFileNames: string[] | undefined = req.body.fileNames;
 
@@ -1496,9 +1496,9 @@ v1Router.post('/remote-sync/push', async (req: Request, res: Response) => {
       if (selectedFileNames && selectedFileNames.length > 0 && !selectedFileNames.includes(f.name)) {
         continue;
       }
-      // If target is api/v1/deploy.php where targetDir is __DIR__ (public_html/api/v1),
-      // strip any leading 'v1/' so files write to public_html/api/v1/filename.php directly
-      const cleanTargetKey = (targetUrl.includes('/api/v1/deploy.php') && f.name.startsWith('v1/'))
+      // If target is api/deploy.php where targetDir is __DIR__ (public_html/api),
+      // strip any leading '' so files write to public_html/api/filename.php directly
+      const cleanTargetKey = (targetUrl.includes('/api/deploy.php') && f.name.startsWith(''))
         ? f.name.replace(/^v1\//, '')
         : f.name;
 
@@ -1563,12 +1563,12 @@ v1Router.post('/remote-sync/push', async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: 'Failed to push files to remote host: ' + error.message,
-      hint: 'If this is the first deployment, make sure to upload deploy.php to https://uqlearn.org/api/v1/deploy.php first.'
+      hint: 'If this is the first deployment, make sure to upload deploy.php to https://uqlearn.org/api/deploy.php first.'
     });
   }
 });
 
-// POST /api/v1/build - Trigger Vite production build
+// POST /api/build - Trigger Vite production build
 v1Router.post('/build', async (req: Request, res: Response) => {
   const startTime = Date.now();
   try {
@@ -1610,7 +1610,7 @@ v1Router.post('/build', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/v1/dist-files - Get list of built dist files
+// GET /api/dist-files - Get list of built dist files
 v1Router.get('/dist-files', (req: Request, res: Response) => {
   try {
     const distDir = path.join(process.cwd(), 'dist');
@@ -1645,7 +1645,7 @@ v1Router.get('/dist-files', (req: Request, res: Response) => {
   }
 });
 
-// POST /api/v1/remote-sync/deploy-dist - Deploy built dist files to uqlearn.org/deploy.php in resilient batches
+// POST /api/remote-sync/deploy-dist - Deploy built dist files to uqlearn.org/deploy.php in resilient batches
 v1Router.post('/remote-sync/deploy-dist', async (req: Request, res: Response) => {
   const targetUrl = req.body?.remoteUrl || 'https://uqlearn.org/deploy.php';
   const deployKey = req.body?.deployKey || 'cubiclink_sync_secret_2026';
@@ -1845,7 +1845,7 @@ v1Router.post('/remote-sync/deploy-dist', async (req: Request, res: Response) =>
   }
 });
 
-// GET /api/v1/recommendations and /api/v1/recommendations.php
+// GET /api/recommendations and /api/recommendations.php
 v1Router.get(['/recommendations', '/recommendations.php'], (req: Request, res: Response) => {
   try {
     const categoriesParam = (req.query.categories as string) || '';
@@ -1942,7 +1942,7 @@ let priceAdjustmentsStore: any[] = [
   }
 ];
 
-// GET /api/v1/price-adjustments (and .php)
+// GET /api/price-adjustments (and .php)
 v1Router.get(['/price-adjustments', '/price-adjustments.php'], (req: Request, res: Response) => {
   const { status, course_id, id } = req.query;
   if (id) {
@@ -1961,7 +1961,7 @@ v1Router.get(['/price-adjustments', '/price-adjustments.php'], (req: Request, re
   res.json({ success: true, data: filtered, count: filtered.length });
 });
 
-// POST /api/v1/price-adjustments (and .php)
+// POST /api/price-adjustments (and .php)
 v1Router.post(['/price-adjustments', '/price-adjustments.php'], (req: Request, res: Response) => {
   const newNotice = {
     id: req.body.id || `notif-price-${Date.now()}`,
@@ -1992,7 +1992,7 @@ v1Router.post(['/price-adjustments', '/price-adjustments.php'], (req: Request, r
   res.status(201).json({ success: true, message: 'Price adjustment notice recorded', data: newNotice });
 });
 
-// PUT / PATCH /api/v1/price-adjustments (and .php)
+// PUT / PATCH /api/price-adjustments (and .php)
 v1Router.all(['/price-adjustments/:id', '/price-adjustments.php'], (req: Request, res: Response, next) => {
   if (req.method !== 'PUT' && req.method !== 'PATCH' && req.method !== 'DELETE') return next();
 
@@ -2048,7 +2048,7 @@ let usersStore: any[] = [
   { id: 'u-6', role: 'learner', name: 'David Kim', email: 'david.k@stanford.alumni.edu', status: 'Active', joined: 'Mar 2025' }
 ];
 
-// GET /api/v1/users (and .php)
+// GET /api/users (and .php)
 v1Router.get(['/users', '/users.php'], (req: Request, res: Response) => {
   const { role, id } = req.query;
   if (id) {
@@ -2064,7 +2064,7 @@ v1Router.get(['/users', '/users.php'], (req: Request, res: Response) => {
   res.json({ success: true, data: filtered, count: filtered.length });
 });
 
-// PUT / PATCH / DELETE /api/v1/users
+// PUT / PATCH / DELETE /api/users
 v1Router.all(['/users/:id', '/users.php'], (req: Request, res: Response, next) => {
   if (req.method !== 'PUT' && req.method !== 'PATCH' && req.method !== 'DELETE') return next();
 
@@ -2091,7 +2091,7 @@ let localVisitorUniques = 12451;
 let localTodayHits = 142;
 let localTodayUniques = 84;
 
-// POST & GET /api/v1/visitor-count and .php
+// POST & GET /api/visitor-count and .php
 v1Router.all(['/visitor-count', '/visitor-count.php'], (req: Request, res: Response) => {
   const action = req.query?.action;
   

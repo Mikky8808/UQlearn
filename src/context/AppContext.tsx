@@ -730,7 +730,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [logoUrl]);
 
   useEffect(() => {
-    // Fetch logo from backend API (with live PHP /api/v1/logo.php & local support)
+    // Fetch logo from backend API (with live PHP /api/logo.php & local support)
     fetchLogoApi().then(res => {
       if (res && res.success && res.logoUrl) {
         const resolved = resolveBrandingLogoUrl(res.logoUrl);

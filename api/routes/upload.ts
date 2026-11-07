@@ -12,7 +12,7 @@ function ensureDir(dirPath: string) {
   }
 }
 
-// POST /api/upload & POST /api/v1/upload
+// POST /api/upload & POST /api/upload
 // Handles image uploads, stores them in folder with random 32 chars + timestamp and returns the path
 uploadRouter.post('/', (req: Request, res: Response) => {
   try {

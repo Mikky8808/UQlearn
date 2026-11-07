@@ -193,12 +193,11 @@ export const AdminSidebarDrawer: React.FC<AdminSidebarDrawerProps> = ({
     },
     {
       id: 'developer-group',
-      label: 'Developer',
+      label: 'Developer Tools',
       icon: Code,
       badgeText: null,
       items: [
-        { id: 'php-sync' as AdminTabKey, label: 'PHP Deployment & Sync', icon: CloudUpload },
-        { id: 'file-explorer' as AdminTabKey, label: 'File Explorer (api/v1)', icon: FileCode, badge: 'api/v1' },
+        { id: 'live-sync' as AdminTabKey, label: 'Push to Live Server', icon: CloudUpload, badge: 'Sync' },
       ]
     },
     {

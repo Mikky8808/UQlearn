@@ -52,7 +52,7 @@ export const appealService = {
     ];
   },
 
-  // Fetch live appeal records directly from API endpoint https://uqlearn.org/api/v1/review-appeals.php
+  // Fetch live appeal records directly from API endpoint https://uqlearn.org/api/review-appeals.php
   async fetchLiveAppeals(): Promise<AppealTransaction[]> {
     try {
       const res = await apiFetch('review-appeals.php', {}, 0);

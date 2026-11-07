@@ -43,8 +43,10 @@ const remoteProxy = createProxyMiddleware({
   target: 'https://uqlearn.org',
   changeOrigin: true,
   pathRewrite: {
-    '^/api/proxy/v1': '/api/v1',
-    '^/api/v1': '/api/v1',
+    '^/api/proxy': '/api',
+    '^/api/v1': '/api',
+    '^/api/v2': '/api',
+    '^/api': '/api',
   },
   timeout: 25000,
   proxyTimeout: 25000,
@@ -56,7 +58,6 @@ const remoteProxy = createProxyMiddleware({
       }
     },
     proxyRes: (proxyRes, req, res) => {
-      // Remove any duplicate or comma-separated Access-Control-Allow-Origin from Apache/PHP
       delete proxyRes.headers['access-control-allow-origin'];
       delete (proxyRes.headers as any)['Access-Control-Allow-Origin'];
       proxyRes.headers['access-control-allow-origin'] = '*';
@@ -69,7 +70,7 @@ const remoteProxy = createProxyMiddleware({
         (res as any).status(502).json({
           success: false,
           error: (err as any)?.message || 'Proxy Error',
-          message: 'Remote server temporarily unreachable, using fallback'
+          message: 'Remote server temporarily unreachable'
         });
       }
     }
@@ -90,7 +91,7 @@ const rewriteLegacyApiEndpoint = (url: string): string => {
     .replace(/^\/custom-mail-subscriptions\.php\b/, '/custom-mail.php?action=subscriptions');
 };
 
-const handleV1Request = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+const handleApiRequest = (req: express.Request, res: express.Response, next: express.NextFunction) => {
   req.url = rewriteLegacyApiEndpoint(req.url || '');
   const url = req.url || '';
   if (
@@ -112,46 +113,7 @@ const handleV1Request = (req: express.Request, res: express.Response, next: expr
   return remoteProxy(req, res, next);
 };
 
-app.use('/api/proxy/v1', handleV1Request);
-app.use('/api/v1', handleV1Request);
-
-// Proxy v2 API requests to remote backend as well
-const remoteProxyV2 = createProxyMiddleware({
-  target: 'https://uqlearn.org/api/v2',
-  changeOrigin: true,
-  pathRewrite: {
-    '^/api/v2': '',
-  },
-  timeout: 25000,
-  proxyTimeout: 25000,
-  on: {
-    proxyReq: (proxyReq, req: any) => {
-      const contentType = req.headers['content-type'] || '';
-      if (contentType.includes('application/json') || contentType.includes('application/x-www-form-urlencoded')) {
-        return fixRequestBody(proxyReq, req);
-      }
-    },
-    proxyRes: (proxyRes, req, res) => {
-      delete proxyRes.headers['access-control-allow-origin'];
-      delete (proxyRes.headers as any)['Access-Control-Allow-Origin'];
-      proxyRes.headers['access-control-allow-origin'] = '*';
-      proxyRes.headers['access-control-allow-methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH';
-      proxyRes.headers['access-control-allow-headers'] = 'Content-Type, Authorization, X-Requested-With, X-User-Id, Accept, Origin, Content-Range, Range, X-Upload-Id, X-User-Email, X-File-Name, X-File-Size, X-Folder, X-Sync-Key, X-Deploy-Key';
-    },
-    error: (err, req, res) => {
-      console.warn(`[Remote Proxy V2 Error] ${req.url}:`, (err as any)?.message || err);
-      if (!res.headersSent) {
-        (res as any).status(502).json({
-          success: false,
-          error: (err as any)?.message || 'Proxy Error',
-          message: 'Remote server temporarily unreachable, using fallback'
-        });
-      }
-    }
-  }
-} as any);
-
-app.use('/api/v2', remoteProxyV2);
+app.use('/api', handleApiRequest);
 
 // Mount master local API router for routes that are local-only or fallback
 app.use("/api", apiRouter);

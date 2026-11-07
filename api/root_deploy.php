@@ -216,28 +216,30 @@ if ($method === 'POST') {
         }
     }
 
-    // 3. Mirror all assets, index.html, and .htaccess into admin/ and instructor/ for subdomains (e.g. en.uqlearn.org -> admin folder)
-    $sourceAssets = glob($baseDir . '/assets/*');
-    $subRoots = [$baseDir . '/admin', $baseDir . '/instructor'];
+    // 3. Mirror all assets, index.html, and .htaccess into admin/ and instructor/ for subdomains
+    $mirrorPatterns = ['*.js', '*.css', '*.mjs', '*.map', '*.png', '*.jpg', '*.jpeg', '*.gif', '*.svg', '*.ico', '*.json', '*.woff', '*.woff2', '*.ttf'];
+    $subRoots = [$baseDir . '/admin', $baseDir . '/instructor', $baseDir . '/rev'];
+    
     foreach ($subRoots as $subRoot) {
         if (!is_dir($subRoot)) {
             @mkdir($subRoot, 0755, true);
         }
-        $subAssets = $subRoot . '/assets';
-        if (!is_dir($subAssets)) {
-            @mkdir($subAssets, 0755, true);
-        }
-        if ($sourceAssets) {
-            foreach ($sourceAssets as $srcFile) {
-                if (is_file($srcFile)) {
-                    $dstFile = $subAssets . '/' . basename($srcFile);
-                    @copy($srcFile, $dstFile);
+        
+        foreach ($mirrorPatterns as $pattern) {
+            $matchedFiles = glob($baseDir . '/' . $pattern);
+            if ($matchedFiles) {
+                foreach ($matchedFiles as $srcFile) {
+                    if (is_file($srcFile)) {
+                        @copy($srcFile, $subRoot . '/' . basename($srcFile));
+                    }
                 }
             }
         }
+        
         if (file_exists($baseDir . '/index.html')) {
             @copy($baseDir . '/index.html', $subRoot . '/index.html');
         }
+        
         $subHtaccess = "<IfModule mod_rewrite.c>\n" .
             "  RewriteEngine On\n" .
             "  RewriteBase /\n" .

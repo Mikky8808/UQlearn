@@ -1,7 +1,7 @@
 /**
  * Video Progress Tracking Service
  * Captures current video timestamps and syncs them with the 'video_playback_progress'
- * MySQL database table via the '/api/v1/video-progress.php' endpoint with offline localStorage fallback.
+ * MySQL database table via the '/api/video-progress.php' endpoint with offline localStorage fallback.
  */
 
 import { API_ENDPOINTS, apiFetch } from '../lib/apiConfig';

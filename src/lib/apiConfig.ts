@@ -3,10 +3,10 @@ import { resolveImageUrl } from './branding';
 
 /**
  * Centralized API Base URL for all backend requests.
- * Points to the production shared host PHP backend at https://uqlearn.org/api/v1/
+ * Points to the production shared host PHP backend at https://uqlearn.org/api/
  * to prevent cross-subdomain routing issues.
  */
-export const API_BASE_URL = 'https://uqlearn.org/api/v1/';
+export const API_BASE_URL = 'https://uqlearn.org/api/';
 export { ROOT_URL, DEFAULT_PAYOUT_COUNTRIES, DEFAULT_KENYA_COUNTRY, DEFAULT_KENYA_BANKS, getDefaultKenyaPayoutBanks, GOOGLE_CLIENT_ID, DEFAULT_VIDEO_THUMBNAIL } from './apiConstants';
 export type { PayoutCountry, PayoutBank } from '../types';
 
@@ -450,7 +450,7 @@ export const apiFetch = async (
   let url: string;
 
   if (cleanEndpoint.startsWith('http://') || cleanEndpoint.startsWith('https://')) {
-    url = cleanEndpoint.replace(/uqlearn\.org\/api\/v1\/\/+/g, 'uqlearn.org/api/v1/');
+    url = cleanEndpoint.replace(/uqlearn\.org\/api\/v1\/\/+/g, 'uqlearn.org/api/');
   } else {
     cleanEndpoint = cleanEndpoint.replace(/^\/?(api\/v1\/)?/, '').replace(/^\/+/, '');
     url = `${baseUrl}/${cleanEndpoint}`;

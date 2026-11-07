@@ -1,8 +1,8 @@
 import { Course } from '../types';
 
 /**
- * Generates ready-to-run MySQL INSERT statements matching the schema in /api/v1/schema.sql
- * and /api/v1/db.php for the jimg_web database.
+ * Generates ready-to-run MySQL INSERT statements matching the schema in /api/schema.sql
+ * and /api/db.php for the jimg_web database.
  */
 export function generateCourseSql(course: Partial<Course>): string {
   const escapeSql = (str: any) => {
@@ -33,7 +33,7 @@ export function generateCourseSql(course: Partial<Course>): string {
 
   let sql = `-- ==========================================================================\n`;
   sql += `-- SQL INSERT SCRIPT FOR: ${course.title || 'Course'} (${courseId})\n`;
-  sql += `-- Generated for MySQL Database: jimg_web (/api/v1/db.php)\n`;
+  sql += `-- Generated for MySQL Database: jimg_web (/api/db.php)\n`;
   sql += `-- ==========================================================================\n\n`;
 
   sql += `START TRANSACTION;\n\n`;
