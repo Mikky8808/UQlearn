@@ -31,11 +31,13 @@ export default defineConfig({
         assetFileNames: 'assets/[name]-[hash].[ext]',
         manualChunks: (id) => {
           if (id.includes('node_modules')) {
-            if (id.includes('lucide-react')) return 'vendor-icons';
-            if (id.includes('react-dom') || id.includes('react/')) return 'vendor-react';
-            if (id.includes('html2canvas') || id.includes('jspdf') || id.includes('purify')) return 'vendor-pdf-canvas';
-            if (id.includes('recharts') || id.includes('d3')) return 'vendor-charts';
-            return 'vendor-libs';
+            if (id.includes('lucide-react')) {
+              return 'vendor-icons';
+            }
+            if (id.includes('html2canvas') || id.includes('jspdf') || id.includes('purify')) {
+              return 'vendor-pdf-canvas';
+            }
+            // Let Vite handle React, Charts, and other libraries to avoid circular dependency errors.
           }
         },
       },
