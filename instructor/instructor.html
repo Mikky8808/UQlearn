@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Instructor Studio - UQlearn Educator Portal</title>
+    <link rel="icon" type="image/png" href="/logo/logo.png" />
+    <link rel="shortcut icon" href="https://uqlearn.org/logo/logo.png" />
+    <link rel="apple-touch-icon" href="https://uqlearn.org/logo/logo.png" />
+    <meta name="description" content="Professional course builder and analytics dashboard for UQlearn verified instructors." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" />
+    <script>
+      (function() {
+        try {
+          var redirect = sessionStorage.getItem('uq_redirect');
+          if (redirect) {
+            sessionStorage.removeItem('uq_redirect');
+            if (redirect !== window.location.pathname + window.location.search + window.location.hash) {
+              window.history.replaceState(null, null, redirect);
+            }
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/instructor-main.tsx"></script>
+  </body>
+</html>

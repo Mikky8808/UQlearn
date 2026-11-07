@@ -97,8 +97,8 @@ export const AdminPhpDeploymentTab: React.FC = () => {
   }>({ checked: false, online: false, loading: false });
 
   const [logs, setLogs] = useState<Array<{ text: string; time: string; type: 'info' | 'success' | 'warn' | 'error' | 'cmd' }>>([
-    { text: 'UQlearn Production Deployment Engine v3.0.0 (x86_64-pc-linux-gnu)', time: new Date().toLocaleTimeString(), type: 'info' },
-    { text: `Target endpoints ready: Frontend dist -> ${ROOT_URL.replace('https://', '')}/deploy.php | API -> ${API_BASE_URL.replace('https://', '').replace(/\/$/, '')}/deploy.php`, time: new Date().toLocaleTimeString(), type: 'info' },
+    { text: 'UQlearn Production Deployment Engine v3.1.0 (x86_64-pc-linux-gnu)', time: new Date().toLocaleTimeString(), type: 'info' },
+    { text: `Target endpoints ready: Frontend dist -> ${ROOT_URL.replace('https://', '')}/deploy.php | API v1 -> ${API_BASE_URL.replace('https://', '').replace(/\/$/, '')}/deploy.php`, time: new Date().toLocaleTimeString(), type: 'info' },
     { text: `Type "help" or click action buttons to build production dist or deploy to ${ROOT_URL.replace('https://', '')}.`, time: new Date().toLocaleTimeString(), type: 'cmd' },
   ]);
 
@@ -129,7 +129,7 @@ export const AdminPhpDeploymentTab: React.FC = () => {
   // 1. Fetch Local Workspace /api/ Files
   const fetchLocalFiles = async () => {
     setLoadingFiles(true);
-    addLog('[FS] Reading local /api/ directory tree recursively...', 'info');
+    addLog('[FS] Reading local /api/v1/ directory tree recursively...', 'info');
     try {
       const data = await localApiFetch('/api/remote-sync/local-files', { silent: true } as any);
       if (data && data.success && Array.isArray(data.files)) {

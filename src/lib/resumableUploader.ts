@@ -1,4 +1,4 @@
-import { API_BASE_URL, apiFetch } from './apiConfig';
+import { API_BASE_URL, apiFetch, ROOT_URL } from './apiConfig';
 
 export interface ResumableUploadProgress {
   percentage: number;
@@ -237,7 +237,7 @@ export class ResumableChunkUploader {
           this.setStatus('completed');
           if (this.onSuccess) {
             this.onSuccess({
-              url: responseJson?.url || `https://uqlearn.org/uploads/${this.folder}/${this.file.name}`,
+              url: responseJson?.url || `${ROOT_URL}/uploads/${this.folder}/${this.file.name}`,
               file_path: responseJson?.file_path || responseJson?.url || `${this.folder}/${this.file.name}`,
               userId: responseJson?.user_id || responseJson?.userId || this.userId,
               total_bytes: responseJson?.total_bytes || this.totalBytes || this.file.size,

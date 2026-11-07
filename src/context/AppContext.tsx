@@ -718,9 +718,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [courseDefaultThumbnail, setCourseDefaultThumbnailState] = useState<string>(() => {
     try {
-      return localStorage.getItem('uqlearn_course_default_thumbnail') || 'https://uqlearn.org/uploads/courses/1793397934_bb01db00c53c0a65497165cd5958a36e.png';
+      return localStorage.getItem('uqlearn_course_default_thumbnail') || `${ROOT_URL}/uploads/courses/1793397934_bb01db00c53c0a65497165cd5958a36e.png`;
     } catch {
-      return 'https://uqlearn.org/uploads/courses/1793397934_bb01db00c53c0a65497165cd5958a36e.png';
+      return `${ROOT_URL}/uploads/courses/1793397934_bb01db00c53c0a65497165cd5958a36e.png`;
     }
   });
 

@@ -6,7 +6,7 @@ import { resolveImageUrl } from './branding';
  * Points to the production shared host PHP backend at https://uqlearn.org/api/
  * to prevent cross-subdomain routing issues.
  */
-export const API_BASE_URL = 'https://uqlearn.org/api/';
+export const API_BASE_URL = 'https://uqlearn.org/api/v1/';
 export { ROOT_URL, DEFAULT_PAYOUT_COUNTRIES, DEFAULT_KENYA_COUNTRY, DEFAULT_KENYA_BANKS, getDefaultKenyaPayoutBanks, GOOGLE_CLIENT_ID, DEFAULT_VIDEO_THUMBNAIL } from './apiConstants';
 export type { PayoutCountry, PayoutBank } from '../types';
 

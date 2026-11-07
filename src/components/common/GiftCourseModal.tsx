@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Gift, Mail, User, Calendar, Copy, Check, Sparkles, Send, CheckCircle2 } from 'lucide-react';
 import { Course } from '../../types';
 import { useApp } from '../../context/AppContext';
+import { ROOT_URL } from '../../lib/apiConfig';
 import { resolveImageUrl } from '../../lib/branding';
 
 export interface GiftCourseModalProps {
@@ -30,7 +31,7 @@ export const GiftCourseModal: React.FC<GiftCourseModalProps> = ({
   const giftCode = `GIFT-${course.id ? String(course.id).slice(0, 5).toUpperCase() : 'UQ'}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
   const giftUrl = typeof window !== 'undefined' 
     ? `${window.location.origin}/course/${course.id}?gift=${giftCode}` 
-    : `https://uqlearn.org/course/${course.id}?gift=${giftCode}`;
+    : `${ROOT_URL}/course/${course.id}?gift=${giftCode}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(giftUrl);

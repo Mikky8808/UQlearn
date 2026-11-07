@@ -44,7 +44,7 @@ export interface FileExplorerProps {
 }
 
 const MAX_SELECT_LIMIT = 20;
-const DEFAULT_DEPLOY_ENDPOINT = 'https://uqlearn.org/api/v1/deploy.php';
+const DEFAULT_DEPLOY_ENDPOINT = `${API_BASE_URL}deploy.php`;
 const DEFAULT_DEPLOY_KEY = 'cubiclink_sync_secret_2026';
 
 export const FileExplorer: React.FC<FileExplorerProps> = ({
@@ -418,7 +418,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
               </span>
             </h1>
             <p className="text-sm text-slate-400 mt-1">
-              Browse, inspect, and select up to 20 local PHP scripts to send directly to <code className="text-indigo-300 font-mono text-xs">https://uqlearn.org/api/v1/deploy.php</code>.
+              Browse, inspect, and select up to 20 local PHP scripts to send directly to <code className="text-indigo-300 font-mono text-xs">{API_BASE_URL}deploy.php</code>.
             </p>
           </div>
 
@@ -804,7 +804,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
                 rel="noreferrer"
                 className="text-indigo-400 hover:underline flex items-center gap-1 truncate"
               >
-                <span>https://uqlearn.org/api/v1/{previewFileName}</span>
+                <span>{API_BASE_URL}{previewFileName}</span>
                 <ExternalLink className="w-3 h-3 shrink-0" />
               </a>
             </div>

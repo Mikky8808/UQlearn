@@ -47,7 +47,7 @@ export function resolveImageUrl(url?: string | null, fallbackType: 'logo' | 'cou
   if (!url || typeof url !== 'string' || !url.trim()) {
     if (fallbackType === 'logo') return DEFAULT_LOGO_URL;
     if (fallbackType === 'avatar') return 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80';
-    return 'https://uqlearn.org/uploads/courses/1793397934_bb01db00c53c0a65497165cd5958a36e.png';
+    return `${ROOT_URL}/uploads/courses/1793397934_bb01db00c53c0a65497165cd5958a36e.png`;
   }
 
   if (fallbackType === 'logo') {

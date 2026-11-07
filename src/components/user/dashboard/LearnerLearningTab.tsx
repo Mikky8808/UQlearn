@@ -1220,7 +1220,7 @@ export const LearnerLearningTab: React.FC<LearnerLearningTabProps> = ({ enrolled
                       
                       const result = await insertEvent(event);
                       
-                      // Save to backend using centralized API_BASE_URL (https://uqlearn.org/api/v1/)
+                      // Save to backend using centralized API_BASE_URL
                       const activeUserId = currentUser?.id || currentUser?.email || 'user';
                       const response = await saveReminderApi({ 
                         userId: activeUserId,

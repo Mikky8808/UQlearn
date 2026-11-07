@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { BADGE_ICON_URL } from '../../assets/badgeIcon';
+import { ROOT_URL } from '../../lib/apiConfig';
 
 export const HeroContent: React.FC = () => {
   const images = [
-    'https://uqlearn.org/uploads/courses/Connected_Learning__Brighter_Futures_1b170216.png',
-    'https://uqlearn.org/uploads/courses/Connected_Learning__Africa_to_Achievement_61efd14a.png'
+    `${ROOT_URL}/uploads/courses/Connected_Learning__Brighter_Futures_1b170216.png`,
+    `${ROOT_URL}/uploads/courses/Connected_Learning__Africa_to_Achievement_61efd14a.png`
   ];
   const [currentIdx, setCurrentIdx] = useState(0);
 

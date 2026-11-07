@@ -17,7 +17,7 @@ import {
   GraduationCap
 } from 'lucide-react';
 import { fetchUserCertificatesApi } from '../../../services/certificateService';
-import { fetchCoursesApi } from '../../../lib/apiConfig';
+import { fetchCoursesApi, ROOT_URL } from '../../../lib/apiConfig';
 import { useApp } from '../../../context/AppContext';
 import { CanvasCertificateGenerator } from '../../common/CanvasCertificateGenerator';
 
@@ -75,7 +75,7 @@ export const LearnerCertificatesTab: React.FC<LearnerCertificatesTabProps> = ({ 
   }, [currentUser]);
 
   const handleShareCertificate = (cert: any) => {
-    const certUrl = `https://uqlearn.org/verify/${cert.credentialId}`;
+    const certUrl = `${ROOT_URL}/verify/${cert.credentialId}`;
     openShareCourseModal(null, {
       customUrl: certUrl,
       customTitle: `Verified Certificate: ${cert.courseTitle}`,
@@ -102,7 +102,7 @@ export const LearnerCertificatesTab: React.FC<LearnerCertificatesTabProps> = ({ 
               <span>Earned Course Certificates</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Accredited certificates with unique cryptographic credential IDs verifiable worldwide at uqlearn.org.
+              Accredited certificates with unique cryptographic credential IDs verifiable worldwide at {ROOT_URL.replace('https://', '')}.
             </p>
           </div>
         </div>

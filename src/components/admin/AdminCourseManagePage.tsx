@@ -529,7 +529,7 @@ export const AdminCourseManagePage: React.FC<AdminCourseManagePageProps> = ({
             disabled={isSyncingLearners}
             onClick={handleSyncLearnersFromApi}
             className="px-3.5 py-2 bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 hover:bg-rose-100 border border-rose-200 dark:border-rose-800 text-xs font-bold rounded-xl transition-colors flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
-            title="Sync learners enrolled count using API https://uqlearn.org/api/v1/course_learners.php"
+            title={`Sync learners enrolled count using API ${API_BASE_URL}course_learners.php`}
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isSyncingLearners ? 'animate-spin' : ''}`} />
             <span>{isSyncingLearners ? 'Syncing...' : 'Sync Learners API'}</span>
@@ -594,7 +594,7 @@ export const AdminCourseManagePage: React.FC<AdminCourseManagePageProps> = ({
                       onClick={handleSyncLearnersFromApi}
                       disabled={isSyncingLearners}
                       className="ml-1 p-0.5 hover:bg-rose-200 dark:hover:bg-rose-900 rounded text-rose-700 dark:text-rose-300 transition-colors cursor-pointer"
-                      title="Update enrolled learners count using API https://uqlearn.org/api/v1/course_learners.php"
+                      title={`Update enrolled learners count using API ${API_BASE_URL}course_learners.php`}
                     >
                       <RefreshCw className={`w-3 h-3 ${isSyncingLearners ? 'animate-spin' : ''}`} />
                     </button>
