@@ -907,24 +907,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDarkMode(prev => !prev);
   };
 
-  const addToCart = (course: Course) => {
+  const addToCart = async (course: Course) => {
     if (!cart.some(c => c.id === course.id)) {
       setCart(prev => [...prev, course]);
+      if (currentUser) {
+        await apiFetch(API_ENDPOINTS.CARTS, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'add', learner_id: currentUser.id, course_id: course.id })
+        });
+      }
     }
     setCartModalOpen(true);
   };
 
-  const removeFromCart = (courseId: string) => {
+  const removeFromCart = async (courseId: string) => {
     setCart(prev => prev.filter(c => c.id !== courseId));
+    if (currentUser) {
+      await apiFetch(API_ENDPOINTS.CARTS, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'remove', learner_id: currentUser.id, course_id: courseId })
+      });
+    }
   };
 
   const clearCart = () => {
     setCart([]);
   };
 
-  const enrollCourse = (course: Course) => {
+  const enrollCourse = async (course: Course) => {
     if (!enrolledCourses.some(e => e.id === course.id)) {
       setEnrolledCourses(prev => [...prev, course]);
+      // Enroll also adds to cart as per user request
+      if (currentUser) {
+          await apiFetch(API_ENDPOINTS.CARTS, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'add', learner_id: currentUser.id, course_id: course.id })
+          });
+      }
     }
     if (currentUser) {
       const updatedIds = Array.from(new Set([...(currentUser.enrolledCourseIds || []), course.id]));

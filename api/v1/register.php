@@ -473,14 +473,14 @@ try {
             <!-- Footer -->
             <div class="footer">
                 <div class="social-links">
-                    <a href="https://twitter.com/aqlearn">Twitter</a> •
-                    <a href="https://linkedin.com/company/aqlearn">LinkedIn</a> •
-                    <a href="https://youtube.com/aqlearn">YouTube</a>
+                    <a href="https://twitter.com/uqlearn">Twitter</a> •
+                    <a href="https://linkedin.com/company/uqlearn">LinkedIn</a> •
+                    <a href="https://youtube.com/uqlearn">YouTube</a>
                 </div>
                 <p>
                     &copy; ' . date('Y') . ' <strong>UQLearn</strong> — All Rights Reserved<br>
                     <a href="https://uqlearn.org">uqlearn.org</a> | 
-                    <a href="mailto:support@aqlearn.com">support@aqlearn.com</a>
+                    <a href="mailto:support@uqlearn.com">support@uqlearn.com</a>
                 </p>
                 <p style="font-size: 11px; color: #aaa;">
                     This email was sent to <a href="mailto:' . $email . '" style="color: #888;">' . $email . '</a>
