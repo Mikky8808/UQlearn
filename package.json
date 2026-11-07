@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build && node scripts/copy-htaccess.js",
-    "build:shared-host": "vite build && node scripts/copy-htaccess.js",
+    "build": "vite build && node scripts/copy-htaccess.js && node scripts/fix-asset-paths.js",
+    "build:shared-host": "vite build && node scripts/copy-htaccess.js && node scripts/fix-asset-paths.js",
     "start": "node server.ts",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
