@@ -87,7 +87,7 @@ import { AdminPromotionSubscribersTab } from './AdminPromotionSubscribersTab';
 import { AdminFlashSaleManager } from './AdminFlashSaleManager';
 import { AdminTopBannerConfigTab } from './AdminTopBannerConfigTab';
 import { AdminWithdrawalsTab } from './AdminWithdrawalsTab';
-import { AdminAbandonedCartsTab } from './AdminAbandonedCartsTab';
+import { AbandonedCarts } from './AdminAbandonedCartsTab';
 
 interface AdminDashboardProps {
   courses: Course[];
@@ -664,7 +664,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ courses, onRefre
             
             {/* Abandoned Carts TAB */}
             {activeTab === 'abandoned-carts' && (
-              <AdminAbandonedCartsTab />
+              <AbandonedCarts />
             )}
 
             {/* Top Banner Config TAB */}

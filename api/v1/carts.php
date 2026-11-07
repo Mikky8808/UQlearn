@@ -13,10 +13,15 @@ $createCartsTable = "CREATE TABLE IF NOT EXISTS `carts` (
     UNIQUE KEY `unique_learner_course` (`learner_id`, `course_id`),
     INDEX `idx_learner` (`learner_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
-@$conn->query($createCartsTable);
 
-$action = $_GET['action'] ?? $_POST['action'] ?? '';
+if (!$conn->query($createCartsTable)) {
+    echo json_encode(['success' => false, 'message' => 'Table creation failed: ' . $conn->error]);
+    $conn->close();
+    exit();
+}
+
 $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+$action = $_GET['action'] ?? $_POST['action'] ?? ($input['action'] ?? '');
 
 if ($action === 'add') {
     $learnerId = trim($input['learner_id'] ?? '');
@@ -27,15 +32,23 @@ if ($action === 'add') {
     }
     $stmt = $conn->prepare("INSERT IGNORE INTO carts (learner_id, course_id, added_at) VALUES (?, ?, NOW())");
     $stmt->bind_param("ss", $learnerId, $courseId);
-    $stmt->execute();
-    echo json_encode(['success' => true]);
+    if ($stmt->execute()) {
+        echo json_encode(['success' => true, 'message' => 'Item added']);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Insert failed: ' . $stmt->error]);
+    }
+    $stmt->close();
 } elseif ($action === 'remove') {
     $learnerId = trim($input['learner_id'] ?? '');
     $courseId = trim($input['course_id'] ?? '');
     $stmt = $conn->prepare("DELETE FROM carts WHERE learner_id = ? AND course_id = ?");
     $stmt->bind_param("ss", $learnerId, $courseId);
-    $stmt->execute();
-    echo json_encode(['success' => true]);
+    if ($stmt->execute()) {
+        echo json_encode(['success' => true, 'message' => 'Item removed']);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Delete failed: ' . $stmt->error]);
+    }
+    $stmt->close();
 } elseif ($action === 'list') {
     $learnerId = trim($_GET['learner_id'] ?? '');
     $stmt = $conn->prepare("SELECT course_id FROM carts WHERE learner_id = ?");
@@ -45,6 +58,9 @@ if ($action === 'add') {
     $items = [];
     while ($row = $res->fetch_assoc()) { $items[] = $row['course_id']; }
     echo json_encode(['success' => true, 'data' => $items]);
+    $stmt->close();
+} else {
+    echo json_encode(['success' => false, 'message' => 'Invalid action']);
 }
 $conn->close();
 ?>
