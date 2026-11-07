@@ -99,7 +99,7 @@ function ReviewerWorkbench() {
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
       <ReviewerNavbar
-        onToggleSidebar={() => {}}
+        onToggleSidebar={() => setMobileSidebarOpen(!mobileSidebarOpen)}
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
         pendingCount={pendingCount}
@@ -107,6 +107,13 @@ function ReviewerWorkbench() {
       />
 
       <div className="flex-1 flex">
+        <ReviewerSidebar
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          totalCount={totalCount}
+          onLogout={handleLogout}
+        />
+
         <main className="flex-1 min-w-0 p-6 lg:p-8 max-w-7xl mx-auto w-full">
           <ReviewerDashboard
             activeTab={activeTab}

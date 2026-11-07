@@ -29,7 +29,8 @@ import {
   saveCourseDescriptionChecklistApi,
   getCourseMessagesApi,
   saveCourseMessagesApi,
-  getReviewerChatHistoryApi
+  getReviewerChatHistoryApi,
+  apiFetch
 } from '../../lib/apiConfig';
 
 export interface DescriptionChecklistItem {
@@ -102,12 +103,13 @@ const DraggableChatWindow: React.FC<{
   course: Course;
   onClose: () => void;
   messages: any[];
-  onSendMessage: (msg: string) => void;
+  onSendMessage: (msg: string, emailInstructor?: boolean) => void;
   sending: boolean;
   checklist?: DescriptionChecklistItem[];
 }> = ({ course, onClose, messages, onSendMessage, sending, checklist = [] }) => {
   const [activeTab, setActiveTab] = useState<'chat' | 'history'>('chat');
   const [inputVal, setInputVal] = useState('');
+  const [emailInstructor, setEmailInstructor] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -275,38 +277,51 @@ const DraggableChatWindow: React.FC<{
 
               {/* Input Area */}
               <div className="space-y-3 pt-3 border-t border-[#30363d] shrink-0">
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setShowQuickReplies(!showQuickReplies)}
-                    className="px-2.5 py-1 bg-[#161b22] hover:bg-[#21262d] text-[#c9d1d9] rounded-md text-xs font-bold border border-[#30363d] transition-colors flex items-center space-x-1 cursor-pointer"
-                  >
-                    <span>✨ Quick Replies</span>
-                    <span className="text-[10px]">▾</span>
-                  </button>
+                <div className="flex items-center justify-between">
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowQuickReplies(!showQuickReplies)}
+                      className="px-2.5 py-1 bg-[#161b22] hover:bg-[#21262d] text-[#c9d1d9] rounded-md text-xs font-bold border border-[#30363d] transition-colors flex items-center space-x-1 cursor-pointer"
+                    >
+                      <span>✨ Quick Replies</span>
+                      <span className="text-[10px]">▾</span>
+                    </button>
 
-                  {showQuickReplies && (
-                    <div className="absolute bottom-full left-0 mb-1.5 w-full bg-[#161b22] border border-[#30363d] rounded-lg shadow-xl overflow-hidden z-20 py-1 space-y-0.5">
-                      {[
-                        'Course approved! Excellent curriculum structure.',
-                        'Please update video resolution and lesson titles.',
-                        'Missing learning objectives in course description.',
-                        'Please attach high quality 16:9 thumbnail image.'
-                      ].map((tmpl, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => {
-                            setInputVal(tmpl);
-                            setShowQuickReplies(false);
-                          }}
-                          className="w-full text-left px-3 py-1.5 text-xs text-[#c9d1d9] hover:bg-[#388bfd] hover:text-white transition-colors cursor-pointer truncate"
-                        >
-                          {tmpl}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                    {showQuickReplies && (
+                      <div className="absolute bottom-full left-0 mb-1.5 w-64 bg-[#161b22] border border-[#30363d] rounded-lg shadow-xl overflow-hidden z-20 py-1 space-y-0.5">
+                        {[
+                          'Course approved! Excellent curriculum structure.',
+                          'Please update video resolution and lesson titles.',
+                          'Missing learning objectives in course description.',
+                          'Please attach high quality 16:9 thumbnail image.'
+                        ].map((tmpl, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => {
+                              setInputVal(tmpl);
+                              setShowQuickReplies(false);
+                            }}
+                            className="w-full text-left px-3 py-1.5 text-xs text-[#c9d1d9] hover:bg-[#388bfd] hover:text-white transition-colors cursor-pointer truncate"
+                          >
+                            {tmpl}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <label className="flex items-center space-x-1.5 text-xs text-[#c9d1d9] hover:text-white cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={emailInstructor}
+                      onChange={(e) => setEmailInstructor(e.target.checked)}
+                      className="w-3.5 h-3.5 rounded border-[#30363d] bg-[#161b22] text-[#388bfd] focus:ring-0 cursor-pointer accent-[#388bfd]"
+                    />
+                    <Mail className="w-3.5 h-3.5 text-[#388bfd]" />
+                    <span className="font-semibold">Email Instructor</span>
+                  </label>
                 </div>
 
                 <div className="bg-[#0d1117] border border-[#388bfd] rounded-lg p-2.5 flex flex-col gap-2 shadow-[0_0_0_1px_#388bfd]">
@@ -318,12 +333,14 @@ const DraggableChatWindow: React.FC<{
                     className="w-full bg-transparent border-none text-[#c9d1d9] text-xs font-sans resize-none focus:outline-none"
                   />
                   <div className="flex justify-between items-center pt-1 border-t border-[#30363d]">
-                    <div className="text-[10px] text-[#8b949e]">Press Send to deliver</div>
+                    <div className="text-[10px] text-[#8b949e]">
+                      {emailInstructor ? 'Will also send email to instructor' : 'Press Send to deliver to chat'}
+                    </div>
                     <button
                       type="button"
                       disabled={sending || !inputVal.trim()}
                       onClick={() => {
-                        onSendMessage(inputVal);
+                        onSendMessage(inputVal, emailInstructor);
                         setInputVal('');
                       }}
                       className="px-3 py-1 bg-[#238636] hover:bg-[#2ea043] disabled:opacity-50 text-white rounded-md text-xs font-bold flex items-center space-x-1 cursor-pointer transition-colors"
@@ -462,10 +479,10 @@ export const ReviewerCourseDetailPage: React.FC<ReviewerCourseDetailPageProps> =
     return () => { isMounted = false; };
   }, [course.id]);
 
-  const handleSendInstructorMessage = async () => {
-    if (!instructorMessageInput.trim()) return;
+  const handleSendInstructorMessage = async (msgTextOverride?: string, shouldEmail: boolean = true) => {
+    const msgText = (msgTextOverride || instructorMessageInput).trim();
+    if (!msgText) return;
     setSendingInstructorMessage(true);
-    const msgText = instructorMessageInput.trim();
     try {
       const payload = {
         course_id: course.id,
@@ -480,6 +497,24 @@ export const ReviewerCourseDetailPage: React.FC<ReviewerCourseDetailPageProps> =
       setInstructorMessages(prev => [...prev, payload]);
       setInstructorMessageInput('');
       
+      // Dispatch email notification to instructor via reviewer-email-instructor.php if checked
+      if (shouldEmail) {
+        try {
+          await apiFetch('reviewer-email-instructor.php', {
+            method: 'POST',
+            body: JSON.stringify({
+              course_id: course.id,
+              courseId: course.id,
+              message: msgText,
+              sender_name: 'Reviewer',
+              senderName: 'Reviewer'
+            })
+          });
+        } catch (e) {
+          console.warn('Failed to send reviewer email notification:', e);
+        }
+      }
+
       // Dispatch live notification to instructor
       try {
         await sendInstructorNotification({
@@ -495,7 +530,7 @@ export const ReviewerCourseDetailPage: React.FC<ReviewerCourseDetailPageProps> =
         });
       } catch {}
 
-      setAuditToastMessage('Review & message sent to instructor successfully!');
+      setAuditToastMessage(shouldEmail ? 'Review message & email sent to instructor!' : 'Review message saved to chat thread!');
       setTimeout(() => setAuditToastMessage(''), 4000);
       setSendingInstructorMessage(false);
     } catch (err: any) {
@@ -841,11 +876,8 @@ export const ReviewerCourseDetailPage: React.FC<ReviewerCourseDetailPageProps> =
           checklist={descriptionChecklist}
           onClose={() => setShowInstructorPanel(false)}
           messages={instructorMessages}
-          onSendMessage={(msg) => {
-            setInstructorMessageInput(msg);
-            setTimeout(() => {
-              handleSendInstructorMessage();
-            }, 50);
+          onSendMessage={(msg, sendEmail) => {
+            handleSendInstructorMessage(msg, sendEmail);
           }}
           sending={sendingInstructorMessage}
         />

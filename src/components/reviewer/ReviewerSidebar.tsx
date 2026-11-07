@@ -6,7 +6,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 
-export type ReviewerTab = 'all' | 'pending' | 'under_review' | 'approved' | 'needs_changes';
+export type ReviewerTab = 'all' | 'inbox' | 'pending' | 'under_review' | 'approved' | 'needs_changes';
 
 interface ReviewerSidebarProps {
   activeTab: ReviewerTab;
@@ -61,11 +61,15 @@ export const ReviewerSidebar: React.FC<ReviewerSidebarProps> = ({
           </div>
         </div>
 
-        {/* Navigation Items (Single All Courses Button) */}
+        {/* Navigation Items */}
         <nav className="space-y-1.5 flex-1 overflow-y-auto no-scrollbar py-1">
           <button
             onClick={() => handleSelectTab('all')}
-            className="w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer bg-[#151833] text-white shadow-xs border border-indigo-900/40"
+            className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer border ${
+              activeTab === 'all'
+                ? 'bg-[#151833] text-white shadow-xs border-indigo-900/40'
+                : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border-transparent'
+            }`}
           >
             <div className="flex items-center space-x-3 min-w-0">
               <BookOpen className={`w-4 h-4 shrink-0 ${iconColor}`} />
@@ -77,6 +81,20 @@ export const ReviewerSidebar: React.FC<ReviewerSidebarProps> = ({
                 {totalCount}
               </span>
             )}
+          </button>
+
+          <button
+            onClick={() => handleSelectTab('inbox')}
+            className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer border ${
+              activeTab === 'inbox'
+                ? 'bg-[#151833] text-white shadow-xs border-indigo-900/40'
+                : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border-transparent'
+            }`}
+          >
+            <div className="flex items-center space-x-3 min-w-0">
+              <ShieldCheck className={`w-4 h-4 shrink-0 ${iconColor}`} />
+              <span className="truncate">Reviewer Inbox</span>
+            </div>
           </button>
         </nav>
 

@@ -3,6 +3,7 @@ import { Course } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { ReviewerTab } from './ReviewerSidebar';
 import { ReviewerCourseDetailPage } from './ReviewerCourseDetailPage';
+import { ReviewerInbox } from './ReviewerInbox';
 import { resolveImageUrl } from '../../lib/branding';
 import { 
   Clock, 
@@ -36,6 +37,10 @@ export const ReviewerDashboard: React.FC<ReviewerDashboardProps> = ({
     const timer = setTimeout(() => setIsLoading(false), 500);
     return () => clearTimeout(timer);
   }, []);
+
+  if (activeTab === 'inbox') {
+    return <ReviewerInbox />;
+  }
 
   // Helper to check if a course is assigned to current reviewer
   const isCourseAssignedToCurrentReviewer = (c: Course) => {

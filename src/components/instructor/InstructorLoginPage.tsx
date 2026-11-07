@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { 
   Mail, 
@@ -9,7 +9,11 @@ import {
   KeyRound, 
   AlertCircle,
   Loader2,
-  CheckCircle2
+  CheckCircle2,
+  ShieldCheck,
+  X,
+  Edit3,
+  RefreshCw
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { resolveBrandingLogoUrl, DEFAULT_LOGO_URL } from '../../lib/branding';
@@ -35,11 +39,15 @@ export const InstructorLoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 
-  // OTP State
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
-  const [countdown, setCountdown] = useState(45);
-  const [timerActive, setTimerActive] = useState(false);
+  // Modal OTP State
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [modalEmail, setModalEmail] = useState('');
+  const [modalOtpDigits, setModalOtpDigits] = useState(['', '', '', '', '', '']);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [modalError, setModalError] = useState('');
+  const [modalSuccess, setModalSuccess] = useState('');
+  const [modalCountdown, setModalCountdown] = useState(60);
+  const [modalTimerActive, setModalTimerActive] = useState(false);
 
   // Status & validation
   const [formLoading, setFormLoading] = useState(false);
@@ -183,11 +191,22 @@ export const InstructorLoginPage: React.FC = () => {
     }
   };
 
-  // Handle Send OTP to Educator Email
-  const handleSendOtp = async () => {
+  // Modal Timer effect
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (modalTimerActive && modalCountdown > 0) {
+      timer = setTimeout(() => setModalCountdown(prev => prev - 1), 1000);
+    } else if (modalCountdown === 0) {
+      setModalTimerActive(false);
+    }
+    return () => clearTimeout(timer);
+  }, [modalTimerActive, modalCountdown]);
+
+  // Open Verification Modal & Send OTP
+  const handleInitiateOtpModal = async (targetEmailInput?: string) => {
     setErrorMsg('');
-    const cleanEmail = email.trim().toLowerCase();
-    if (!cleanEmail || !cleanEmail.includes('@')) {
+    const targetEmail = (targetEmailInput || email).trim().toLowerCase();
+    if (!targetEmail || !targetEmail.includes('@')) {
       setErrorMsg('Please enter a valid educator email address.');
       return;
     }
@@ -196,61 +215,119 @@ export const InstructorLoginPage: React.FC = () => {
     try {
       const data = await apiFetch(API_ENDPOINTS.SEND_LOGIN_OTP, {
         method: 'POST',
-        body: JSON.stringify({ email: cleanEmail })
+        body: JSON.stringify({ email: targetEmail, role: 'instructor' })
       });
-      setOtpSent(true);
-      setTimerActive(true);
-      setCountdown(60);
-      setOtpDigits(['', '', '', '', '', '']);
-      setSuccessMsg(data?.message || `6-digit security code sent to ${cleanEmail}`);
+      setModalEmail(targetEmail);
+      setModalOtpDigits(['', '', '', '', '', '']);
+      setModalError('');
+      setModalSuccess(data?.message || `6-digit security code sent to ${targetEmail}`);
+      setModalCountdown(60);
+      setModalTimerActive(true);
+      setShowOtpModal(true);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to send code. Please check your educator email.');
+      setErrorMsg(err.message || 'Failed to send verification code. Please check your email.');
     } finally {
       setFormLoading(false);
     }
   };
 
-  // Timer effect
-  React.useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (timerActive && countdown > 0) {
-      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-    } else if (countdown === 0) {
-      setTimerActive(false);
-    }
-    return () => clearTimeout(timer);
-  }, [timerActive, countdown]);
-
-  const handleOtpChange = (index: number, val: string) => {
-    if (val.length > 1) {
-      val = val.slice(-1);
-    }
-    const newDigits = [...otpDigits];
-    newDigits[index] = val;
-    setOtpDigits(newDigits);
-
-    if (val && index < 5) {
-      const nextInput = document.getElementById(`inst-otp-${index + 1}`);
-      nextInput?.focus();
+  // Handle Modal Resend Code
+  const handleModalResendCode = async () => {
+    if (modalTimerActive) return;
+    setModalError('');
+    setModalSuccess('');
+    setModalLoading(true);
+    try {
+      const res = await apiFetch(API_ENDPOINTS.SEND_LOGIN_OTP, {
+        method: 'POST',
+        body: JSON.stringify({ email: modalEmail, role: 'instructor' })
+      });
+      setModalSuccess(res.message || 'Code resent successfully.');
+      setModalCountdown(60);
+      setModalTimerActive(true);
+      setModalOtpDigits(['', '', '', '', '', '']);
+    } catch (err: any) {
+      setModalError(err.message || 'Failed to resend code.');
+    } finally {
+      setModalLoading(false);
     }
   };
 
-  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
-      const prevInput = document.getElementById(`inst-otp-${index - 1}`);
+  // Handle Modal OTP digit changes
+  const handleModalOtpChange = (index: number, val: string) => {
+    if (val.length > 1) val = val.slice(-1);
+    const newDigits = [...modalOtpDigits];
+    newDigits[index] = val;
+    setModalOtpDigits(newDigits);
+
+    if (val && index < 5) {
+      const nextInput = document.getElementById(`modal-otp-input-${index + 1}`);
+      nextInput?.focus();
+    }
+
+    if (val && index === 5 && newDigits.every(d => d !== '')) {
+      handleModalVerifySubmit(newDigits.join(''));
+    }
+  };
+
+  const handleModalOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !modalOtpDigits[index] && index > 0) {
+      const prevInput = document.getElementById(`modal-otp-input-${index - 1}`);
       prevInput?.focus();
     }
   };
 
-  const handleOtpPaste = (e: React.ClipboardEvent) => {
+  const handleModalOtpPaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
     const pasted = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 6);
     if (pasted.length > 0) {
-      const newDigits = [...otpDigits];
+      const newDigits = [...modalOtpDigits];
       for (let i = 0; i < pasted.length; i++) {
         newDigits[i] = pasted[i];
       }
-      setOtpDigits(newDigits);
+      setModalOtpDigits(newDigits);
+      if (pasted.length === 6) {
+        handleModalVerifySubmit(pasted);
+      }
+    }
+  };
+
+  // Handle Modal Verification Submit
+  const handleModalVerifySubmit = async (codeToVerify?: string) => {
+    const code = codeToVerify || modalOtpDigits.join('');
+    if (code.length < 6) {
+      setModalError('Please enter all 6 digits of your verification code.');
+      return;
+    }
+
+    setModalError('');
+    setModalSuccess('');
+    setModalLoading(true);
+
+    try {
+      const res = await apiFetch('verify-email.php', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'verify', email: modalEmail, code: code, role: 'instructor' })
+      });
+
+      loginUser({
+        id: res.user?.id || `inst-${Date.now()}`,
+        name: res.user?.name || modalEmail.split('@')[0].replace('.', ' '),
+        email: modalEmail,
+        role: 'instructor',
+        isVerified: true,
+        token: res.token || 'otp-verified'
+      });
+
+      setModalSuccess(res.message || 'Identity verified! Launching Instructor Studio...');
+      setTimeout(() => {
+        setShowOtpModal(false);
+        navigate(redirectPath);
+      }, 700);
+    } catch (err: any) {
+      setModalError(err.message || 'Invalid or expired verification code.');
+    } finally {
+      setModalLoading(false);
     }
   };
 
@@ -259,30 +336,24 @@ export const InstructorLoginPage: React.FC = () => {
     e.preventDefault();
     setErrorMsg('');
 
-    if (authMethod === 'password') {
-      if (!email.trim() || !email.includes('@')) {
-        setErrorMsg('Please enter a valid educator email address.');
-        return;
-      }
-      if (!password || password.length < 6) {
-        setErrorMsg('Password must be at least 6 characters.');
-        return;
-      }
-    } else {
-      if (!otpSent) {
-        handleSendOtp();
-        return;
-      }
-      const code = otpDigits.join('');
-      if (code.length < 6) {
-        setErrorMsg('Please enter all 6 digits of your verification code.');
-        return;
-      }
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setErrorMsg('Please enter a valid educator email address.');
+      return;
     }
 
-    const cleanEmail = email.trim().toLowerCase();
-    setFormLoading(true);
+    if (authMethod === 'otp') {
+      handleInitiateOtpModal(cleanEmail);
+      return;
+    }
 
+    // Password Login
+    if (!password || password.length < 6) {
+      setErrorMsg('Password must be at least 6 characters.');
+      return;
+    }
+    
+    setFormLoading(true);
     try {
       if (isSignUp) {
         const dispName = fullName.trim() || cleanEmail.split('@')[0];
@@ -311,24 +382,6 @@ export const InstructorLoginPage: React.FC = () => {
         });
 
         setSuccessMsg('Instructor account created successfully! Launching Instructor Studio...');
-        setTimeout(() => navigate(redirectPath), 700);
-      } else if (authMethod === 'otp') {
-        const code = otpDigits.join('');
-        await apiFetch('verify-email.php', {
-          method: 'POST',
-          body: JSON.stringify({ action: 'verify', email: cleanEmail, code: code })
-        });
-
-        loginUser({
-          id: `inst-${Date.now()}`,
-          name: cleanEmail.split('@')[0].replace('.', ' '),
-          email: cleanEmail,
-          role: 'instructor',
-          isVerified: true,
-          token: 'otp-verified' // Or pass token if available
-        });
-
-        setSuccessMsg('Instructor identity verified! Launching Instructor Studio...');
         setTimeout(() => navigate(redirectPath), 700);
       } else {
         // Password Login via PHP backend
@@ -502,64 +555,7 @@ export const InstructorLoginPage: React.FC = () => {
               </div>
             )}
 
-            {/* Method 2: OTP Digits */}
-            {authMethod === 'otp' && (
-              <div className="space-y-3 pt-1">
-                {!otpSent ? (
-                  <button
-                    type="button"
-                    onClick={handleSendOtp}
-                    disabled={formLoading || !email}
-                    className="w-full py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 flex items-center justify-center space-x-2 transition-all cursor-pointer"
-                  >
-                    {formLoading ? (
-                      <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
-                    ) : (
-                      <KeyRound className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                    )}
-                    <span>Send Verification Code to Email</span>
-                  </button>
-                ) : (
-                  <div className="space-y-2">
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                      Enter 6-Digit Instructor Code
-                    </label>
-                    <div className="flex justify-between gap-2 on-paste" onPaste={handleOtpPaste}>
-                      {otpDigits.map((digit, idx) => (
-                        <input
-                          key={idx}
-                          id={`inst-otp-${idx}`}
-                          type="text"
-                          maxLength={1}
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          value={digit}
-                          onChange={(e) => handleOtpChange(idx, e.target.value)}
-                          onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                          className="w-11 h-12 text-center text-lg font-black bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
-                        />
-                      ))}
-                    </div>
-                    <div className="flex items-center justify-between text-xs pt-1">
-                      <span className="text-slate-500 dark:text-slate-400 font-medium">
-                        Didn't receive code?
-                      </span>
-                      {timerActive ? (
-                        <span className="text-slate-400 font-bold">Resend in {countdown}s</span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={handleSendOtp}
-                          className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline cursor-pointer"
-                        >
-                          Resend Code
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+
 
             {/* Remember Me */}
             <div className="flex items-center justify-between pt-1">
@@ -657,6 +653,28 @@ export const InstructorLoginPage: React.FC = () => {
         </div>
 
       </div>
+
+      {/* 6-DIGIT VERIFICATION CODE MODAL OVERLAY */}
+      {showOtpModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-6 relative">
+            <button type="button" onClick={() => setShowOtpModal(false)} className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"><X className="w-5 h-5" /></button>
+            <div className="text-center space-y-3">
+              <div className="w-14 h-14 mx-auto rounded-2xl bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-800/80 flex items-center justify-center shadow-lg shadow-indigo-500/10">
+                <ShieldCheck className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <h3 className="text-xl font-black text-slate-900 dark:text-slate-100">Enter Verification Code</h3>
+              <p className="text-xs text-slate-500">Sent code to {modalEmail}</p>
+            </div>
+            <div className="flex justify-between gap-2" onPaste={handleModalOtpPaste}>
+              {modalOtpDigits.map((digit, idx) => (
+                <input key={idx} id={`modal-otp-input-${idx}`} type="text" maxLength={1} value={digit} onChange={(e) => handleModalOtpChange(idx, e.target.value)} onKeyDown={(e) => handleModalOtpKeyDown(idx, e)} disabled={modalLoading} className="w-11 h-13 text-center text-xl font-black bg-slate-50 dark:bg-slate-800 border border-slate-200 rounded-xl text-slate-900 dark:text-slate-100 focus:border-indigo-500 font-mono shadow-xs" />
+              ))}
+            </div>
+            <button type="button" onClick={() => handleModalVerifySubmit()} disabled={modalLoading} className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black text-sm transition-all">Verify & Sign In</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
