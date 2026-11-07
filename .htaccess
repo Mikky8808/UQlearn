@@ -50,6 +50,7 @@ ErrorDocument 404 /index.html
   RewriteCond %{REQUEST_URI} !^/instructor/
   RewriteCond %{REQUEST_URI} !^/api/ [NC]
   RewriteCond %{REQUEST_URI} !^/uploads/ [NC]
+  RewriteCond %{REQUEST_URI} !^/assets/ [NC]
   RewriteRule ^(.*)$ instructor/$1 [L]
 
   # (en|admin).uqlearn.org -> /admin/
@@ -57,6 +58,7 @@ ErrorDocument 404 /index.html
   RewriteCond %{REQUEST_URI} !^/admin/
   RewriteCond %{REQUEST_URI} !^/api/ [NC]
   RewriteCond %{REQUEST_URI} !^/uploads/ [NC]
+  RewriteCond %{REQUEST_URI} !^/assets/ [NC]
   RewriteRule ^(.*)$ admin/$1 [L]
 
   # (rev|reviewer|...).uqlearn.org -> /rev/
@@ -64,6 +66,7 @@ ErrorDocument 404 /index.html
   RewriteCond %{REQUEST_URI} !^/rev/
   RewriteCond %{REQUEST_URI} !^/api/ [NC]
   RewriteCond %{REQUEST_URI} !^/uploads/ [NC]
+  RewriteCond %{REQUEST_URI} !^/assets/ [NC]
   RewriteRule ^(.*)$ rev/$1 [L]
 
   # =========================================================================
