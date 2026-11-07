@@ -20,7 +20,7 @@ try {
             `course_id` VARCHAR(100) NOT NULL,
             `sender_role` VARCHAR(50) DEFAULT 'reviewer',
             `recipient` VARCHAR(255) DEFAULT '',
-            `message` TEXT NOT NULL,
+            `message` LONGTEXT NOT NULL,
             `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
             INDEX idx_course_id (`course_id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -29,6 +29,8 @@ try {
     if (!$conn->query($createTableSql)) {
         throw new Exception("Failed to ensure database table: " . $conn->error);
     }
+
+    @$conn->query("ALTER TABLE `reviewer_chat_messages` MODIFY COLUMN `message` LONGTEXT NOT NULL;");
 
     $method = $_SERVER['REQUEST_METHOD'];
 

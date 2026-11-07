@@ -4,6 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { CourseDetailPage } from '../user/CourseDetailPage';
 import { LearningPlayer } from '../user/LearningPlayer';
 import { ReviewerGuideModal } from './ReviewerGuideModal';
+import { ReviewerInbox } from './ReviewerInbox';
 import { 
   ArrowLeft, 
   CheckCircle2, 
@@ -869,17 +870,11 @@ export const ReviewerCourseDetailPage: React.FC<ReviewerCourseDetailPageProps> =
         </div>
       )}
 
-      {/* Draggable Chat Window */}
+      {/* Full Screen Reviewer Inbox View */}
       {showInstructorPanel && (
-        <DraggableChatWindow
-          course={course}
-          checklist={descriptionChecklist}
+        <ReviewerInbox
+          initialCourseId={course.id}
           onClose={() => setShowInstructorPanel(false)}
-          messages={instructorMessages}
-          onSendMessage={(msg, sendEmail) => {
-            handleSendInstructorMessage(msg, sendEmail);
-          }}
-          sending={sendingInstructorMessage}
         />
       )}
 

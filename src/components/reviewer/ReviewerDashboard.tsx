@@ -38,10 +38,6 @@ export const ReviewerDashboard: React.FC<ReviewerDashboardProps> = ({
     return () => clearTimeout(timer);
   }, []);
 
-  if (activeTab === 'inbox') {
-    return <ReviewerInbox />;
-  }
-
   // Helper to check if a course is assigned to current reviewer
   const isCourseAssignedToCurrentReviewer = (c: Course) => {
     if (!currentUser) return true;
@@ -132,6 +128,10 @@ export const ReviewerDashboard: React.FC<ReviewerDashboardProps> = ({
 
     return list;
   }, [reviewerCourses, activeTab, pendingQueue, underReviewQueue, approvedCatalog, needsChangesQueue, categoryFilter, searchTerm]);
+
+  if (activeTab === 'inbox') {
+    return <ReviewerInbox />;
+  }
 
   // If a course is selected for deep audit, show ReviewerCourseDetailPage in full-screen (hiding reviewer nav)
   if (selectedCourse) {

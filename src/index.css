@@ -60,6 +60,49 @@ textarea {
   animation: fadeIn 0.2s ease-out forwards;
 }
 
+@keyframes drawerSlideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0.8;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes drawerSlideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.animate-drawerSlideIn {
+  animation: drawerSlideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-drawerSlideOut {
+  animation: drawerSlideOutRight 0.25s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+}
+
+.animate-fadeOut {
+  animation: fadeOut 0.25s ease-in forwards;
+}
+
 /* Hide scrollbars across all browsers */
 .scrollbar-hide {
   -ms-overflow-style: none;

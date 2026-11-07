@@ -88,7 +88,8 @@ const rewriteLegacyApiEndpoint = (url: string): string => {
     .replace(/^\/instructor-details\.php\b/, '/profile.php')
     .replace(/^\/sponsored-pricing-plans\.php\b/, '/sponsored_ads.php?action=plans')
     .replace(/^\/custom-mail-pricing\.php\b/, '/custom-mail.php?action=pricing')
-    .replace(/^\/custom-mail-subscriptions\.php\b/, '/custom-mail.php?action=subscriptions');
+    .replace(/^\/custom-mail-subscriptions\.php\b/, '/custom-mail.php?action=subscriptions')
+    .replace(/^\/course-complete\.php\b/, '/mark-completed.php');
 };
 
 // Simplified handler: Routes everything to the remote proxy

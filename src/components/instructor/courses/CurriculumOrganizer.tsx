@@ -81,6 +81,8 @@ export interface OrganizerModule {
   lessons: OrganizerLesson[];
 }
 
+import { CurriculumDrawer } from './CurriculumDrawer';
+
 interface CurriculumOrganizerProps {
   courseId?: string;
   initialModules?: OrganizerModule[];
@@ -100,6 +102,8 @@ export const CurriculumOrganizer: React.FC<CurriculumOrganizerProps> = ({
 }) => {
   const [modules, setModules] = useState<OrganizerModule[]>(initialModules || []);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [targetModIdx, setTargetModIdx] = useState<number | null>(null);
 
   useEffect(() => {
     if (courseId && (!initialModules || initialModules.length === 0)) {
@@ -379,11 +383,12 @@ export const CurriculumOrganizer: React.FC<CurriculumOrganizerProps> = ({
     }
   };
 
-  const handleAddLesson = async (modIndex: number, type: 'video' | 'article' | 'quiz' | 'audio' | 'scorm' = 'video') => {
+  const handleAddLesson = async (modIndex: number, type: string = 'video', customTitle?: string) => {
     pushHistory();
+    const count = modules[modIndex]?.lessons?.length || 0;
     const newLesson: OrganizerLesson = {
       id: `les-${Date.now()}`,
-      title: `Lecture ${modules[modIndex].lessons.length + 1}: New Topic`,
+      title: customTitle ? `${customTitle} ${count + 1}` : `Curriculum Item ${count + 1}`,
       duration: '',
       type: type as any,
       isPreview: false
@@ -849,40 +854,19 @@ export const CurriculumOrganizer: React.FC<CurriculumOrganizerProps> = ({
                     })
                   )}
 
-                  {/* Dynamic Add Content, Practice Activity, and Assessment Buttons */}
-                  <div className="pt-3 flex flex-wrap items-center gap-2 border-t border-slate-200/60 dark:border-slate-800/80 mt-3">
-                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider mr-1">Add to section:</span>
+                  {/* Dynamic Add Curriculum Item Button */}
+                  <div className="pt-3 flex items-center justify-between border-t border-slate-200/60 dark:border-slate-800/80 mt-3">
+                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Curriculum Actions:</span>
                     <button
                       type="button"
-                      onClick={() => handleAddLesson(modIdx, 'video')}
-                      className="px-4 py-2 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 rounded-full text-xs font-bold flex items-center space-x-1.5 transition-colors cursor-pointer min-h-[40px]"
+                      onClick={() => {
+                        setTargetModIdx(modIdx);
+                        setIsDrawerOpen(true);
+                      }}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
                     >
-                      <Video className="w-3.5 h-3.5" />
-                      <span>+ Video Content</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleAddLesson(modIdx, 'article')}
-                      className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 rounded-full text-xs font-bold flex items-center space-x-1.5 transition-colors cursor-pointer min-h-[40px]"
-                    >
-                      <FileText className="w-3.5 h-3.5" />
-                      <span>+ Article / Reading</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleAddLesson(modIdx, 'audio')}
-                      className="px-4 py-2 bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 hover:bg-purple-100 rounded-full text-xs font-bold flex items-center space-x-1.5 transition-colors cursor-pointer min-h-[40px]"
-                    >
-                      <Volume2 className="w-3.5 h-3.5" />
-                      <span>+ Practice Activity</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleAddLesson(modIdx, 'quiz')}
-                      className="px-4 py-2 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 rounded-full text-xs font-bold flex items-center space-x-1.5 transition-colors cursor-pointer min-h-[40px]"
-                    >
-                      <HelpCircle className="w-3.5 h-3.5" />
-                      <span>+ Assessment / Quiz</span>
+                      <Plus className="w-4 h-4" />
+                      <span>+ Curriculum Item</span>
                     </button>
                   </div>
                 </div>
@@ -1144,6 +1128,18 @@ export const CurriculumOrganizer: React.FC<CurriculumOrganizerProps> = ({
           </div>
         </div>
       )}
+
+      {/* Curriculum Item Right Side Drawer */}
+      <CurriculumDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        moduleTitle={targetModIdx !== null && modules[targetModIdx] ? modules[targetModIdx].title : undefined}
+        onSelectItem={(type, title) => {
+          if (targetModIdx !== null) {
+            handleAddLesson(targetModIdx, type, title);
+          }
+        }}
+      />
     </div>
   );
 };

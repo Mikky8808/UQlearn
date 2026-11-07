@@ -110,6 +110,7 @@ import { currencyService } from '../../../services/currency-service';
 import { CurriculumOrganizer } from './CurriculumOrganizer';
 import { QuizBuilder, QuizData } from './QuizBuilder';
 import { CourseContentBuilder } from './CourseContentBuilder';
+import { CurriculumDrawer } from './CurriculumDrawer';
 import { RichTextWordEditor } from '../../common/RichTextWordEditor';
 import { ResumableVideoUploader } from '../../common/ResumableVideoUploader';
 import { 
@@ -176,7 +177,7 @@ export interface LessonInput {
   id: string;
   title: string;
   duration: string;
-  type: 'video' | 'article' | 'quiz' | 'audio' | 'scorm';
+  type: 'video' | 'article' | 'quiz' | 'audio' | 'scorm' | 'roleplay' | 'practice_lab' | 'graded_lab' | 'practice_test' | 'assignment';
   content?: string;
   videoUrl?: string;
   videoPath?: string;
@@ -541,6 +542,8 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
   } | null>(null);
   const testUploadXhrRef = useRef<XMLHttpRequest | null>(null);
   const [activeAddCurriculumModuleId, setActiveAddCurriculumModuleId] = useState<string | null>(null);
+  const [isCurriculumDrawerOpen, setIsCurriculumDrawerOpen] = useState(false);
+  const [curriculumDrawerModuleId, setCurriculumDrawerModuleId] = useState<string | null>(null);
   const [isBulkUploaderOpen, setIsBulkUploaderOpen] = useState(false);
   const [isBulkUploaderPageActive, setIsBulkUploaderPageActive] = useState(false);
   const [isCurriculumHelpPageActive, setIsCurriculumHelpPageActive] = useState(false);
@@ -2802,26 +2805,36 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
     setModules(prev => prev.map(m => m.id === modId ? { ...m, isExpanded: m.isExpanded === false ? true : false } : m));
   };
 
-  const handleAddLesson = (modId: string, type: 'video' | 'article' | 'quiz' | 'audio' | 'scorm' = 'video', customTitle?: string) => {
+  const handleAddLesson = (modId: string, type: string = 'video', customTitle?: string) => {
     const targetModule = modules.find(m => m.id === modId);
     const existingCount = targetModule?.lessons?.length || 0;
-    const typeLabel = type === 'quiz' ? 'Quiz' : type === 'article' ? 'Article / Notes' : type === 'audio' ? 'Audio Session' : 'Lecture';
+
+    let typeLabel = 'Lecture';
+    if (type === 'quiz') typeLabel = 'Quiz';
+    else if (type === 'roleplay') typeLabel = 'Practice Role Play';
+    else if (type === 'practice_lab') typeLabel = 'Practice lab';
+    else if (type === 'graded_lab') typeLabel = 'Graded lab';
+    else if (type === 'practice_test') typeLabel = 'Practice test';
+    else if (type === 'assignment') typeLabel = 'Assignment';
+    else if (type === 'article') typeLabel = 'Article / Notes';
+    else if (type === 'audio') typeLabel = 'Audio Session';
+
     const newLessonId = `les-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
     
     const newLesson: LessonInput = {
       id: newLessonId,
-      title: customTitle || (type === 'quiz' ? `Quiz ${existingCount + 1}: Check Your Knowledge` : `Lecture ${existingCount + 1}: Key Concepts`),
+      title: customTitle ? `${customTitle} ${existingCount + 1}` : (type === 'quiz' ? `Quiz ${existingCount + 1}: Check Your Knowledge` : `${typeLabel} ${existingCount + 1}`),
       duration: '',
-      type,
+      type: type as any,
       isPreview: false,
-      content: `# ${typeLabel}\n\nAdd rich lecture instructions, video resources, code blocks, and downloadable assets.`
+      content: `# ${typeLabel}\n\nAdd content, resources, or configuration for this curriculum item.`
     };
 
     setModules(prev => prev.map(mod => {
       if (mod.id === modId) {
         return {
           ...mod,
-          isExpanded: true, // Always expand so the new curriculum item is immediately visible
+          isExpanded: true,
           lessons: [...(mod.lessons || []), newLesson]
         };
       }
@@ -2829,7 +2842,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
     }));
 
     setSelectedLessonId(newLessonId);
-    showNotification(`Added new ${typeLabel} to section.`);
+    showNotification(`Added new ${typeLabel} to curriculum section.`);
   };
 
   const handleDeleteLesson = (modId: string, lessonId: string) => {
@@ -7222,109 +7235,36 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
                             </div>
                           )}
 
-                          {/* "+ Curriculum item" nested button with rich interactive type selector */}
-                          <div className="pt-2 relative">
+                          {/* "+ Curriculum item" button triggering the Right Side Curriculum Drawer */}
+                          <div className="pt-2">
                             <div className="flex items-center space-x-2">
                               {/* Direct action button */}
                               <button
                                 type="button"
-                                onClick={() => handleAddLesson(mod.id, 'video')}
+                                onClick={() => {
+                                  setCurriculumDrawerModuleId(mod.id);
+                                  setIsCurriculumDrawerOpen(true);
+                                }}
                                 className="px-4 py-2 border border-indigo-600 dark:border-indigo-500 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl text-xs font-black uppercase tracking-wider transition-colors cursor-pointer flex items-center space-x-1.5 shadow-xs active:scale-95"
-                                title="Add a new curriculum item (Lecture)"
+                                title="Open curriculum item drawer"
                               >
                                 <Plus className="w-4 h-4" />
                                 <span>Curriculum item</span>
                               </button>
 
-                              {/* Type dropdown toggle */}
+                              {/* Drawer toggle arrow */}
                               <button
                                 type="button"
-                                onClick={() => setActiveAddCurriculumModuleId(activeAddCurriculumModuleId === mod.id ? null : mod.id)}
+                                onClick={() => {
+                                  setCurriculumDrawerModuleId(mod.id);
+                                  setIsCurriculumDrawerOpen(true);
+                                }}
                                 className="p-2 border border-indigo-600/40 dark:border-indigo-500/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                                title="Choose curriculum item type"
+                                title="Select curriculum item type"
                               >
                                 <ChevronDown className="w-3.5 h-3.5" />
                               </button>
                             </div>
-
-                            {/* Popup menu for selecting specific curriculum item types */}
-                            {activeAddCurriculumModuleId === mod.id && (
-                              <>
-                                <div 
-                                  className="fixed inset-0 z-40" 
-                                  onClick={() => setActiveAddCurriculumModuleId(null)}
-                                />
-                                <div className="absolute left-0 mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden py-1.5 animate-in fade-in zoom-in-95 duration-150">
-                                  <div className="px-3.5 py-1.5 border-b border-slate-100 dark:border-slate-800">
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block">Add Curriculum Item</span>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      handleAddLesson(mod.id, 'video');
-                                      setActiveAddCurriculumModuleId(null);
-                                    }}
-                                    className="w-full px-3.5 py-2.5 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 text-xs text-slate-700 dark:text-slate-200 font-bold flex items-center space-x-2.5 cursor-pointer text-left transition-colors"
-                                  >
-                                    <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-950/80 text-indigo-600 flex items-center justify-center shrink-0">
-                                      <Video className="w-4 h-4" />
-                                    </div>
-                                    <div>
-                                      <div className="font-bold text-slate-900 dark:text-white">Lecture</div>
-                                      <div className="text-[10px] text-slate-400 font-normal">Video, notes, or slides</div>
-                                    </div>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      handleAddLesson(mod.id, 'quiz');
-                                      setActiveAddCurriculumModuleId(null);
-                                    }}
-                                    className="w-full px-3.5 py-2.5 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 text-xs text-slate-700 dark:text-slate-200 font-bold flex items-center space-x-2.5 cursor-pointer text-left transition-colors"
-                                  >
-                                    <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 flex items-center justify-center shrink-0">
-                                      <HelpCircle className="w-4 h-4" />
-                                    </div>
-                                    <div>
-                                      <div className="font-bold text-slate-900 dark:text-white">Quiz</div>
-                                      <div className="text-[10px] text-slate-400 font-normal">Multiple-choice knowledge check</div>
-                                    </div>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      handleAddLesson(mod.id, 'article');
-                                      setActiveAddCurriculumModuleId(null);
-                                    }}
-                                    className="w-full px-3.5 py-2.5 hover:bg-amber-50 dark:hover:bg-amber-950/30 text-xs text-slate-700 dark:text-slate-200 font-bold flex items-center space-x-2.5 cursor-pointer text-left transition-colors"
-                                  >
-                                    <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-950/80 text-amber-600 flex items-center justify-center shrink-0">
-                                      <FileText className="w-4 h-4" />
-                                    </div>
-                                    <div>
-                                      <div className="font-bold text-slate-900 dark:text-white">Article / Document</div>
-                                      <div className="text-[10px] text-slate-400 font-normal">Formatted text & readings</div>
-                                    </div>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      handleAddLesson(mod.id, 'audio');
-                                      setActiveAddCurriculumModuleId(null);
-                                    }}
-                                    className="w-full px-3.5 py-2.5 hover:bg-purple-50 dark:hover:bg-purple-950/30 text-xs text-slate-700 dark:text-slate-200 font-bold flex items-center space-x-2.5 cursor-pointer text-left transition-colors"
-                                  >
-                                    <div className="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-950/80 text-purple-600 flex items-center justify-center shrink-0">
-                                      <Mic className="w-4 h-4" />
-                                    </div>
-                                    <div>
-                                      <div className="font-bold text-slate-900 dark:text-white">Audio / Podcast</div>
-                                      <div className="text-[10px] text-slate-400 font-normal">Voice lectures & discussions</div>
-                                    </div>
-                                  </button>
-                                </div>
-                              </>
-                            )}
                           </div>
                         </div>
                       ))}
@@ -9354,7 +9294,18 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
         resource={previewResource} 
       />
 
-
+      {/* Curriculum Item Right Side Drawer */}
+      <CurriculumDrawer
+        isOpen={isCurriculumDrawerOpen}
+        onClose={() => setIsCurriculumDrawerOpen(false)}
+        moduleTitle={modules.find(m => m.id === curriculumDrawerModuleId)?.title}
+        onSelectItem={(type, title) => {
+          const targetId = curriculumDrawerModuleId || modules[0]?.id;
+          if (targetId) {
+            handleAddLesson(targetId, type, title);
+          }
+        }}
+      />
 
     </div>
   );

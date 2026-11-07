@@ -25,10 +25,15 @@ export const markCourseCompletedApi = async (
       method: 'POST',
       body: JSON.stringify({
         student_id: studentId,
+        studentId: studentId,
         course_id: courseId,
+        courseId: courseId,
         course_title: courseTitle,
-        instructor_name: instructorName,
-        student_name: studentName
+        courseTitle: courseTitle,
+        instructor_name: instructorName || 'mike kenyanya',
+        instructorName: instructorName || 'mike kenyanya',
+        student_name: studentName || 'mike kenyanya',
+        studentName: studentName || 'mike kenyanya'
       }),
       silent: true
     }, 0);

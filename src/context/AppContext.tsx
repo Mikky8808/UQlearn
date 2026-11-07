@@ -1179,6 +1179,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
       );
 
+      // Load persisted read IDs from localStorage
+      let readIds: string[] = [];
+      try {
+        const saved = localStorage.getItem('uqlearn_read_notif_ids');
+        if (saved) readIds = JSON.parse(saved);
+      } catch {}
+
+      // Apply read status from local storage
+      const applyReadStatus = (notifs: InstructorNotification[]) => 
+        notifs.map(n => readIds.includes(n.id) ? { ...n, read: true } : n);
+
       // Filter by current user if instructor
       if (currentUser?.role === 'instructor') {
         const email = (currentUser.email || '').toLowerCase();
@@ -1198,9 +1209,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           (n.instructorName || '').toLowerCase() === name ||
           instructorCourseIds.has(String(n.courseId))
         );
-        setInstructorNotifications(filtered);
+        setInstructorNotifications(applyReadStatus(filtered));
       } else {
-        setInstructorNotifications(allNotifs);
+        setInstructorNotifications(applyReadStatus(allNotifs));
       }
     } catch (e) {
       console.warn("Failed to fetch instructor notifications", e);
@@ -1234,6 +1245,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const markInstructorNotificationAsRead = async (id: string) => {
     setInstructorNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    try {
+      const saved = localStorage.getItem('uqlearn_read_notif_ids');
+      const readIds: string[] = saved ? JSON.parse(saved) : [];
+      if (!readIds.includes(id)) {
+        readIds.push(id);
+        localStorage.setItem('uqlearn_read_notif_ids', JSON.stringify(readIds));
+      }
+    } catch {}
+
     try {
       await api.priceAdjustments.update(id, { read: true });
     } catch (e) {

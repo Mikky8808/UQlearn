@@ -433,7 +433,26 @@ export const saveReviewerAssignmentsApi = async (courseId: string, reviewers: an
 
 export interface ApiFetchOptions extends RequestInit {
   silent?: boolean;
+  forceRefetch?: boolean;
+  ttlMs?: number;
 }
+
+// In-flight request deduplication map and response memory cache store
+const inFlightGetRequests = new Map<string, Promise<any>>();
+const apiResponseCache = new Map<string, { timestamp: number; data: any }>();
+const DEFAULT_GET_TTL_MS = 5000; // 5 seconds default memory TTL for GET requests
+
+export const clearApiFetchCache = (endpointPattern?: string) => {
+  if (!endpointPattern) {
+    apiResponseCache.clear();
+    return;
+  }
+  for (const key of apiResponseCache.keys()) {
+    if (key.includes(endpointPattern)) {
+      apiResponseCache.delete(key);
+    }
+  }
+};
 
 export const apiFetch = async (
   endpoint?: string,
@@ -458,46 +477,99 @@ export const apiFetch = async (
     url = `${baseUrl}/${cleanEndpoint}`;
   }
 
-  try {
-    const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
-    const reqHeaders: Record<string, string> = {
-      ...(!isFormData ? { 'Content-Type': 'application/json' } : {}),
-      ...(options.headers as Record<string, string> || {}),
-    };
-    if (isFormData && reqHeaders['Content-Type']) {
-      delete reqHeaders['Content-Type'];
+  const method = (options.method || 'GET').toUpperCase();
+  const isGet = method === 'GET';
+
+  // For non-GET operations (POST, PUT, DELETE, PATCH), invalidate related cache entries
+  if (!isGet) {
+    clearApiFetchCache(cleanEndpoint.split('?')[0]);
+  }
+
+  const cacheKey = `${method}:${url}`;
+  const ttl = options.ttlMs ?? DEFAULT_GET_TTL_MS;
+
+  // 1. Return from Memory Cache if valid and not forceRefetch
+  if (isGet && !options.forceRefetch && apiResponseCache.has(cacheKey)) {
+    const cached = apiResponseCache.get(cacheKey)!;
+    if (Date.now() - cached.timestamp < ttl) {
+      return cached.data;
+    } else {
+      apiResponseCache.delete(cacheKey);
     }
+  }
 
-    const response = await fetch(url, {
-      ...options,
-      headers: reqHeaders,
-    });
+  // 2. Return In-Flight Promise if same GET request is currently executing
+  if (isGet && !options.forceRefetch && inFlightGetRequests.has(cacheKey)) {
+    return inFlightGetRequests.get(cacheKey)!;
+  }
 
-    if (!response.ok) {
+  // Execute the actual network fetch
+  const executeFetch = async () => {
+    try {
+      const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+      const reqHeaders: Record<string, string> = {
+        ...(!isFormData ? { 'Content-Type': 'application/json' } : {}),
+        ...(options.headers as Record<string, string> || {}),
+      };
+      if (isFormData && reqHeaders['Content-Type']) {
+        delete reqHeaders['Content-Type'];
+      }
+
+      const response = await fetch(url, {
+        ...options,
+        headers: reqHeaders,
+      });
+
+      if (!response.ok) {
+        if (options?.silent) {
+          return null;
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const text = await response.text();
+      if (!text || !text.trim()) {
+        return null;
+      }
+
+      let parsedData: any;
+      try {
+        parsedData = JSON.parse(text);
+      } catch {
+        parsedData = text;
+      }
+
+      // Store in memory cache if GET
+      if (isGet && parsedData !== null && parsedData !== undefined) {
+        apiResponseCache.set(cacheKey, {
+          timestamp: Date.now(),
+          data: parsedData,
+        });
+      }
+
+      return parsedData;
+    } catch (error: any) {
+      if (retries > 0) {
+        return apiFetch(endpoint, options, retries - 1);
+      }
       if (options?.silent) {
         return null;
       }
-      throw new Error(`HTTP error! status: ${response.status}`);
+      throw error;
+    } finally {
+      if (isGet) {
+        inFlightGetRequests.delete(cacheKey);
+      }
     }
+  };
 
-    const text = await response.text();
-    if (!text || !text.trim()) {
-      return null;
-    }
-    try {
-      return JSON.parse(text);
-    } catch {
-      return text;
-    }
-  } catch (error: any) {
-    if (retries > 0) {
-      return apiFetch(endpoint, options, retries - 1);
-    }
-    if (options?.silent) {
-      return null;
-    }
-    throw error;
+  const fetchPromise = executeFetch();
+
+  if (isGet) {
+    inFlightGetRequests.set(cacheKey, fetchPromise);
   }
+
+  return fetchPromise;
 };
 
 export const getTopAdvertsApi = async (activeOnly?: boolean) => await apiFetch(activeOnly ? `${API_ENDPOINTS.TOP_ADVERTS}?active=1` : API_ENDPOINTS.TOP_ADVERTS);
