@@ -110,7 +110,9 @@ import { currencyService } from '../../../services/currency-service';
 import { CurriculumOrganizer } from './CurriculumOrganizer';
 import { QuizBuilder, QuizData } from './QuizBuilder';
 import { CourseContentBuilder } from './CourseContentBuilder';
-import { CurriculumDrawer } from './CurriculumDrawer';
+import { CurriculumDropdown } from './CurriculumDropdown';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
+import { CreateAssignment } from './CreateAssignment';
 import { RichTextWordEditor } from '../../common/RichTextWordEditor';
 import { ResumableVideoUploader } from '../../common/ResumableVideoUploader';
 import { 
@@ -119,6 +121,9 @@ import {
   upsertModuleApi, 
   updateSectionTitleApi, 
   deleteModuleOrLessonApi, 
+  fetchAssignmentsApi,
+  saveAssignmentApi,
+  deleteAssignmentApi,
   API_ENDPOINTS, 
   API_BASE_URL, 
   apiFetch, 
@@ -542,6 +547,15 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
   } | null>(null);
   const testUploadXhrRef = useRef<XMLHttpRequest | null>(null);
   const [activeAddCurriculumModuleId, setActiveAddCurriculumModuleId] = useState<string | null>(null);
+  const [addingAssignmentModuleId, setAddingAssignmentModuleId] = useState<string | null>(null);
+  const [assignmentTitleInput, setAssignmentTitleInput] = useState<string>('');
+  const [editingAssignmentData, setEditingAssignmentData] = useState<{ moduleId: string; lesson: LessonInput } | null>(null);
+  const [deleteConfirmState, setDeleteConfirmState] = useState<{
+    isOpen: boolean;
+    moduleId: string;
+    lessonId: string;
+    title?: string;
+  }>({ isOpen: false, moduleId: '', lessonId: '' });
   const [isCurriculumDrawerOpen, setIsCurriculumDrawerOpen] = useState(false);
   const [curriculumDrawerModuleId, setCurriculumDrawerModuleId] = useState<string | null>(null);
   const [isBulkUploaderOpen, setIsBulkUploaderOpen] = useState(false);
@@ -2823,7 +2837,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
     
     const newLesson: LessonInput = {
       id: newLessonId,
-      title: customTitle ? `${customTitle} ${existingCount + 1}` : (type === 'quiz' ? `Quiz ${existingCount + 1}: Check Your Knowledge` : `${typeLabel} ${existingCount + 1}`),
+      title: customTitle || (type === 'quiz' ? `Quiz ${existingCount + 1}: Check Your Knowledge` : `${typeLabel} ${existingCount + 1}`),
       duration: '',
       type: type as any,
       isPreview: false,
@@ -2845,7 +2859,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
     showNotification(`Added new ${typeLabel} to curriculum section.`);
   };
 
-  const handleDeleteLesson = (modId: string, lessonId: string) => {
+  const handleDeleteLesson = async (modId: string, lessonId: string) => {
     setModules(modules.map(mod => {
       if (mod.id === modId) {
         return {
@@ -2855,7 +2869,17 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
       }
       return mod;
     }));
-    showNotification('Lesson removed.');
+
+    try {
+      await deleteModuleOrLessonApi('lesson', lessonId);
+      if (lessonId.startsWith('assg-')) {
+        await deleteAssignmentApi(lessonId);
+      }
+    } catch (err) {
+      console.warn('Failed to delete curriculum item from backend:', err);
+    }
+
+    showNotification('Item removed.');
   };
 
   // Dynamic Lesson Property Updater
@@ -6161,8 +6185,58 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
             {/* TAB: CURRICULUM BUILDER */}
             {activeTab === 'curriculum' && (
               <div className="space-y-6 animate-fadeIn">
-                
-                {isBulkUploaderPageActive && (
+                {editingAssignmentData ? (
+                  <CreateAssignment
+                    courseId={courseId}
+                    moduleId={editingAssignmentData.moduleId}
+                    initialAssignment={{
+                      id: editingAssignmentData.lesson.id,
+                      courseId: courseId,
+                      moduleId: editingAssignmentData.moduleId,
+                      title: editingAssignmentData.lesson.title,
+                      description: editingAssignmentData.lesson.description,
+                      instructions: editingAssignmentData.lesson.content
+                    }}
+                    onBack={() => setEditingAssignmentData(null)}
+                    onSave={(updated) => {
+                      setModules(prev => prev.map(m => {
+                        if (m.id === editingAssignmentData.moduleId) {
+                          return {
+                            ...m,
+                            lessons: m.lessons.map(l => l.id === editingAssignmentData.lesson.id ? {
+                              ...l,
+                              title: updated.title,
+                              description: updated.description,
+                              content: updated.instructions || l.content
+                            } : l)
+                          };
+                        }
+                        return m;
+                      }));
+                      setEditingAssignmentData(null);
+                      showNotification('Assignment updated successfully!');
+                    }}
+                    onPublish={(updated) => {
+                      setModules(prev => prev.map(m => {
+                        if (m.id === editingAssignmentData.moduleId) {
+                          return {
+                            ...m,
+                            lessons: m.lessons.map(l => l.id === editingAssignmentData.lesson.id ? {
+                              ...l,
+                              title: updated.title,
+                              description: updated.description
+                            } : l)
+                          };
+                        }
+                        return m;
+                      }));
+                      setEditingAssignmentData(null);
+                      showNotification('Assignment published successfully!');
+                    }}
+                  />
+                ) : (
+                  <>
+                    {isBulkUploaderPageActive && (
                   /* FULL-PAGE HIGH-FIDELITY BULK UPLOADER WORKSPACE MATCHING THE MOCKUP */
                   <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8 space-y-8 shadow-xs animate-fadeIn relative">
                     
@@ -6456,6 +6530,58 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
                                 </div>
                               ) : (
                                 mod.lessons.map((lesson, lessonIdx) => {
+                                  if (lesson.type === 'assignment') {
+                                    return (
+                                      <div
+                                        key={lesson.id}
+                                        className="p-3.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-none sm:rounded-lg flex items-center justify-between shadow-2xs group transition-all my-1.5"
+                                      >
+                                        <div className="flex items-center space-x-2 min-w-0 flex-1">
+                                          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                                          <span className="text-xs font-medium text-slate-800 dark:text-slate-200 shrink-0">
+                                            Unpublished Assignment:
+                                          </span>
+                                          <FileText className="w-4 h-4 text-slate-700 dark:text-slate-300 shrink-0" />
+                                          <span className="text-xs font-medium text-slate-900 dark:text-slate-100 truncate">
+                                            {lesson.title}
+                                          </span>
+                                        </div>
+
+                                        <div className="flex items-center space-x-3 shrink-0 pl-3">
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setEditingAssignmentData({
+                                                moduleId: mod.id,
+                                                lesson
+                                              });
+                                            }}
+                                            className="p-1 text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer transition-colors"
+                                            title="Edit Assignment"
+                                          >
+                                            <Pencil className="w-4 h-4" />
+                                          </button>
+
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setDeleteConfirmState({
+                                                isOpen: true,
+                                                moduleId: mod.id,
+                                                lessonId: lesson.id,
+                                                title: lesson.title
+                                              });
+                                            }}
+                                            className="p-1 text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 cursor-pointer transition-colors"
+                                            title="Delete Assignment"
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+
                                   const isLessonExpanded = !!expandedLessons[lesson.id];
                                   const currentSubTab = activeLessonSubTab[lesson.id] || null;
                                   
@@ -7235,36 +7361,102 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
                             </div>
                           )}
 
-                          {/* "+ Curriculum item" button triggering the Right Side Curriculum Drawer */}
-                          <div className="pt-2">
+                          {/* Inline Assignment Title Entry Card matching Screenshot 1 */}
+                          {addingAssignmentModuleId === mod.id && (
+                            <div className="p-4 border border-purple-300 dark:border-purple-800/80 rounded-xl bg-white dark:bg-slate-900 shadow-2xs space-y-3 animate-in fade-in duration-150 my-3">
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  placeholder="Enter a Title"
+                                  maxLength={100}
+                                  value={assignmentTitleInput}
+                                  onChange={(e) => setAssignmentTitleInput(e.target.value)}
+                                  className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 border border-purple-500 dark:border-purple-600 rounded-lg text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-600/40 pr-12 shadow-2xs"
+                                  autoFocus
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && assignmentTitleInput.trim()) {
+                                      handleAddLesson(mod.id, 'assignment', assignmentTitleInput.trim());
+                                      setAddingAssignmentModuleId(null);
+                                      setAssignmentTitleInput('');
+                                    } else if (e.key === 'Escape') {
+                                      setAddingAssignmentModuleId(null);
+                                      setAssignmentTitleInput('');
+                                    }
+                                  }}
+                                />
+                                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400 dark:text-slate-500">
+                                  {100 - assignmentTitleInput.length}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-end space-x-3 pt-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setAddingAssignmentModuleId(null);
+                                    setAssignmentTitleInput('');
+                                  }}
+                                  className="px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={!assignmentTitleInput.trim()}
+                                  onClick={() => {
+                                    if (assignmentTitleInput.trim()) {
+                                      handleAddLesson(mod.id, 'assignment', assignmentTitleInput.trim());
+                                      setAddingAssignmentModuleId(null);
+                                      setAssignmentTitleInput('');
+                                    }
+                                  }}
+                                  className="px-4 py-2 bg-[#6D28D9] hover:bg-[#5B21B6] disabled:opacity-50 text-white text-xs font-bold rounded-lg shadow-2xs transition-all cursor-pointer active:scale-95"
+                                >
+                                  Add Assignment
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* "+ Curriculum item" button triggering the rich Dropdown/Drop-up menu */}
+                          <div className="pt-2 relative">
                             <div className="flex items-center space-x-2">
                               {/* Direct action button */}
                               <button
                                 type="button"
-                                onClick={() => {
-                                  setCurriculumDrawerModuleId(mod.id);
-                                  setIsCurriculumDrawerOpen(true);
-                                }}
+                                onClick={() => setActiveAddCurriculumModuleId(activeAddCurriculumModuleId === mod.id ? null : mod.id)}
                                 className="px-4 py-2 border border-indigo-600 dark:border-indigo-500 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl text-xs font-black uppercase tracking-wider transition-colors cursor-pointer flex items-center space-x-1.5 shadow-xs active:scale-95"
-                                title="Open curriculum item drawer"
+                                title="Add curriculum item"
                               >
                                 <Plus className="w-4 h-4" />
                                 <span>Curriculum item</span>
                               </button>
 
-                              {/* Drawer toggle arrow */}
+                              {/* Dropdown toggle arrow */}
                               <button
                                 type="button"
-                                onClick={() => {
-                                  setCurriculumDrawerModuleId(mod.id);
-                                  setIsCurriculumDrawerOpen(true);
-                                }}
+                                onClick={() => setActiveAddCurriculumModuleId(activeAddCurriculumModuleId === mod.id ? null : mod.id)}
                                 className="p-2 border border-indigo-600/40 dark:border-indigo-500/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl text-xs font-bold transition-colors cursor-pointer"
                                 title="Select curriculum item type"
                               >
-                                <ChevronDown className="w-3.5 h-3.5" />
+                                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${activeAddCurriculumModuleId === mod.id ? 'rotate-180' : ''}`} />
                               </button>
                             </div>
+
+                            {/* Dropdown / Drop-up menu panel */}
+                            <CurriculumDropdown
+                              isOpen={activeAddCurriculumModuleId === mod.id}
+                              onClose={() => setActiveAddCurriculumModuleId(null)}
+                              moduleTitle={mod.title}
+                              onSelectItem={(type, title) => {
+                                if (type === 'assignment') {
+                                  setAddingAssignmentModuleId(mod.id);
+                                  setAssignmentTitleInput('');
+                                  setActiveAddCurriculumModuleId(null);
+                                } else {
+                                  handleAddLesson(mod.id, type, title);
+                                }
+                              }}
+                            />
                           </div>
                         </div>
                       ))}
@@ -7316,6 +7508,8 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
                     </div>
                   </>
                 )}
+              </>
+            )}
 
               </div>
             )}
@@ -9294,15 +9488,13 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
         resource={previewResource} 
       />
 
-      {/* Curriculum Item Right Side Drawer */}
-      <CurriculumDrawer
-        isOpen={isCurriculumDrawerOpen}
-        onClose={() => setIsCurriculumDrawerOpen(false)}
-        moduleTitle={modules.find(m => m.id === curriculumDrawerModuleId)?.title}
-        onSelectItem={(type, title) => {
-          const targetId = curriculumDrawerModuleId || modules[0]?.id;
-          if (targetId) {
-            handleAddLesson(targetId, type, title);
+      {/* Confirmation Modal matching Screenshot 3 */}
+      <ConfirmDeleteModal
+        isOpen={deleteConfirmState.isOpen}
+        onClose={() => setDeleteConfirmState({ isOpen: false, moduleId: '', lessonId: '' })}
+        onConfirm={() => {
+          if (deleteConfirmState.moduleId && deleteConfirmState.lessonId) {
+            handleDeleteLesson(deleteConfirmState.moduleId, deleteConfirmState.lessonId);
           }
         }}
       />

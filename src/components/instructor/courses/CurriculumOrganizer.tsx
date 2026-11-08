@@ -81,7 +81,7 @@ export interface OrganizerModule {
   lessons: OrganizerLesson[];
 }
 
-import { CurriculumDrawer } from './CurriculumDrawer';
+import { CurriculumDropdown } from './CurriculumDropdown';
 
 interface CurriculumOrganizerProps {
   courseId?: string;
@@ -854,20 +854,39 @@ export const CurriculumOrganizer: React.FC<CurriculumOrganizerProps> = ({
                     })
                   )}
 
-                  {/* Dynamic Add Curriculum Item Button */}
-                  <div className="pt-3 flex items-center justify-between border-t border-slate-200/60 dark:border-slate-800/80 mt-3">
+                  {/* Dynamic Add Curriculum Item Button with Dropdown/Drop-up popover */}
+                  <div className="pt-3 flex items-center justify-between border-t border-slate-200/60 dark:border-slate-800/80 mt-3 relative">
                     <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Curriculum Actions:</span>
                     <button
                       type="button"
                       onClick={() => {
-                        setTargetModIdx(modIdx);
-                        setIsDrawerOpen(true);
+                        if (targetModIdx === modIdx && isDrawerOpen) {
+                          setIsDrawerOpen(false);
+                          setTargetModIdx(null);
+                        } else {
+                          setTargetModIdx(modIdx);
+                          setIsDrawerOpen(true);
+                        }
                       }}
                       className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
                     >
                       <Plus className="w-4 h-4" />
                       <span>+ Curriculum Item</span>
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${targetModIdx === modIdx && isDrawerOpen ? 'rotate-180' : ''}`} />
                     </button>
+
+                    <CurriculumDropdown
+                      isOpen={targetModIdx === modIdx && isDrawerOpen}
+                      onClose={() => {
+                        setIsDrawerOpen(false);
+                        setTargetModIdx(null);
+                      }}
+                      align="right"
+                      moduleTitle={modules[modIdx]?.title}
+                      onSelectItem={(type, title) => {
+                        handleAddLesson(modIdx, type, title);
+                      }}
+                    />
                   </div>
                 </div>
               )}
@@ -1128,18 +1147,6 @@ export const CurriculumOrganizer: React.FC<CurriculumOrganizerProps> = ({
           </div>
         </div>
       )}
-
-      {/* Curriculum Item Right Side Drawer */}
-      <CurriculumDrawer
-        isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
-        moduleTitle={targetModIdx !== null && modules[targetModIdx] ? modules[targetModIdx].title : undefined}
-        onSelectItem={(type, title) => {
-          if (targetModIdx !== null) {
-            handleAddLesson(targetModIdx, type, title);
-          }
-        }}
-      />
     </div>
   );
 };

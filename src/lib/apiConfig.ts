@@ -76,7 +76,20 @@ export const API_ENDPOINTS = {
   NOTES: 'notes.php',
   ASSIGN_COURSE_REVIEWERS: 'assign-course-reviewers.php',
   CARTS: 'carts.php',
+  ASSIGNMENTS: 'assignments.php',
 };
+
+export const fetchAssignmentsApi = async (courseId?: string, moduleId?: string) => {
+  const params = [];
+  if (courseId) params.push(`course_id=${encodeURIComponent(courseId)}`);
+  if (moduleId) params.push(`module_id=${encodeURIComponent(moduleId)}`);
+  const query = params.length > 0 ? `?${params.join('&')}` : '';
+  return await apiFetch(`${API_ENDPOINTS.ASSIGNMENTS}${query}`);
+};
+
+export const saveAssignmentApi = async (data: any) => await apiFetch(API_ENDPOINTS.ASSIGNMENTS, { method: 'POST', body: JSON.stringify(data) });
+
+export const deleteAssignmentApi = async (id: string) => await apiFetch(`${API_ENDPOINTS.ASSIGNMENTS}?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
 
 export interface PromotionTierConfig {
   id?: string;
