@@ -593,7 +593,50 @@ export const getAdvertsApi = async (slot?: string, activeOnly?: boolean) => {
   const qs = q.length ? `?${q.join('&')}` : '';
   return await apiFetch(`${API_ENDPOINTS.ADVERTS}${qs}`);
 };
-export const fetchCourseModulesApi = async (courseId: string) => await apiFetch(`${API_ENDPOINTS.COURSE_MODULES}?course_id=${encodeURIComponent(courseId)}`);
+export const fetchCourseModulesApi = async (courseId: string) => {
+  const result = await apiFetch(`${API_ENDPOINTS.COURSE_MODULES}?course_id=${encodeURIComponent(courseId)}`);
+  try {
+    const assgResult = await fetchAssignmentsApi(courseId);
+    if (assgResult && assgResult.data && Array.isArray(assgResult.data) && result && result.data && Array.isArray(result.data)) {
+      const assignments = assgResult.data;
+      result.data.forEach((mod: any) => {
+        if (!mod.lessons) mod.lessons = [];
+        const modAssignments = assignments.filter((a: any) => (a.module_id || a.moduleId) === mod.id);
+        modAssignments.forEach((assg: any) => {
+          const existingIdx = mod.lessons.findIndex((l: any) => l.id === assg.id);
+          const assignmentLessonObj = {
+            id: assg.id,
+            title: assg.title || 'Assignment',
+            duration: assg.duration ? `${assg.duration} min` : '15 min',
+            type: 'assignment' as const,
+            description: assg.description || '',
+            content: assg.instructions || '',
+            videoFileName: assg.video_file_name || assg.videoFileName,
+            downloadableResourceFileName: assg.downloadable_resource_file_name || assg.downloadableResourceFileName,
+            questions: assg.questions || [],
+            solutionVideoUrl: assg.solution_video_url || assg.solutionVideoUrl,
+            solutionResourceUrl: assg.solution_resource_url || assg.solutionResourceUrl,
+            status: assg.status || 'draft',
+            assignmentData: assg
+          };
+
+          if (existingIdx >= 0) {
+            mod.lessons[existingIdx] = {
+              ...mod.lessons[existingIdx],
+              ...assignmentLessonObj,
+              title: assg.title || mod.lessons[existingIdx].title
+            };
+          } else {
+            mod.lessons.push(assignmentLessonObj);
+          }
+        });
+      });
+    }
+  } catch (err) {
+    console.warn('Assignment fetch merge warning in fetchCourseModulesApi:', err);
+  }
+  return result;
+};
 export const getIntendedLearnersApi = async (courseId: string) => await apiFetch(`${API_ENDPOINTS.INTENDED_LEARNERS}?courseId=${encodeURIComponent(courseId)}&course_id=${encodeURIComponent(courseId)}`);
 export const getWishlistApi = async (userId: string) => await apiFetch(`${API_ENDPOINTS.WISHLIST}?userId=${userId}`);
 export const addToWishlistApi = async (userId: string, courseId: string) => await apiFetch(API_ENDPOINTS.WISHLIST, { method: 'POST', body: JSON.stringify({ userId, courseId }) });

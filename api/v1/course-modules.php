@@ -194,6 +194,49 @@ if ($method === 'GET') {
                     $mod['lessons'][] = $les;
                 }
             }
+
+            // Fetch Assignments for this module from assignments table to include in section content
+            $assgRes = $conn->query("SELECT * FROM assignments WHERE module_id = '$modId' OR course_id = '$courseId'");
+            if ($assgRes && $assgRes->num_rows > 0) {
+                while ($assg = $assgRes->fetch_assoc()) {
+                    if (!empty($assg['module_id']) && $assg['module_id'] !== $modId) {
+                        continue;
+                    }
+                    $assgId = $assg['id'];
+                    $questions = !empty($assg['questions']) ? json_decode($assg['questions'], true) : [];
+                    
+                    $foundIndex = -1;
+                    foreach ($mod['lessons'] as $idx => $item) {
+                        if ($item['id'] === $assgId) {
+                            $foundIndex = $idx;
+                            break;
+                        }
+                    }
+
+                    $assignmentLesson = [
+                        'id' => $assgId,
+                        'title' => !empty($assg['title']) ? $assg['title'] : 'Assignment',
+                        'duration' => !empty($assg['duration']) ? ($assg['duration'] . ' min') : '15 min',
+                        'type' => 'assignment',
+                        'description' => $assg['description'] ?? '',
+                        'content' => $assg['instructions'] ?? '',
+                        'videoFileName' => $assg['video_file_name'] ?? '',
+                        'downloadableResourceFileName' => $assg['downloadable_resource_file_name'] ?? '',
+                        'questions' => $questions,
+                        'solutionVideoUrl' => $assg['solution_video_url'] ?? '',
+                        'solutionResourceUrl' => $assg['solution_resource_url'] ?? '',
+                        'status' => $assg['status'] ?? 'draft',
+                        'assignmentData' => $assg
+                    ];
+
+                    if ($foundIndex >= 0) {
+                        $mod['lessons'][$foundIndex] = array_merge($mod['lessons'][$foundIndex], $assignmentLesson);
+                    } else {
+                        $mod['lessons'][] = $assignmentLesson;
+                    }
+                }
+            }
+
             $modules[] = $mod;
         }
     }

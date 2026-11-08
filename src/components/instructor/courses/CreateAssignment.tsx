@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ChevronLeft, 
   Info, 
@@ -12,9 +12,10 @@ import {
   AlertCircle,
   X,
   Upload,
-  FileText
+  FileText,
+  Loader2
 } from 'lucide-react';
-import { saveAssignmentApi } from '../../../lib/apiConfig';
+import { saveAssignmentApi, fetchAssignmentsApi } from '../../../lib/apiConfig';
 
 export interface AssignmentData {
   id?: string;
@@ -55,9 +56,18 @@ export const CreateAssignment: React.FC<CreateAssignmentProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   
   // Form State
-  const [title, setTitle] = useState(initialAssignment?.title || 'test');
+  const [title, setTitle] = useState(initialAssignment?.title || '');
   const [description, setDescription] = useState(initialAssignment?.description || '');
   const [duration, setDuration] = useState<number | ''>(initialAssignment?.duration || '');
+
+  // Validation State for blur/touch dynamic error styling
+  const [isTitleTouched, setIsTitleTouched] = useState(false);
+  const [isDescriptionTouched, setIsDescriptionTouched] = useState(false);
+  const [isDurationTouched, setIsDurationTouched] = useState(false);
+
+  const hasTitleError = isTitleTouched && !title.trim();
+  const hasDescriptionError = isDescriptionTouched && !description.trim();
+  const hasDurationError = isDurationTouched && (!duration || Number(duration) < 1);
   
   // Instructions State
   const [videoSourceTab, setVideoSourceTab] = useState<'upload' | 'library'>('upload');
@@ -76,8 +86,57 @@ export const CreateAssignment: React.FC<CreateAssignmentProps> = ({
   const [solutionVideoTab, setSolutionVideoTab] = useState<'upload' | 'library'>('upload');
   const [solutionVideoFileName, setSolutionVideoFileName] = useState('No file selected');
   const [solutionResourceFileName, setSolutionResourceFileName] = useState('No file selected');
+  const [isLoadingApi, setIsLoadingApi] = useState(false);
+
+  useEffect(() => {
+    const loadAssignmentData = async () => {
+      const assgId = initialAssignment?.id;
+      if (!assgId) return;
+
+      setIsLoadingApi(true);
+      try {
+        const res = await fetchAssignmentsApi(courseId, moduleId);
+        let match: any = null;
+
+        if (res && res.data) {
+          if (Array.isArray(res.data)) {
+            match = res.data.find((item: any) => item.id === assgId);
+          } else if (res.data.id === assgId) {
+            match = res.data;
+          }
+        }
+
+        if (match) {
+          if (match.title) setTitle(match.title);
+          if (match.description) setDescription(match.description);
+          if (match.duration) setDuration(Number(match.duration));
+          if (match.instructions) setInstructionsText(match.instructions);
+          if (match.video_file_name) setVideoFileName(match.video_file_name);
+          if (match.downloadable_resource_file_name) setResourceFileName(match.downloadable_resource_file_name);
+          if (Array.isArray(match.questions)) setQuestions(match.questions);
+          if (match.solution_video_url) setSolutionVideoFileName(match.solution_video_url);
+          if (match.solution_resource_url) setSolutionResourceFileName(match.solution_resource_url);
+        }
+      } catch (err) {
+        console.warn('Assignment API load notice:', err);
+      } finally {
+        setIsLoadingApi(false);
+      }
+    };
+
+    loadAssignmentData();
+  }, [initialAssignment?.id, courseId, moduleId]);
 
   const handleSaveCurrent = async (statusOverride?: string) => {
+    setIsTitleTouched(true);
+    setIsDescriptionTouched(true);
+    setIsDurationTouched(true);
+
+    if (!title.trim()) {
+      setActiveTab('basic');
+      return;
+    }
+
     setIsSaving(true);
     const updated: AssignmentData = {
       id: initialAssignment?.id || `assg-${Date.now()}`,
@@ -195,36 +254,66 @@ export const CreateAssignment: React.FC<CreateAssignmentProps> = ({
               <div className="space-y-6 animate-in fade-in duration-150">
                 {/* Title */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
-                    Title
-                  </label>
+                  <div className={`flex items-center space-x-1 text-xs font-bold ${
+                    hasTitleError 
+                      ? 'text-red-500 dark:text-red-400' 
+                      : 'text-slate-700 dark:text-slate-300'
+                  }`}>
+                    <span>Title</span>
+                    {hasTitleError && <Info className="w-3.5 h-3.5 text-red-500" />}
+                  </div>
                   <div className="relative">
                     <input
                       type="text"
                       maxLength={100}
                       value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-600/40 pr-12"
+                      onBlur={() => setIsTitleTouched(true)}
+                      onChange={(e) => {
+                        setTitle(e.target.value);
+                        if (e.target.value.trim()) setIsTitleTouched(false);
+                      }}
+                      className={`w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 border rounded-lg text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 pr-12 transition-colors ${
+                        hasTitleError 
+                          ? 'border-red-500 focus:ring-red-500/40' 
+                          : 'border-slate-300 dark:border-slate-700 focus:ring-purple-600/40'
+                      }`}
                       placeholder="Enter a Title"
                     />
                     <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
                       {100 - title.length}
                     </span>
                   </div>
+                  {hasTitleError && (
+                    <p className="text-[11px] font-bold text-red-500 dark:text-red-400">
+                      Title is required
+                    </p>
+                  )}
                 </div>
 
                 {/* Description */}
                 <div className="space-y-1.5">
-                  <div className="flex items-center space-x-1 text-xs font-bold text-rose-600 dark:text-rose-400">
+                  <div className={`flex items-center space-x-1 text-xs font-bold ${
+                    hasDescriptionError 
+                      ? 'text-rose-600 dark:text-rose-400' 
+                      : 'text-slate-700 dark:text-slate-300'
+                  }`}>
                     <span>Description</span>
-                    <Info className="w-3.5 h-3.5 text-rose-500" />
+                    {hasDescriptionError && <Info className="w-3.5 h-3.5 text-rose-500" />}
                   </div>
                   <div className="relative">
                     <textarea
                       rows={4}
                       value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      className="w-full p-3.5 bg-white dark:bg-slate-950 border border-rose-500 dark:border-rose-600 rounded-lg text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500/40 pr-12"
+                      onBlur={() => setIsDescriptionTouched(true)}
+                      onChange={(e) => {
+                        setDescription(e.target.value);
+                        if (e.target.value.trim()) setIsDescriptionTouched(false);
+                      }}
+                      className={`w-full p-3.5 bg-white dark:bg-slate-950 border rounded-lg text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 pr-12 transition-colors ${
+                        hasDescriptionError 
+                          ? 'border-rose-500 dark:border-rose-600 focus:ring-rose-500/40' 
+                          : 'border-slate-300 dark:border-slate-700 focus:ring-purple-600/40'
+                      }`}
                       placeholder="Add a detailed description..."
                     />
                     <span className="absolute right-3.5 bottom-3 text-xs font-medium text-slate-400">
@@ -235,20 +324,36 @@ export const CreateAssignment: React.FC<CreateAssignmentProps> = ({
 
                 {/* Estimated Duration */}
                 <div className="space-y-1.5 max-w-xs">
-                  <div className="flex items-center space-x-1 text-xs font-bold text-rose-600 dark:text-rose-400">
+                  <div className={`flex items-center space-x-1 text-xs font-bold ${
+                    hasDurationError 
+                      ? 'text-rose-600 dark:text-rose-400' 
+                      : 'text-slate-700 dark:text-slate-300'
+                  }`}>
                     <span>Estimated Duration</span>
-                    <Info className="w-3.5 h-3.5 text-rose-500" />
+                    {hasDurationError && <Info className="w-3.5 h-3.5 text-rose-500" />}
                   </div>
                   <input
                     type="number"
                     min={1}
                     value={duration}
-                    onChange={(e) => setDuration(e.target.value ? Number(e.target.value) : '')}
-                    className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 border border-rose-500 dark:border-rose-600 rounded-lg text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500/40"
+                    onBlur={() => setIsDurationTouched(true)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setDuration(val ? Number(val) : '');
+                      if (val && Number(val) >= 1) setIsDurationTouched(false);
+                    }}
+                    className={`w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 border rounded-lg text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 transition-colors ${
+                      hasDurationError 
+                        ? 'border-rose-500 dark:border-rose-600 focus:ring-rose-500/40' 
+                        : 'border-slate-300 dark:border-slate-700 focus:ring-purple-600/40'
+                    }`}
+                    placeholder="Duration in minutes (e.g. 15)"
                   />
-                  <p className="text-[11px] font-bold text-rose-600 dark:text-rose-400">
-                    A minimum duration of 1 minute is required
-                  </p>
+                  {hasDurationError && (
+                    <p className="text-[11px] font-bold text-rose-600 dark:text-rose-400">
+                      A minimum duration of 1 minute is required
+                    </p>
+                  )}
                 </div>
 
                 {/* Save Action */}

@@ -549,6 +549,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
   const [activeAddCurriculumModuleId, setActiveAddCurriculumModuleId] = useState<string | null>(null);
   const [addingAssignmentModuleId, setAddingAssignmentModuleId] = useState<string | null>(null);
   const [assignmentTitleInput, setAssignmentTitleInput] = useState<string>('');
+  const [isInlineAssignmentTitleTouched, setIsInlineAssignmentTitleTouched] = useState<boolean>(false);
   const [editingAssignmentData, setEditingAssignmentData] = useState<{ moduleId: string; lesson: LessonInput } | null>(null);
   const [deleteConfirmState, setDeleteConfirmState] = useState<{
     isOpen: boolean;
@@ -2833,7 +2834,10 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
     else if (type === 'article') typeLabel = 'Article / Notes';
     else if (type === 'audio') typeLabel = 'Audio Session';
 
-    const newLessonId = `les-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+    const isAssignment = type === 'assignment';
+    const newLessonId = isAssignment 
+      ? `assg-${Date.now()}-${Math.random().toString(36).substr(2, 4)}` 
+      : `les-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
     
     const newLesson: LessonInput = {
       id: newLessonId,
@@ -2854,6 +2858,19 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
       }
       return mod;
     }));
+
+    if (isAssignment) {
+      saveAssignmentApi({
+        id: newLessonId,
+        course_id: courseId,
+        module_id: modId,
+        title: newLesson.title,
+        description: '',
+        duration: 0,
+        instructions: newLesson.content,
+        status: 'draft'
+      }).catch(err => console.warn('Assignment API save notice:', err));
+    }
 
     setSelectedLessonId(newLessonId);
     showNotification(`Added new ${typeLabel} to curriculum section.`);
@@ -7362,60 +7379,84 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
                           )}
 
                           {/* Inline Assignment Title Entry Card matching Screenshot 1 */}
-                          {addingAssignmentModuleId === mod.id && (
-                            <div className="p-4 border border-purple-300 dark:border-purple-800/80 rounded-xl bg-white dark:bg-slate-900 shadow-2xs space-y-3 animate-in fade-in duration-150 my-3">
-                              <div className="relative">
-                                <input
-                                  type="text"
-                                  placeholder="Enter a Title"
-                                  maxLength={100}
-                                  value={assignmentTitleInput}
-                                  onChange={(e) => setAssignmentTitleInput(e.target.value)}
-                                  className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 border border-purple-500 dark:border-purple-600 rounded-lg text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-600/40 pr-12 shadow-2xs"
-                                  autoFocus
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && assignmentTitleInput.trim()) {
-                                      handleAddLesson(mod.id, 'assignment', assignmentTitleInput.trim());
+                          {addingAssignmentModuleId === mod.id && (() => {
+                            const hasTitleErr = isInlineAssignmentTitleTouched && !assignmentTitleInput.trim();
+                            return (
+                              <div className="p-4 border border-purple-300 dark:border-purple-800/80 rounded-xl bg-white dark:bg-slate-900 shadow-2xs space-y-3 animate-in fade-in duration-150 my-3">
+                                <div className="relative">
+                                  <input
+                                    type="text"
+                                    placeholder="Enter a Title"
+                                    maxLength={100}
+                                    value={assignmentTitleInput}
+                                    onBlur={() => setIsInlineAssignmentTitleTouched(true)}
+                                    onChange={(e) => {
+                                      setAssignmentTitleInput(e.target.value);
+                                      if (e.target.value.trim()) setIsInlineAssignmentTitleTouched(false);
+                                    }}
+                                    className={`w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 border rounded-lg text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 pr-12 shadow-2xs transition-colors ${
+                                      hasTitleErr
+                                        ? 'border-red-500 focus:ring-red-500/40'
+                                        : 'border-purple-500 dark:border-purple-600 focus:ring-purple-600/40'
+                                    }`}
+                                    autoFocus
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        if (assignmentTitleInput.trim()) {
+                                          handleAddLesson(mod.id, 'assignment', assignmentTitleInput.trim());
+                                          setAddingAssignmentModuleId(null);
+                                          setAssignmentTitleInput('');
+                                          setIsInlineAssignmentTitleTouched(false);
+                                        } else {
+                                          setIsInlineAssignmentTitleTouched(true);
+                                        }
+                                      } else if (e.key === 'Escape') {
+                                        setAddingAssignmentModuleId(null);
+                                        setAssignmentTitleInput('');
+                                        setIsInlineAssignmentTitleTouched(false);
+                                      }
+                                    }}
+                                  />
+                                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400 dark:text-slate-500">
+                                    {100 - assignmentTitleInput.length}
+                                  </span>
+                                </div>
+                                {hasTitleErr && (
+                                  <p className="text-[11px] font-bold text-red-500 dark:text-red-400">
+                                    Title is required
+                                  </p>
+                                )}
+                                <div className="flex items-center justify-end space-x-3 pt-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
                                       setAddingAssignmentModuleId(null);
                                       setAssignmentTitleInput('');
-                                    } else if (e.key === 'Escape') {
-                                      setAddingAssignmentModuleId(null);
-                                      setAssignmentTitleInput('');
-                                    }
-                                  }}
-                                />
-                                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400 dark:text-slate-500">
-                                  {100 - assignmentTitleInput.length}
-                                </span>
+                                      setIsInlineAssignmentTitleTouched(false);
+                                    }}
+                                    className="px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setIsInlineAssignmentTitleTouched(true);
+                                      if (assignmentTitleInput.trim()) {
+                                        handleAddLesson(mod.id, 'assignment', assignmentTitleInput.trim());
+                                        setAddingAssignmentModuleId(null);
+                                        setAssignmentTitleInput('');
+                                        setIsInlineAssignmentTitleTouched(false);
+                                      }
+                                    }}
+                                    className="px-4 py-2 bg-[#6D28D9] hover:bg-[#5B21B6] text-white text-xs font-bold rounded-lg shadow-2xs transition-all cursor-pointer active:scale-95"
+                                  >
+                                    Add Assignment
+                                  </button>
+                                </div>
                               </div>
-                              <div className="flex items-center justify-end space-x-3 pt-1">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setAddingAssignmentModuleId(null);
-                                    setAssignmentTitleInput('');
-                                  }}
-                                  className="px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
-                                >
-                                  Cancel
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={!assignmentTitleInput.trim()}
-                                  onClick={() => {
-                                    if (assignmentTitleInput.trim()) {
-                                      handleAddLesson(mod.id, 'assignment', assignmentTitleInput.trim());
-                                      setAddingAssignmentModuleId(null);
-                                      setAssignmentTitleInput('');
-                                    }
-                                  }}
-                                  className="px-4 py-2 bg-[#6D28D9] hover:bg-[#5B21B6] disabled:opacity-50 text-white text-xs font-bold rounded-lg shadow-2xs transition-all cursor-pointer active:scale-95"
-                                >
-                                  Add Assignment
-                                </button>
-                              </div>
-                            </div>
-                          )}
+                            );
+                          })()}
 
                           {/* "+ Curriculum item" button triggering the rich Dropdown/Drop-up menu */}
                           <div className="pt-2 relative">
