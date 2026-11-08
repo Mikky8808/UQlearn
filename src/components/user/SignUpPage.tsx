@@ -21,6 +21,7 @@ import { useApp } from '../../context/AppContext';
 import { UserRole } from '../../types';
 import { API_ENDPOINTS, apiFetch, GOOGLE_CLIENT_ID, ROOT_URL } from '../../lib/apiConfig';
 import { decodeGoogleJwt, signInWithGoogleUniversal } from '../../lib/googleAuth';
+import { SetInitialPasswordModal } from '../common/SetInitialPasswordModal';
 
 export const SignUpPage: React.FC = () => {
   const navigate = useNavigate();
@@ -28,6 +29,8 @@ export const SignUpPage: React.FC = () => {
 
   // Stage 1: Form Fill, Stage 2: 6-Digit Email/SMS Verification
   const [stage, setStage] = useState<'form' | 'verify'>('form');
+  const [showSetPasswordModal, setShowSetPasswordModal] = useState(false);
+  const [pendingUser, setPendingUser] = useState<{ id: string; email: string; role?: string } | null>(null);
 
   // Core Required Information
   const [firstName, setFirstName] = useState('');
@@ -260,7 +263,7 @@ export const SignUpPage: React.FC = () => {
         ? backendName 
         : fullName;
 
-      loginUser({
+      const userToLogin = {
         id: data?.user?.id || `usr-${Date.now()}`,
         name: effectiveName,
         email: email.trim(),
@@ -270,20 +273,27 @@ export const SignUpPage: React.FC = () => {
         city: city.trim() || undefined,
         marketingOptIn: marketingOptIn,
         isVerified: true
-      });
+      };
 
-      setSuccessMsg(data?.message || 'Account verified and activated successfully! Redirecting to your dashboard...');
-      setTimeout(() => {
-        if (role === 'instructor') {
-          if (typeof window !== 'undefined' && window.location.hostname.includes(ROOT_URL.replace('https://', ''))) {
-            window.location.href = `https://instructor.${ROOT_URL.replace('https://', '')}/`;
+      loginUser(userToLogin);
+
+      setSuccessMsg(data?.message || 'Account verified and activated successfully!');
+      if (passwordlessMode) {
+        setPendingUser(userToLogin);
+        setShowSetPasswordModal(true);
+      } else {
+        setTimeout(() => {
+          if (role === 'instructor') {
+            if (typeof window !== 'undefined' && window.location.hostname.includes(ROOT_URL.replace('https://', ''))) {
+              window.location.href = `https://instructor.${ROOT_URL.replace('https://', '')}/`;
+            } else {
+              navigate('/instructor');
+            }
           } else {
-            navigate('/instructor');
+            navigate('/dashboard');
           }
-        } else {
-          navigate('/dashboard');
-        }
-      }, 1000);
+        }, 800);
+      }
     } catch (err: any) {
       console.error('Email verification error:', err);
       setErrorMsg(err.message || 'Invalid verification code. Please check and try again or click Resend Code.');
@@ -399,8 +409,9 @@ export const SignUpPage: React.FC = () => {
 
       loginUser(userToLogin);
 
-      setSuccessMsg(`Welcome, ${userToLogin.name}! Account ready. Redirecting...`);
-      setTimeout(() => navigate(role === 'instructor' ? '/instructor' : '/dashboard'), 600);
+      setSuccessMsg(`Welcome, ${userToLogin.name}! Account ready.`);
+      setPendingUser(userToLogin);
+      setShowSetPasswordModal(true);
     } catch (err: any) {
       setErrorMsg(err.message || 'Google Registration failed.');
     } finally {
@@ -903,6 +914,39 @@ export const SignUpPage: React.FC = () => {
           </div>
         </div>
 
+      {/* OPTIONAL SET INITIAL PASSWORD PROMPT MODAL */}
+      {pendingUser && (
+        <SetInitialPasswordModal
+          isOpen={showSetPasswordModal}
+          userId={pendingUser.id}
+          userEmail={pendingUser.email}
+          userRole={pendingUser.role}
+          onComplete={() => {
+            setShowSetPasswordModal(false);
+            if (pendingUser.role === 'instructor') {
+              if (typeof window !== 'undefined' && window.location.hostname.includes(ROOT_URL.replace('https://', ''))) {
+                window.location.href = `https://instructor.${ROOT_URL.replace('https://', '')}/`;
+              } else {
+                navigate('/instructor');
+              }
+            } else {
+              navigate('/dashboard');
+            }
+          }}
+          onSkip={() => {
+            setShowSetPasswordModal(false);
+            if (pendingUser.role === 'instructor') {
+              if (typeof window !== 'undefined' && window.location.hostname.includes(ROOT_URL.replace('https://', ''))) {
+                window.location.href = `https://instructor.${ROOT_URL.replace('https://', '')}/`;
+              } else {
+                navigate('/instructor');
+              }
+            } else {
+              navigate('/dashboard');
+            }
+          }}
+        />
+      )}
       </div>
     </div>
   );

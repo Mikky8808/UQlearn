@@ -66,8 +66,10 @@ try {
         exit();
     }
 
-    // If password_hash exists in db, require current_password verification
-    if (!empty($user['password_hash'])) {
+    // If password_hash exists in db and current_password is given or is not setting initial password
+    $is_initial = !empty($data['is_initial']) || !empty($data['is_initial_password']) || ($data['action'] ?? '') === 'set_initial';
+
+    if (!empty($user['password_hash']) && !$is_initial) {
         if (empty($current_password)) {
             http_response_code(400);
             echo json_encode(["success" => false, "message" => "Current password is required to change password."]);

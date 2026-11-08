@@ -19,6 +19,7 @@ import { useApp } from '../../context/AppContext';
 import { resolveBrandingLogoUrl, DEFAULT_LOGO_URL } from '../../lib/branding';
 import { API_ENDPOINTS, apiFetch, GOOGLE_CLIENT_ID } from '../../lib/apiConfig';
 import { decodeGoogleJwt, signInWithGoogleUniversal } from '../../lib/googleAuth';
+import { SetInitialPasswordModal } from '../common/SetInitialPasswordModal';
 
 declare global {
   interface Window {
@@ -64,6 +65,8 @@ export const InstructorLoginPage: React.FC = () => {
   const [isSignUp, setIsSignUp] = useState(queryParams.get('signup') === 'true');
   const [fullName, setFullName] = useState('');
   const [gsiReady, setGsiReady] = useState(false);
+  const [showSetPasswordModal, setShowSetPasswordModal] = useState(false);
+  const [pendingUser, setPendingUser] = useState<{ id: string; email: string; role?: string } | null>(null);
 
   React.useEffect(() => {
     if (!GOOGLE_CLIENT_ID) {
@@ -143,19 +146,20 @@ export const InstructorLoginPage: React.FC = () => {
         }
       }
 
-      loginUser({
+      const userPayload = {
         id: activeUser?.id || `inst-${Date.now()}`,
         email: googleEmail,
         name: googleName || activeUser?.name || googleEmail.split('@')[0],
-        role: 'instructor',
+        role: 'instructor' as const,
         avatar: googlePicture || activeUser?.avatar,
         isVerified: true
-      });
+      };
+
+      loginUser(userPayload);
 
       setSuccessMsg(`Google Sign-In Approved: Welcome, ${googleName || 'Instructor'}!`);
-      setTimeout(() => {
-        navigate(redirectPath);
-      }, 600);
+      setPendingUser(userPayload);
+      setShowSetPasswordModal(true);
 
     } catch (err: any) {
       console.error('Google Auth Processing Failed:', err);
@@ -310,20 +314,21 @@ export const InstructorLoginPage: React.FC = () => {
         body: JSON.stringify({ action: 'verify', email: modalEmail, code: code, role: 'instructor' })
       });
 
-      loginUser({
+      const userPayload = {
         id: res.user?.id || `inst-${Date.now()}`,
         name: res.user?.name || modalEmail.split('@')[0].replace('.', ' '),
         email: modalEmail,
-        role: 'instructor',
+        role: 'instructor' as const,
         isVerified: true,
         token: res.token || 'otp-verified'
-      });
+      };
+
+      loginUser(userPayload);
 
       setModalSuccess(res.message || 'Identity verified! Launching Instructor Studio...');
-      setTimeout(() => {
-        setShowOtpModal(false);
-        navigate(redirectPath);
-      }, 700);
+      setShowOtpModal(false);
+      setPendingUser(userPayload);
+      setShowSetPasswordModal(true);
     } catch (err: any) {
       setModalError(err.message || 'Invalid or expired verification code.');
     } finally {
@@ -485,61 +490,63 @@ export const InstructorLoginPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Auth Method Selector */}
-            <div className="flex items-center justify-between pt-1">
-              <div className="flex items-center space-x-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthMethod('password');
-                    setErrorMsg('');
-                  }}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                    authMethod === 'password'
-                      ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400'
-                  }`}
-                >
-                  Password
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthMethod('otp');
-                    setErrorMsg('');
-                  }}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                    authMethod === 'otp'
-                      ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400'
-                  }`}
-                >
-                  Email Code (OTP)
-                </button>
+            {/* Auth Method Selector & Forgot Password (Only shown in Sign In mode) */}
+            {!isSignUp ? (
+              <div className="flex items-center justify-between pt-1">
+                <div className="flex items-center space-x-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMethod('password');
+                      setErrorMsg('');
+                    }}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                      authMethod === 'password'
+                        ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400'
+                    }`}
+                  >
+                    Password
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMethod('otp');
+                      setErrorMsg('');
+                    }}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                      authMethod === 'otp'
+                        ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400'
+                    }`}
+                  >
+                    Email Code (OTP)
+                  </button>
+                </div>
+
+                {authMethod === 'password' && (
+                  <Link
+                    to="/forgot-password"
+                    className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+                  >
+                    Forgot password?
+                  </Link>
+                )}
               </div>
+            ) : null}
 
-              {authMethod === 'password' && (
-                <Link
-                  to="/forgot-password"
-                  className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
-                >
-                  Forgot password?
-                </Link>
-              )}
-            </div>
-
-            {/* Method 1: Password Input */}
-            {authMethod === 'password' && (
+            {/* Password Input (Sign Up creates a password, Sign In uses password if authMethod === 'password') */}
+            {(isSignUp || authMethod === 'password') && (
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Password <span className="text-indigo-600">*</span>
+                  {isSignUp ? 'Create Password' : 'Password'} <span className="text-indigo-600">*</span>
                 </label>
                 <div className="relative">
                   <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
-                    placeholder="Enter your educator password"
+                    placeholder={isSignUp ? "Create a strong educator password" : "Enter your educator password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full pl-10 pr-11 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 font-medium transition-all"
@@ -674,6 +681,24 @@ export const InstructorLoginPage: React.FC = () => {
             <button type="button" onClick={() => handleModalVerifySubmit()} disabled={modalLoading} className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black text-sm transition-all">Verify & Sign In</button>
           </div>
         </div>
+      )}
+
+      {/* OPTIONAL SET INITIAL PASSWORD PROMPT MODAL */}
+      {pendingUser && (
+        <SetInitialPasswordModal
+          isOpen={showSetPasswordModal}
+          userId={pendingUser.id}
+          userEmail={pendingUser.email}
+          userRole="instructor"
+          onComplete={() => {
+            setShowSetPasswordModal(false);
+            navigate(redirectPath);
+          }}
+          onSkip={() => {
+            setShowSetPasswordModal(false);
+            navigate(redirectPath);
+          }}
+        />
       )}
     </div>
   );

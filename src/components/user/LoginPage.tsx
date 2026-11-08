@@ -21,6 +21,7 @@ import { API_ENDPOINTS, apiFetch, GOOGLE_CLIENT_ID } from '../../lib/apiConfig';
 import { emailService } from '../../lib/emailService';
 import { decodeGoogleJwt, signInWithGoogleUniversal } from '../../lib/googleAuth';
 import { BrandLogo } from '../common/BrandLogo';
+import { SetInitialPasswordModal } from '../common/SetInitialPasswordModal';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -52,6 +53,8 @@ export const LoginPage: React.FC = () => {
   const [modalSuccess, setModalSuccess] = useState('');
   const [modalCountdown, setModalCountdown] = useState(60);
   const [modalTimerActive, setModalTimerActive] = useState(false);
+  const [showSetPasswordModal, setShowSetPasswordModal] = useState(false);
+  const [pendingUser, setPendingUser] = useState<{ id: string; email: string; role?: string } | null>(null);
 
   // If already logged in, show notice or allow redirect
   const queryParams = new URLSearchParams(location.search);
@@ -163,8 +166,9 @@ export const LoginPage: React.FC = () => {
 
       loginUser(userToLogin);
 
-      setSuccessMsg(`Welcome back, ${userToLogin.name}! Redirecting...`);
-      setTimeout(() => navigate(redirectPath), 600);
+      setSuccessMsg(`Welcome back, ${userToLogin.name}! Account ready.`);
+      setPendingUser(userToLogin);
+      setShowSetPasswordModal(true);
     } catch (err: any) {
       setErrorMsg(err.message || 'Google Sign-In failed.');
     } finally {
@@ -317,20 +321,21 @@ export const LoginPage: React.FC = () => {
         isVerified: true
       };
 
-      loginUser({
+      const userToLogin = {
         id: verifiedUser.id || `stu-${Date.now()}`,
         name: verifiedUser.name || modalEmail.split('@')[0].replace('.', ' '),
         email: verifiedUser.email || modalEmail,
-        role: 'student',
+        role: 'student' as const,
         isVerified: true,
         token: res.token
-      });
+      };
 
-      setModalSuccess(res.message || 'Email verified successfully! Loading your dashboard...');
-      setTimeout(() => {
-        setShowOtpModal(false);
-        navigate(redirectPath);
-      }, 700);
+      loginUser(userToLogin);
+
+      setModalSuccess(res.message || 'Email verified successfully!');
+      setShowOtpModal(false);
+      setPendingUser(userToLogin);
+      setShowSetPasswordModal(true);
     } catch (err: any) {
       setModalError(err.message || 'Invalid or expired verification code.');
     } finally {
@@ -749,6 +754,24 @@ export const LoginPage: React.FC = () => {
 
           </div>
         </div>
+      )}
+
+      {/* OPTIONAL SET INITIAL PASSWORD PROMPT MODAL */}
+      {pendingUser && (
+        <SetInitialPasswordModal
+          isOpen={showSetPasswordModal}
+          userId={pendingUser.id}
+          userEmail={pendingUser.email}
+          userRole={pendingUser.role || 'student'}
+          onComplete={() => {
+            setShowSetPasswordModal(false);
+            navigate(redirectPath);
+          }}
+          onSkip={() => {
+            setShowSetPasswordModal(false);
+            navigate(redirectPath);
+          }}
+        />
       )}
     </div>
   );
