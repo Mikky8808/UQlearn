@@ -225,7 +225,7 @@ export const InstructorCoursesTab: React.FC<InstructorCoursesTabProps> = ({
               >
                 <div className="flex items-start space-x-4 flex-1">
                   <img
-                    src={(!c.isApprovedByAdmin && courseDefaultThumbnail) ? courseDefaultThumbnail : (c.image || courseDefaultThumbnail || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80')}
+                    src={c.image || (c as any).thumbnail || courseDefaultThumbnail || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80'}
                     alt={c.title}
                     className="w-20 h-20 rounded-md object-cover shrink-0 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-800"
                   />

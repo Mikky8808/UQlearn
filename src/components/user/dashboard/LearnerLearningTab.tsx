@@ -53,7 +53,7 @@ interface LearnerLearningTabProps {
 
 export const LearnerLearningTab: React.FC<LearnerLearningTabProps> = ({ enrolledCourses, allCourses }) => {
   const navigate = useNavigate();
-  const { currentUser, isLoadingCourses, isLoadingEnrolled } = useApp();
+  const { currentUser, isLoadingCourses, isLoadingEnrolled, courseDefaultThumbnail } = useApp();
   const isLoading = isLoadingCourses || isLoadingEnrolled;
   const [searchParams, setSearchParams] = useSearchParams();
   

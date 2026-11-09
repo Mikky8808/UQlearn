@@ -186,6 +186,10 @@ export interface LessonInput {
   content?: string;
   videoUrl?: string;
   videoPath?: string;
+  videoFileName?: string;
+  solutionVideoUrl?: string;
+  downloadableResourceFileName?: string;
+  questions?: { id: string; text: string }[];
   thumbnailUrl?: string;
   isPreview?: boolean;
   quizData?: QuizData;
@@ -193,6 +197,9 @@ export interface LessonInput {
   description?: string;
   labTitle?: string;
   labUrl?: string;
+  status?: string;
+  isPublished?: boolean;
+  assignmentData?: any;
 }
 
 export interface ModuleInput {
@@ -3756,7 +3763,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
             )}
 
             {/* Back Button & Breadcrumbs when editing any section */}
-            {activeTab !== 'overview' && (
+            {activeTab !== 'overview' && !editingAssignmentData && (
               <div className="flex items-center justify-between pb-3.5 border-b border-slate-200 dark:border-slate-800 mb-6">
                 <div className="flex items-center space-x-3">
                   <button
@@ -6206,13 +6213,19 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
                   <CreateAssignment
                     courseId={courseId}
                     moduleId={editingAssignmentData.moduleId}
+                    currentUser={currentUser}
                     initialAssignment={{
                       id: editingAssignmentData.lesson.id,
                       courseId: courseId,
                       moduleId: editingAssignmentData.moduleId,
                       title: editingAssignmentData.lesson.title,
                       description: editingAssignmentData.lesson.description,
-                      instructions: editingAssignmentData.lesson.content
+                      instructions: editingAssignmentData.lesson.content,
+                      videoUrl: editingAssignmentData.lesson.videoUrl,
+                      videoFileName: editingAssignmentData.lesson.videoFileName,
+                      solutionVideoUrl: editingAssignmentData.lesson.solutionVideoUrl,
+                      downloadableResourceFileName: editingAssignmentData.lesson.downloadableResourceFileName,
+                      questions: editingAssignmentData.lesson.questions
                     }}
                     onBack={() => setEditingAssignmentData(null)}
                     onSave={(updated) => {
@@ -6224,14 +6237,18 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
                               ...l,
                               title: updated.title,
                               description: updated.description,
-                              content: updated.instructions || l.content
+                              content: updated.instructions || l.content,
+                              videoUrl: updated.videoUrl,
+                              videoFileName: updated.videoFileName,
+                              solutionVideoUrl: updated.solutionVideoUrl,
+                              downloadableResourceFileName: updated.downloadableResourceFileName,
+                              questions: updated.questions
                             } : l)
                           };
                         }
                         return m;
                       }));
-                      setEditingAssignmentData(null);
-                      showNotification('Assignment updated successfully!');
+                      showNotification('Assignment basic info saved successfully!');
                     }}
                     onPublish={(updated) => {
                       setModules(prev => prev.map(m => {
@@ -6241,7 +6258,13 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
                             lessons: m.lessons.map(l => l.id === editingAssignmentData.lesson.id ? {
                               ...l,
                               title: updated.title,
-                              description: updated.description
+                              description: updated.description,
+                              content: updated.instructions || l.content,
+                              videoUrl: updated.videoUrl,
+                              videoFileName: updated.videoFileName,
+                              solutionVideoUrl: updated.solutionVideoUrl,
+                              downloadableResourceFileName: updated.downloadableResourceFileName,
+                              questions: updated.questions
                             } : l)
                           };
                         }
@@ -6548,15 +6571,21 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
                               ) : (
                                 mod.lessons.map((lesson, lessonIdx) => {
                                   if (lesson.type === 'assignment') {
+                                    const isAssignmentPublished = lesson.status === 'published' || (lesson as any).assignmentData?.status === 'published' || (lesson as any).isPublished || (lesson as any).assignmentData?.is_published == 1;
+
                                     return (
                                       <div
                                         key={lesson.id}
                                         className="p-3.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-none sm:rounded-lg flex items-center justify-between shadow-2xs group transition-all my-1.5"
                                       >
                                         <div className="flex items-center space-x-2 min-w-0 flex-1">
-                                          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                                          {isAssignmentPublished ? (
+                                            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                          ) : (
+                                            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                                          )}
                                           <span className="text-xs font-medium text-slate-800 dark:text-slate-200 shrink-0">
-                                            Unpublished Assignment:
+                                            {isAssignmentPublished ? `Assignment ${lessonIdx + 1}:` : 'Unpublished Assignment:'}
                                           </span>
                                           <FileText className="w-4 h-4 text-slate-700 dark:text-slate-300 shrink-0" />
                                           <span className="text-xs font-medium text-slate-900 dark:text-slate-100 truncate">

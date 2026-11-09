@@ -13,7 +13,7 @@ header("Content-Type: application/json; charset=UTF-8");
 try {
     require_once __DIR__ . '/db.php';
 
-    // Auto-provision assignments table schema if not already present
+    // Auto-provision assignments table schema if not already present & migrate columns
     if ($conn && !$conn->connect_error) {
         $conn->query("CREATE TABLE IF NOT EXISTS `assignments` (
             `id` VARCHAR(64) NOT NULL PRIMARY KEY,
@@ -28,14 +28,19 @@ try {
             `downloadable_resource_url` VARCHAR(550) DEFAULT NULL,
             `downloadable_resource_file_name` VARCHAR(255) DEFAULT NULL,
             `questions` LONGTEXT DEFAULT NULL,
-            `solution_video_url` VARCHAR(550) DEFAULT NULL,
-            `solution_resource_url` VARCHAR(550) DEFAULT NULL,
+            `question_answers` LONGTEXT DEFAULT NULL,
             `status` VARCHAR(50) DEFAULT 'draft',
+            `is_published` TINYINT(1) DEFAULT 0,
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             KEY `course_id_idx` (`course_id`),
             KEY `module_id_idx` (`module_id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+        @$conn->query("ALTER TABLE `assignments` ADD COLUMN IF NOT EXISTS `question_answers` LONGTEXT DEFAULT NULL");
+        @$conn->query("ALTER TABLE `assignments` ADD COLUMN IF NOT EXISTS `is_published` TINYINT(1) DEFAULT 0");
+        @$conn->query("ALTER TABLE `assignments` DROP COLUMN IF EXISTS `solution_video_url`");
+        @$conn->query("ALTER TABLE `assignments` DROP COLUMN IF EXISTS `solution_resource_url`");
     }
 
     $method = $_SERVER['REQUEST_METHOD'];
@@ -59,6 +64,7 @@ try {
 
                 if ($assignment) {
                     $assignment['questions'] = json_decode($assignment['questions'] ?? '[]', true) ?? [];
+                    $assignment['question_answers'] = json_decode($assignment['question_answers'] ?? '{}', true) ?? [];
                     echo json_encode(["success" => true, "data" => $assignment]);
                 } else {
                     http_response_code(404);
@@ -75,6 +81,7 @@ try {
                 $assignments = [];
                 while ($row = $res->fetch_assoc()) {
                     $row['questions'] = json_decode($row['questions'] ?? '[]', true) ?? [];
+                    $row['question_answers'] = json_decode($row['question_answers'] ?? '{}', true) ?? [];
                     $assignments[] = $row;
                 }
                 $stmt->close();
@@ -90,6 +97,7 @@ try {
                 $assignments = [];
                 while ($row = $res->fetch_assoc()) {
                     $row['questions'] = json_decode($row['questions'] ?? '[]', true) ?? [];
+                    $row['question_answers'] = json_decode($row['question_answers'] ?? '{}', true) ?? [];
                     $assignments[] = $row;
                 }
                 $stmt->close();
@@ -103,13 +111,13 @@ try {
             if ($res) {
                 while ($row = $res->fetch_assoc()) {
                     $row['questions'] = json_decode($row['questions'] ?? '[]', true) ?? [];
+                    $row['question_answers'] = json_decode($row['question_answers'] ?? '{}', true) ?? [];
                     $assignments[] = $row;
                 }
             }
             echo json_encode(["success" => true, "data" => $assignments]);
             exit();
         } else {
-            // Mock empty response if database not connected
             echo json_encode(["success" => true, "data" => []]);
             exit();
         }
@@ -130,15 +138,16 @@ try {
         $downloadable_resource_file_name = $data['downloadable_resource_file_name'] ?? ($data['downloadableResourceFileName'] ?? '');
         $questions_arr = $data['questions'] ?? [];
         $questions_json = is_array($questions_arr) ? json_encode($questions_arr) : (string)$questions_arr;
-        $solution_video_url = $data['solution_video_url'] ?? ($data['solutionVideoUrl'] ?? '');
-        $solution_resource_url = $data['solution_resource_url'] ?? ($data['solutionResourceUrl'] ?? '');
+        $question_answers_arr = $data['question_answers'] ?? ($data['questionAnswers'] ?? []);
+        $question_answers_json = is_array($question_answers_arr) ? json_encode($question_answers_arr) : (string)$question_answers_arr;
         $status = $data['status'] ?? 'draft';
+        $is_published = intval($data['is_published'] ?? ($data['isPublished'] ?? ($status === 'published' ? 1 : 0)));
 
         if ($conn && !$conn->connect_error) {
             $stmt = $conn->prepare("INSERT INTO assignments (
                 id, course_id, module_id, title, description, duration, 
                 video_url, video_file_name, instructions, downloadable_resource_url, 
-                downloadable_resource_file_name, questions, solution_video_url, solution_resource_url, status
+                downloadable_resource_file_name, questions, question_answers, status, is_published
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE 
                 course_id = VALUES(course_id),
@@ -152,17 +161,17 @@ try {
                 downloadable_resource_url = VALUES(downloadable_resource_url),
                 downloadable_resource_file_name = VALUES(downloadable_resource_file_name),
                 questions = VALUES(questions),
-                solution_video_url = VALUES(solution_video_url),
-                solution_resource_url = VALUES(solution_resource_url),
+                question_answers = VALUES(question_answers),
                 status = VALUES(status),
+                is_published = VALUES(is_published),
                 updated_at = NOW()");
 
             if ($stmt) {
                 $stmt->bind_param(
-                    "sssssisssssssss",
+                    "sssssissssssssi",
                     $id, $course_id, $module_id, $title, $description, $duration,
                     $video_url, $video_file_name, $instructions, $downloadable_resource_url,
-                    $downloadable_resource_file_name, $questions_json, $solution_video_url, $solution_resource_url, $status
+                    $downloadable_resource_file_name, $questions_json, $question_answers_json, $status, $is_published
                 );
                 $stmt->execute();
                 $stmt->close();
@@ -185,9 +194,9 @@ try {
                 "downloadableResourceUrl" => $downloadable_resource_url,
                 "downloadableResourceFileName" => $downloadable_resource_file_name,
                 "questions" => is_array($questions_arr) ? $questions_arr : json_decode($questions_json, true),
-                "solutionVideoUrl" => $solution_video_url,
-                "solutionResourceUrl" => $solution_resource_url,
-                "status" => $status
+                "questionAnswers" => is_array($question_answers_arr) ? $question_answers_arr : json_decode($question_answers_json, true),
+                "status" => $status,
+                "isPublished" => (bool)$is_published
             ]
         ]);
         exit();

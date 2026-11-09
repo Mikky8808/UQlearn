@@ -16,6 +16,7 @@ import { Course, CourseSubscription } from '../../types';
 import { InstructorTabKey } from '../navigation/InstructorSidebar';
 import { subscriptionService } from '../../services/subscription-service';
 import { fetchInstructorCourseImagesStatusApi } from '../../lib/apiConfig';
+import { useApp } from '../../context/AppContext';
 
 interface InstructorStudioDashboardProps {
   courses: Course[];
@@ -32,6 +33,7 @@ export const InstructorStudioDashboard: React.FC<InstructorStudioDashboardProps>
   onSelectCourse,
   complianceStatus = 'none',
 }) => {
+  const { courseDefaultThumbnail } = useApp();
   // Learners State
   const [enrolledLearners, setEnrolledLearners] = useState<CourseSubscription[]>([]);
   const [loadingLearners, setLoadingLearners] = useState(true);
@@ -293,6 +295,7 @@ export const InstructorStudioDashboard: React.FC<InstructorStudioDashboardProps>
           <div className="bg-white dark:bg-slate-900 rounded-none border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 shadow-md overflow-hidden">
             {courses.map((course) => {
               const rawImg = (course.thumbnail || course.image || (course as any).courseImage || (course as any).course_image || '').trim();
+              const displayImg = rawImg || courseDefaultThumbnail || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80';
               const isMissingImg = !rawImg || problemCourses.some(p => p.id === course.id);
 
               return (
@@ -303,21 +306,14 @@ export const InstructorStudioDashboard: React.FC<InstructorStudioDashboardProps>
                   <div className="flex items-center space-x-4 min-w-0 flex-1">
                     {/* Thumbnail Image */}
                     <div className="relative w-16 h-12 sm:w-20 sm:h-14 rounded-none overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0 border border-slate-200 dark:border-slate-700">
-                      {rawImg ? (
-                        <img
-                          src={rawImg}
-                          alt={course.title}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLElement).style.display = 'none';
-                          }}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 p-1 text-center">
-                          <ImageIcon className="w-4 h-4 mb-0.5" />
-                          <span className="text-[9px] font-bold uppercase leading-none">No Image</span>
-                        </div>
-                      )}
+                      <img
+                        src={displayImg}
+                        alt={course.title}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80';
+                        }}
+                      />
                     </div>
 
                     {/* Course Title & Issue Indicator */}

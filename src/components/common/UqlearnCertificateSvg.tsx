@@ -34,8 +34,8 @@ export const UqlearnCertificateSvg: React.FC<UqlearnCertificateSvgProps> = ({
   const studentName = data.studentName?.trim() || 'ALBRIGHT JUMA';
   const courseTitle = data.courseTitle?.trim() || 'Virtual Assistant';
   const completionDate = data.completionDate?.trim() || 'July 1, 2026';
-  const instructorName = (data.instructorName?.trim() || 'MICHAEL KENYANYA').toUpperCase();
-  const ceoName = data.ceoName?.trim() || 'Sir, rajab wamuu';
+  const instructorName = (data.instructorName?.trim() || 'michael kenyanya').toLowerCase();
+  const ceoName = (data.ceoName?.trim() || 'sir, rajab wamuu').toLowerCase();
   const ceoTitle = (data.ceoTitle?.trim() || 'CEO UQLEARN').toUpperCase();
   const credentialId = data.credentialId || 'UQL-CERT-2026';
   const effectiveLogoUrl = resolveCertificateLogo(data.logoUrl);
@@ -501,7 +501,7 @@ export const UqlearnCertificateSvg: React.FC<UqlearnCertificateSvgProps> = ({
             fill="#1e293b"
             opacity="0.8"
           >
-            {data.instructorName || 'Michael Kenyanya'}
+            {(data.instructorName || 'michael kenyanya').toLowerCase()}
           </text>
         )}
 
@@ -620,7 +620,7 @@ export const UqlearnCertificateSvg: React.FC<UqlearnCertificateSvgProps> = ({
             fill="#1e293b"
             opacity="0.8"
           >
-            {data.ceoName || 'Sir, rajab wamuu'}
+            {(data.ceoName || 'sir, rajab wamuu').toLowerCase()}
           </text>
         )}
 

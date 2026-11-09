@@ -4,6 +4,7 @@ import { Course, User } from '../../../types';
 import { useNavigate } from 'react-router-dom';
 import { CatalogCourseCardSkeleton } from '../../common/CourseCardSkeleton';
 import { apiFetch } from '../../../lib/apiConfig';
+import { useApp } from '../../../context/AppContext';
 
 interface AIRecommendedCoursesProps {
   enrolledCourses: Course[];
@@ -25,6 +26,7 @@ export const AIRecommendedCourses: React.FC<AIRecommendedCoursesProps> = ({
   onAddToCart,
   onEnrollCourse,
 }) => {
+  const { courseDefaultThumbnail } = useApp();
   const [recommendations, setRecommendations] = useState<RecommendationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [analyzedCategories, setAnalyzedCategories] = useState<string[]>([]);
@@ -107,7 +109,7 @@ export const AIRecommendedCourses: React.FC<AIRecommendedCoursesProps> = ({
                 {/* Thumbnail Header */}
                 <div className="relative h-36 bg-slate-800 overflow-hidden">
                   <img 
-                    src={course.image || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600&auto=format&fit=crop&q=60'} 
+                    src={course.image || course.thumbnail || courseDefaultThumbnail || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600&auto=format&fit=crop&q=60'} 
                     alt={course.title} 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     referrerPolicy="no-referrer"
