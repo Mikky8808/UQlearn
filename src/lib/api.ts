@@ -238,8 +238,8 @@ export const apiClient = {
 
   users: {
     getAll: async (role?: string) => {
-      const url = role && role !== 'All' ? `${API_ENDPOINTS.USERS}?role=${role}` : API_ENDPOINTS.USERS;
-      return apiFetch(url);
+      const url = role && role !== 'All' ? `${API_ENDPOINTS.USERS}?role=${encodeURIComponent(role)}` : API_ENDPOINTS.USERS;
+      return apiFetch(url, { forceRefetch: true });
     },
     update: async (id: string, updates: any) => {
       return apiFetch(`${API_ENDPOINTS.USERS}?id=${encodeURIComponent(id)}`, {

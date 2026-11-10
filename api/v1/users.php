@@ -70,9 +70,13 @@ try {
                 $types = "";
 
                 if ($role && $role !== 'All') {
-                    $where[] = "role = ?";
-                    $params[] = $role;
-                    $types .= "s";
+                    if ($role === 'learner' || $role === 'student') {
+                        $where[] = "(role = 'learner' OR role = 'student' OR role = '' OR role IS NULL)";
+                    } else {
+                        $where[] = "role = ?";
+                        $params[] = $role;
+                        $types .= "s";
+                    }
                 }
 
                 $query = "SELECT * FROM users";
@@ -162,16 +166,26 @@ try {
 function formatRow($row) {
     // Format to match frontend structure
     $joined = isset($row['created_at']) ? date('M Y', strtotime($row['created_at'])) : 'Unknown';
-    $name = trim(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? ''));
-    if (!$name) $name = 'Unknown User';
+    $name = trim($row['name'] ?? '');
+    if (!$name) {
+        $name = trim(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? ''));
+    }
+    if (!$name) {
+        $name = $row['email'] ?? 'Unknown User';
+    }
+    
+    $rawRole = $row['role'] ?? '';
+    // Normalize role so frontend recognizes learner/student
+    $normalizedRole = ($rawRole === 'student' || $rawRole === '') ? 'learner' : $rawRole;
     
     return [
         'id' => $row['id'],
         'name' => $name,
-        'email' => $row['email'],
-        'role' => $row['role'],
+        'email' => $row['email'] ?? '',
+        'role' => $normalizedRole,
+        'original_role' => $rawRole,
         'status' => $row['status'] ?? 'Active',
         'joined' => $joined,
-        'avatar' => $row['avatar_url'] ?? null
+        'avatar' => $row['avatar_url'] ?? $row['avatar'] ?? null
     ];
 }

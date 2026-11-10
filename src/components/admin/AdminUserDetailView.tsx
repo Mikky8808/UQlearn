@@ -32,12 +32,19 @@ interface AdminUserDetailViewProps {
   onBack: () => void;
   onUserUpdated?: () => void;
   initialSubTab?: 'payout' | 'history' | 'security' | 'signature';
+  initialUserData?: any;
 }
 
-export const AdminUserDetailView: React.FC<AdminUserDetailViewProps> = ({ userId, onBack, onUserUpdated, initialSubTab = 'payout' }) => {
+export const AdminUserDetailView: React.FC<AdminUserDetailViewProps> = ({ 
+  userId, 
+  onBack, 
+  onUserUpdated, 
+  initialSubTab = 'payout',
+  initialUserData
+}) => {
   const { usersList, payoutCountries, getPayoutBanksForCountry } = useApp() as any;
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(initialUserData || null);
+  const [loading, setLoading] = useState(!initialUserData);
   const [payoutDetails, setPayoutDetails] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -49,8 +56,8 @@ export const AdminUserDetailView: React.FC<AdminUserDetailViewProps> = ({ userId
   const [selectedCountryName, setSelectedCountryName] = useState('');
   const [selectedBankName, setSelectedBankName] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
+  const [fullName, setFullName] = useState(initialUserData?.name || '');
+  const [email, setEmail] = useState(initialUserData?.email || '');
   const [phone, setPhone] = useState('');
 
   useEffect(() => {
@@ -58,22 +65,22 @@ export const AdminUserDetailView: React.FC<AdminUserDetailViewProps> = ({ userId
   }, [userId]);
 
   const loadUserData = async () => {
-    setLoading(true);
+    if (!initialUserData) setLoading(true);
     try {
-      // Find in usersList or fetch
-      const found = (usersList || []).find((u: any) => u.id === userId);
+      // Find in initialUserData or usersList
+      const found = initialUserData || (usersList || []).find((u: any) => u.id === userId);
       if (found) {
         setUser(found);
-        setFullName(found.name || '');
+        setFullName(found.name || `${found.first_name || ''} ${found.last_name || ''}`.trim() || '');
         setEmail(found.email || '');
-      } else {
-        // Fallback fetch
-        const json = await apiFetch(`users.php?id=${encodeURIComponent(userId)}`);
-        if (json && json.data) {
-          setUser(json.data);
-          setFullName(json.data.name || `${json.data.first_name || ''} ${json.data.last_name || ''}`.trim());
-          setEmail(json.data.email || '');
-        }
+      }
+
+      // Always fetch latest data from API
+      const json = await apiFetch(`users.php?id=${encodeURIComponent(userId)}`, { forceRefetch: true }).catch(() => null);
+      if (json && json.data) {
+        setUser(json.data);
+        setFullName(json.data.name || `${json.data.first_name || ''} ${json.data.last_name || ''}`.trim());
+        setEmail(json.data.email || '');
       }
 
       // Load payout details from database

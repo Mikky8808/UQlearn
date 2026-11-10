@@ -404,6 +404,14 @@ export const getSponsoredAdsApi = async (params?: { instructorId?: string; cours
   const qs = q.length ? `?${q.join('&')}` : '';
   return await apiFetch(`${API_ENDPOINTS.SPONSORED_ADS}${qs}`);
 };
+export const fetchUsersApi = async (role?: string) => {
+  const url = role && role !== 'All' ? `${API_ENDPOINTS.USERS}?role=${encodeURIComponent(role)}` : API_ENDPOINTS.USERS;
+  const res = await apiFetch(url, { forceRefetch: true });
+  if (Array.isArray(res)) return res;
+  if (res && Array.isArray(res.data)) return res.data;
+  if (res && Array.isArray(res.users)) return res.users;
+  return [];
+};
 export const deleteUserApi = async (id: string) => await apiFetch(`${API_ENDPOINTS.USERS}?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
 export const getSponsoredPlansApi = async () => {
   const res = await apiFetch(API_ENDPOINTS.SPONSORED_PLANS, { silent: true }).catch(() => null);

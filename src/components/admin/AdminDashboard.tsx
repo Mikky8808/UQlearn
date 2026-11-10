@@ -330,26 +330,47 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ courses, onRefre
     fetchVisitorStats();
   }, []);
 
-  // Sample live accounts
+  // User Directory State
   const [usersList, setUsersList] = useState<any[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState<boolean>(false);
+  const [usersFetchError, setUsersFetchError] = useState<string | null>(null);
+
+  const fetchUsers = async () => {
+    setIsLoadingUsers(true);
+    setUsersFetchError(null);
+    try {
+      const res = await apiFetch(API_ENDPOINTS.USERS, { forceRefetch: true });
+      let list: any[] = [];
+      if (Array.isArray(res)) {
+        list = res;
+      } else if (res && Array.isArray(res.data)) {
+        list = res.data;
+      } else if (res && Array.isArray(res.users)) {
+        list = res.users;
+      } else if (res && typeof res === 'object') {
+        const potential = Object.values(res).filter(v => v && typeof v === 'object' && ('id' in v || 'email' in v));
+        if (potential.length > 0) list = potential;
+      }
+      setUsersList(list);
+    } catch (e: any) {
+      console.warn("Failed to fetch users", e);
+      setUsersFetchError(e?.message || 'Failed to fetch users from server');
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
 
   useEffect(() => {
     setCourseDefaultThumbnailInput(courseDefaultThumbnail);
     fetchUsers();
   }, []);
 
-  const fetchUsers = async () => {
-    try {
-      // @ts-ignore
-      const { apiClient } = await import('../../lib/api');
-      const res = await apiClient.users.getAll();
-      if (res.success && res.data) {
-        setUsersList(res.data);
-      }
-    } catch (e) {
-      console.warn("Failed to fetch users", e);
+  // Also refetch when switching to users tab
+  useEffect(() => {
+    if (activeTab === 'users') {
+      fetchUsers();
     }
-  };
+  }, [activeTab]);
 
   useEffect(() => {
     setCourseDefaultThumbnailInput(courseDefaultThumbnail);
@@ -451,9 +472,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ courses, onRefre
   const pendingPriceNoticesCount = pendingPriceNotices.length;
 
   const filteredUsers = usersList.filter(u => {
-    const matchesSearch = u.name.toLowerCase().includes(userSearch.toLowerCase()) || 
-                          u.email.toLowerCase().includes(userSearch.toLowerCase());
-    const matchesRole = userRoleFilter === 'All' || u.role === userRoleFilter;
+    if (!u) return false;
+    const name = (u.name || `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email || 'User').toLowerCase();
+    const email = (u.email || '').toLowerCase();
+    const search = (userSearch || '').toLowerCase().trim();
+    const matchesSearch = !search || name.includes(search) || email.includes(search);
+
+    const userRole = (u.role || u.original_role || '').toLowerCase();
+    let matchesRole = true;
+    if (userRoleFilter === 'learner') {
+      matchesRole = userRole === 'learner' || userRole === 'student' || userRole === '' || !u.role;
+    } else if (userRoleFilter === 'instructor') {
+      matchesRole = userRole === 'instructor';
+    } else if (userRoleFilter === 'admin') {
+      matchesRole = userRole === 'admin' || Boolean(u.is_admin);
+    }
+
     return matchesSearch && matchesRole;
   });
 
@@ -692,6 +726,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ courses, onRefre
               selectedUserIdForDetail ? (
                 <AdminUserDetailView 
                   userId={selectedUserIdForDetail} 
+                  initialUserData={usersList.find(u => u.id === selectedUserIdForDetail)}
                   onBack={() => {
                     setSelectedUserIdForDetail(null);
                     setInitialUserDetailSubTab('payout');
@@ -703,11 +738,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ courses, onRefre
                 <div className="bg-white dark:bg-slate-900 rounded-none border border-slate-200 dark:border-slate-800 p-6 space-y-4 shadow-xs">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                      <h3 className="font-bold text-slate-900 dark:text-slate-100 text-lg">User Directory</h3>
+                      <div className="flex items-center space-x-2.5">
+                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-lg">User Directory</h3>
+                        <span className="px-2 py-0.5 text-xs font-black rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                          {usersList.length} total
+                        </span>
+                      </div>
                       <p className="text-xs text-slate-500">Manage administrator roles, verified educators, and learner accounts with financial, payout, and official signature credentials.</p>
                     </div>
 
                     <div className="flex items-center space-x-3">
+                      {/* Refresh Button */}
+                      <button
+                        type="button"
+                        onClick={() => fetchUsers()}
+                        disabled={isLoadingUsers}
+                        className="px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-none text-xs font-bold shadow-xs transition-all flex items-center space-x-1.5 cursor-pointer shrink-0 disabled:opacity-50"
+                        title="Reload users from database"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${isLoadingUsers ? 'animate-spin text-rose-500' : ''}`} />
+                        <span>{isLoadingUsers ? 'Refreshing...' : 'Refresh'}</span>
+                      </button>
+
                       {/* CEO Signature Pad Button */}
                       <button
                         type="button"
@@ -748,116 +800,169 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ courses, onRefre
                     </div>
                   </div>
 
-                  <div className="space-y-3">
-                    {filteredUsers.map((user) => (
-                      <div key={user.id} className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
-                        <div className="flex items-center space-x-3">
-                          <div className={`w-10 h-10 rounded-xl font-bold flex items-center justify-center text-sm shadow-xs overflow-hidden ${
-                            user.role === 'admin' ? 'bg-rose-600 text-white' :
-                            user.role === 'instructor' ? 'bg-indigo-600 text-white' :
-                            'bg-teal-600 text-white'
-                          }`}>
-                            {user.avatar ? (
-                              <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
-                            ) : (
-                              user.name ? user.name.charAt(0).toUpperCase() : 'U'
-                            )}
-                          </div>
-                          <div>
-                            <p className="font-bold text-slate-900 dark:text-slate-100 flex items-center space-x-2">
-                              <span>{user.name}</span>
-                              <span className={`px-2 py-0.5 text-[10px] font-black rounded-full uppercase tracking-wider ${
-                                user.role === 'admin' ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300' :
-                                user.role === 'instructor' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300' :
-                                'bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300'
+                  {isLoadingUsers && usersList.length === 0 ? (
+                    <div className="py-16 flex flex-col items-center justify-center space-y-3 text-slate-500">
+                      <div className="w-8 h-8 border-3 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
+                      <p className="text-xs font-semibold">Loading users from database...</p>
+                    </div>
+                  ) : usersFetchError && usersList.length === 0 ? (
+                    <div className="py-12 text-center space-y-3">
+                      <AlertCircle className="w-10 h-10 mx-auto text-amber-500" />
+                      <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Unable to load users</p>
+                      <p className="text-xs text-slate-500 max-w-md mx-auto">{usersFetchError}</p>
+                      <button
+                        type="button"
+                        onClick={() => fetchUsers()}
+                        className="px-4 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-none text-xs font-bold shadow-xs cursor-pointer"
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  ) : filteredUsers.length === 0 ? (
+                    <div className="py-16 text-center text-slate-500 space-y-2">
+                      <Users className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600" />
+                      <p className="text-sm font-bold text-slate-700 dark:text-slate-300">No users found</p>
+                      <p className="text-xs text-slate-400">
+                        {userSearch || userRoleFilter !== 'All' 
+                          ? "No users match your current search or role filter."
+                          : "No registered users in the database yet."}
+                      </p>
+                      {(userSearch || userRoleFilter !== 'All') && (
+                        <button
+                          type="button"
+                          onClick={() => { setUserSearch(''); setUserRoleFilter('All'); }}
+                          className="mt-2 px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-bold rounded cursor-pointer"
+                        >
+                          Clear Filters
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {filteredUsers.map((user) => {
+                        const displayName = user.name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email || 'User';
+                        const displayRole = user.role || user.original_role || 'learner';
+                        const isLearner = displayRole === 'learner' || displayRole === 'student';
+                        const isAdminRole = displayRole === 'admin' || Boolean(user.is_admin);
+                        const isInstructor = displayRole === 'instructor';
+
+                        return (
+                          <div key={user.id} className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                            <div className="flex items-center space-x-3">
+                              <div className={`w-10 h-10 rounded-xl font-bold flex items-center justify-center text-sm shadow-xs overflow-hidden ${
+                                isAdminRole ? 'bg-rose-600 text-white' :
+                                isInstructor ? 'bg-indigo-600 text-white' :
+                                'bg-teal-600 text-white'
                               }`}>
-                                {user.role}
-                              </span>
-                            </p>
-                            <p className="text-slate-500">{user.email} • Joined {user.joined}</p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center space-x-3 relative">
-                          <span className={`px-2.5 py-1 font-bold rounded-md ${
-                            user.status === 'Suspended' ? 'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300' :
-                            'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
-                          }`}>
-                            {user.status || 'Active'}
-                          </span>
-
-                          <div className="relative">
-                            <button
-                              onClick={() => setOpenDropdownUserId(openDropdownUserId === user.id ? null : user.id)}
-                              className="px-3 py-1.5 bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 transition-all flex items-center space-x-1.5 cursor-pointer shadow-xs"
-                            >
-                              <span>More</span>
-                              <MoreVertical className="w-3.5 h-3.5" />
-                            </button>
-
-                            {openDropdownUserId === user.id && (
-                              <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 py-2 z-35 space-y-0.5">
-                                <button
-                                  onClick={() => { setSelectedUserIdForDetail(user.id); setOpenDropdownUserId(null); }}
-                                  className="w-full text-left px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center space-x-2.5 cursor-pointer"
-                                >
-                                  <Eye className="w-4 h-4 text-slate-400" />
-                                  <span>View Profile</span>
-                                </button>
-
-                                <button
-                                  onClick={() => { setSelectedUserIdForDetail(user.id); setOpenDropdownUserId(null); }}
-                                  className="w-full text-left px-4 py-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 flex items-center space-x-2.5 cursor-pointer"
-                                >
-                                  <Wallet className="w-4 h-4 text-indigo-500" />
-                                  <span>Payout Details & Financials</span>
-                                </button>
-
-                                <button
-                                  onClick={() => { 
-                                    setSelectedUserIdForDetail(user.id); 
-                                    setInitialUserDetailSubTab('signature');
-                                    setOpenDropdownUserId(null); 
-                                  }}
-                                  className="w-full text-left px-4 py-2 text-xs font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50 flex items-center space-x-2.5 cursor-pointer"
-                                >
-                                  <PenTool className="w-4 h-4 text-amber-500" />
-                                  <span>Digital Signature Pad</span>
-                                </button>
-
-                                <button
-                                  onClick={() => { handleToggleUserStatus(user.id); setOpenDropdownUserId(null); }}
-                                  className="w-full text-left px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center space-x-2.5 cursor-pointer"
-                                >
-                                  {user.status === 'Suspended' ? (
-                                    <>
-                                      <UserCheck className="w-4 h-4 text-emerald-500" />
-                                      <span>Activate Account</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <UserX className="w-4 h-4 text-amber-500" />
-                                      <span>Suspend Account</span>
-                                    </>
-                                  )}
-                                </button>
-
-                                <div className="my-1 border-t border-slate-100 dark:border-slate-800"></div>
-
-                                <button
-                                  onClick={() => handleDeleteUserAction(user.id, user.name)}
-                                  className="w-full text-left px-4 py-2 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 flex items-center space-x-2.5 cursor-pointer"
-                                >
-                                  <Trash2 className="w-4 h-4 text-red-500" />
-                                  <span>Delete User & Payouts</span>
-                                </button>
+                                {user.avatar ? (
+                                  <img src={user.avatar} alt={displayName} className="w-full h-full object-cover" />
+                                ) : (
+                                  displayName.charAt(0).toUpperCase()
+                                )}
                               </div>
-                            )}
+                              <div>
+                                <p className="font-bold text-slate-900 dark:text-slate-100 flex items-center space-x-2">
+                                  <span>{displayName}</span>
+                                  <span className={`px-2 py-0.5 text-[10px] font-black rounded-full uppercase tracking-wider ${
+                                    isAdminRole ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300' :
+                                    isInstructor ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300' :
+                                    'bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300'
+                                  }`}>
+                                    {displayRole}
+                                  </span>
+                                </p>
+                                <p className="text-slate-500">{user.email || 'No email registered'} • Joined {user.joined || 'Recently'}</p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center space-x-3 relative">
+                              <span className={`px-2.5 py-1 font-bold rounded-md ${
+                                user.status === 'Suspended' ? 'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300' :
+                                'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                              }`}>
+                                {user.status || 'Active'}
+                              </span>
+
+                              <div className="relative">
+                                <button
+                                  type="button"
+                                  onClick={() => setOpenDropdownUserId(openDropdownUserId === user.id ? null : user.id)}
+                                  className="px-3 py-1.5 bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 transition-all flex items-center space-x-1.5 cursor-pointer shadow-xs"
+                                >
+                                  <span>More</span>
+                                  <MoreVertical className="w-3.5 h-3.5" />
+                                </button>
+
+                                {openDropdownUserId === user.id && (
+                                  <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 py-2 z-35 space-y-0.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => { setSelectedUserIdForDetail(user.id); setOpenDropdownUserId(null); }}
+                                      className="w-full text-left px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center space-x-2.5 cursor-pointer"
+                                    >
+                                      <Eye className="w-4 h-4 text-slate-400" />
+                                      <span>View Profile</span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => { setSelectedUserIdForDetail(user.id); setOpenDropdownUserId(null); }}
+                                      className="w-full text-left px-4 py-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 flex items-center space-x-2.5 cursor-pointer"
+                                    >
+                                      <Wallet className="w-4 h-4 text-indigo-500" />
+                                      <span>Payout Details & Financials</span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => { 
+                                        setSelectedUserIdForDetail(user.id); 
+                                        setInitialUserDetailSubTab('signature');
+                                        setOpenDropdownUserId(null); 
+                                      }}
+                                      className="w-full text-left px-4 py-2 text-xs font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50 flex items-center space-x-2.5 cursor-pointer"
+                                    >
+                                      <PenTool className="w-4 h-4 text-amber-500" />
+                                      <span>Digital Signature Pad</span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => { handleToggleUserStatus(user.id); setOpenDropdownUserId(null); }}
+                                      className="w-full text-left px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center space-x-2.5 cursor-pointer"
+                                    >
+                                      {user.status === 'Suspended' ? (
+                                        <>
+                                          <UserCheck className="w-4 h-4 text-emerald-500" />
+                                          <span>Activate Account</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <UserX className="w-4 h-4 text-amber-500" />
+                                          <span>Suspend Account</span>
+                                        </>
+                                      )}
+                                    </button>
+
+                                    <div className="my-1 border-t border-slate-100 dark:border-slate-800"></div>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteUserAction(user.id, displayName)}
+                                      className="w-full text-left px-4 py-2 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 flex items-center space-x-2.5 cursor-pointer"
+                                    >
+                                      <Trash2 className="w-4 h-4 text-red-500" />
+                                      <span>Delete User & Payouts</span>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )
             )}
