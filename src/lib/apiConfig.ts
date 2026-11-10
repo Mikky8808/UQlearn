@@ -91,6 +91,18 @@ export const saveAssignmentApi = async (data: any) => await apiFetch(API_ENDPOIN
 
 export const deleteAssignmentApi = async (id: string) => await apiFetch(`${API_ENDPOINTS.ASSIGNMENTS}?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
 
+export const fetchQuizzesApi = async (courseId?: string, moduleId?: string) => {
+  const params = [];
+  if (courseId) params.push(`course_id=${encodeURIComponent(courseId)}`);
+  if (moduleId) params.push(`module_id=${encodeURIComponent(moduleId)}`);
+  const query = params.length > 0 ? `?${params.join('&')}` : '';
+  return await apiFetch(`${API_ENDPOINTS.QUIZZES}${query}`);
+};
+
+export const saveQuizApi = async (data: any) => await apiFetch(API_ENDPOINTS.QUIZZES, { method: 'POST', body: JSON.stringify(data) });
+
+export const deleteQuizApi = async (id: string) => await apiFetch(`${API_ENDPOINTS.QUIZZES}?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+
 export interface PromotionTierConfig {
   id?: string;
   name?: string;
@@ -635,6 +647,57 @@ export const fetchCourseModulesApi = async (courseId: string) => {
   } catch (err) {
     console.warn('Assignment fetch merge warning in fetchCourseModulesApi:', err);
   }
+
+  try {
+    const quizResult = await fetchQuizzesApi(courseId);
+    if (quizResult && quizResult.data && Array.isArray(quizResult.data) && result && result.data && Array.isArray(result.data)) {
+      const quizzes = quizResult.data;
+      result.data.forEach((mod: any) => {
+        if (!mod.lessons) mod.lessons = [];
+        const modQuizzes = quizzes.filter((q: any) => (q.module_id || q.moduleId) === mod.id);
+        modQuizzes.forEach((quiz: any) => {
+          const existingIdx = mod.lessons.findIndex((l: any) => l.id === quiz.id);
+          const parsedQuestions = Array.isArray(quiz.questions) ? quiz.questions : (typeof quiz.questions === 'string' ? (JSON.parse(quiz.questions || '[]') ?? []) : []);
+          const parsedQuizData = typeof quiz.quiz_data === 'string'
+            ? JSON.parse(quiz.quiz_data || '{}')
+            : (quiz.quiz_data || quiz.quizData || {
+                id: quiz.id,
+                title: quiz.title,
+                description: quiz.description,
+                passingScore: quiz.passing_score || 80,
+                timeLimitMinutes: quiz.time_limit_minutes || 10,
+                maxAttempts: quiz.max_attempts || 3,
+                questions: parsedQuestions
+              });
+
+          const quizLessonObj = {
+            id: quiz.id,
+            title: quiz.title || 'Quiz',
+            duration: quiz.duration ? `${quiz.duration} min` : '10 min',
+            type: 'quiz' as const,
+            description: quiz.description || '',
+            content: quiz.description || '',
+            status: quiz.status || 'published',
+            quizData: parsedQuizData,
+            questions: parsedQuestions
+          };
+
+          if (existingIdx >= 0) {
+            mod.lessons[existingIdx] = {
+              ...mod.lessons[existingIdx],
+              ...quizLessonObj,
+              title: quiz.title || mod.lessons[existingIdx].title
+            };
+          } else {
+            mod.lessons.push(quizLessonObj);
+          }
+        });
+      });
+    }
+  } catch (err) {
+    console.warn('Quiz fetch merge warning in fetchCourseModulesApi:', err);
+  }
+
   return result;
 };
 export const getIntendedLearnersApi = async (courseId: string) => await apiFetch(`${API_ENDPOINTS.INTENDED_LEARNERS}?courseId=${encodeURIComponent(courseId)}&course_id=${encodeURIComponent(courseId)}`);

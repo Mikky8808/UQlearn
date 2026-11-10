@@ -108,11 +108,12 @@ import { useApp, supportedCurrencies, Currency } from '../../../context/AppConte
 import { ALL_CURRENCIES } from '../../../lib/currencies';
 import { currencyService } from '../../../services/currency-service';
 import { CurriculumOrganizer } from './CurriculumOrganizer';
-import { QuizBuilder, QuizData } from './QuizBuilder';
+import { QuizBuilder, QuizData, QuizQuestion } from './QuizBuilder';
 import { CourseContentBuilder } from './CourseContentBuilder';
 import { CurriculumDropdown } from './CurriculumDropdown';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 import { CreateAssignment } from './CreateAssignment';
+import { CreateRolePlay } from './CreateRolePlay';
 import { RichTextWordEditor } from '../../common/RichTextWordEditor';
 import { ResumableVideoUploader } from '../../common/ResumableVideoUploader';
 import { 
@@ -124,6 +125,9 @@ import {
   fetchAssignmentsApi,
   saveAssignmentApi,
   deleteAssignmentApi,
+  fetchQuizzesApi,
+  saveQuizApi,
+  deleteQuizApi,
   API_ENDPOINTS, 
   API_BASE_URL, 
   apiFetch, 
@@ -189,7 +193,7 @@ export interface LessonInput {
   videoFileName?: string;
   solutionVideoUrl?: string;
   downloadableResourceFileName?: string;
-  questions?: { id: string; text: string }[];
+  questions?: any[];
   thumbnailUrl?: string;
   isPreview?: boolean;
   quizData?: QuizData;
@@ -558,6 +562,40 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
   const [assignmentTitleInput, setAssignmentTitleInput] = useState<string>('');
   const [isInlineAssignmentTitleTouched, setIsInlineAssignmentTitleTouched] = useState<boolean>(false);
   const [editingAssignmentData, setEditingAssignmentData] = useState<{ moduleId: string; lesson: LessonInput } | null>(null);
+  const [addingRolePlayModuleId, setAddingRolePlayModuleId] = useState<string | null>(null);
+  const [rolePlayTitleInput, setRolePlayTitleInput] = useState<string>('');
+  const [isInlineRolePlayTitleTouched, setIsInlineRolePlayTitleTouched] = useState<boolean>(false);
+  const [editingRolePlayData, setEditingRolePlayData] = useState<{ moduleId: string; lesson: LessonInput } | null>(null);
+  const [addingQuizModuleId, setAddingQuizModuleId] = useState<string | null>(null);
+  const [quizTitleInput, setQuizTitleInput] = useState<string>('');
+  const [quizDescriptionInput, setQuizDescriptionInput] = useState<string>('');
+  const [isInlineQuizTitleTouched, setIsInlineQuizTitleTouched] = useState<boolean>(false);
+  const [editingQuizData, setEditingQuizData] = useState<{ moduleId: string; lesson: LessonInput } | null>(null);
+  const [editQuizTitleInput, setEditQuizTitleInput] = useState<string>('');
+  const [editQuizDescriptionInput, setEditQuizDescriptionInput] = useState<string>('');
+
+  // Inline Quiz Question Builder State matching image_9e735333.png, image_55e0e88e.png, image_42e278a3.png
+  const [activeQuizQuestionBuilder, setActiveQuizQuestionBuilder] = useState<{
+    quizId: string;
+    moduleId: string;
+    step: 'select-type' | 'multiple-choice' | 'multi-select';
+    editingQuestionId?: string | null;
+  } | null>(null);
+
+  const [questionPromptInput, setQuestionPromptInput] = useState<string>('');
+  const [questionAnswersList, setQuestionAnswersList] = useState<Array<{
+    id: string;
+    text: string;
+    isCorrect: boolean;
+    explanation: string;
+  }>>([
+    { id: '1', text: '', isCorrect: true, explanation: '' },
+    { id: '2', text: '', isCorrect: false, explanation: '' },
+    { id: '3', text: '', isCorrect: false, explanation: '' }
+  ]);
+  const [questionRelatedLectureId, setQuestionRelatedLectureId] = useState<string>('');
+  const [questionValidationMsg, setQuestionValidationMsg] = useState<string | null>(null);
+
   const [deleteConfirmState, setDeleteConfirmState] = useState<{
     isOpen: boolean;
     moduleId: string;
@@ -2883,6 +2921,290 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
     showNotification(`Added new ${typeLabel} to curriculum section.`);
   };
 
+  const handleAddQuizLesson = (modId: string, title: string, description?: string) => {
+    const newLessonId = `quiz-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+    const cleanTitle = title.trim() || 'New Quiz';
+    const cleanDesc = description?.trim() || '';
+
+    const newQuizLesson: LessonInput = {
+      id: newLessonId,
+      title: cleanTitle,
+      description: cleanDesc,
+      duration: '10 mins',
+      type: 'quiz',
+      status: 'published',
+      quizData: {
+        id: `quiz-data-${Date.now()}`,
+        title: cleanTitle,
+        description: cleanDesc,
+        passingScore: 80,
+        timeLimitMinutes: 10,
+        maxAttempts: 3,
+        shuffleQuestions: true,
+        showExplanations: true,
+        questions: []
+      }
+    };
+
+    setModules(prev => prev.map(mod => {
+      if (mod.id === modId) {
+        return {
+          ...mod,
+          isExpanded: true,
+          lessons: [...(mod.lessons || []), newQuizLesson]
+        };
+      }
+      return mod;
+    }));
+
+    saveQuizApi({
+      id: newLessonId,
+      course_id: courseId,
+      module_id: modId,
+      title: cleanTitle,
+      description: cleanDesc,
+      duration: 10,
+      passing_score: 80,
+      time_limit_minutes: 10,
+      max_attempts: 3,
+      shuffle_questions: 1,
+      show_explanations: 1,
+      questions: [],
+      quiz_data: newQuizLesson.quizData,
+      status: 'published',
+      is_published: 1
+    }).catch(err => console.warn('Quiz API save notice:', err));
+
+    showNotification(`Added "${cleanTitle}" to curriculum. Click "+ Questions" to configure questions.`);
+  };
+
+  const handleUpdateQuizLesson = (modId: string, lessonId: string, updatedTitle: string, updatedDescription?: string) => {
+    let savedQuizPayload: any = null;
+
+    setModules(prev => prev.map(m => {
+      if (m.id === modId) {
+        return {
+          ...m,
+          lessons: m.lessons.map(l => {
+            if (l.id === lessonId) {
+              const updatedQuizData = l.quizData ? {
+                ...l.quizData,
+                title: updatedTitle.trim() || l.quizData.title,
+                description: updatedDescription !== undefined ? updatedDescription.trim() : l.quizData.description
+              } : {
+                id: lessonId,
+                title: updatedTitle.trim() || l.title,
+                description: updatedDescription !== undefined ? updatedDescription.trim() : (l.description || ''),
+                passingScore: 80,
+                timeLimitMinutes: 10,
+                maxAttempts: 3,
+                shuffleQuestions: true,
+                showExplanations: true,
+                questions: ((l.quizData?.questions || l.questions || []) as QuizQuestion[])
+              };
+
+              savedQuizPayload = {
+                id: lessonId,
+                course_id: courseId,
+                module_id: modId,
+                title: updatedTitle.trim() || l.title,
+                description: updatedDescription !== undefined ? updatedDescription.trim() : (l.description || ''),
+                duration: 10,
+                passing_score: updatedQuizData.passingScore || 80,
+                time_limit_minutes: updatedQuizData.timeLimitMinutes || 10,
+                max_attempts: updatedQuizData.maxAttempts || 3,
+                shuffle_questions: 1,
+                show_explanations: 1,
+                questions: updatedQuizData.questions || [],
+                quiz_data: updatedQuizData,
+                status: l.status || 'published',
+                is_published: 1
+              };
+
+              return {
+                ...l,
+                title: updatedTitle.trim() || l.title,
+                description: updatedDescription !== undefined ? updatedDescription.trim() : l.description,
+                quizData: updatedQuizData
+              };
+            }
+            return l;
+          })
+        };
+      }
+      return m;
+    }));
+
+    if (savedQuizPayload) {
+      saveQuizApi(savedQuizPayload).catch(err => console.warn('Quiz API update notice:', err));
+    }
+    showNotification('Quiz details updated successfully!');
+  };
+
+  const handleSaveQuizQuestion = (moduleId: string, quizLessonId: string, qType?: 'multiple-choice' | 'multi-select') => {
+    const effectiveQType = qType || (activeQuizQuestionBuilder?.step === 'multi-select' ? 'multi-select' : 'multiple-choice');
+
+    if (!questionPromptInput.trim()) {
+      setQuestionValidationMsg('Please enter a question prompt.');
+      return;
+    }
+
+    const filledAnswers = questionAnswersList.filter(a => a.text.trim());
+    if (filledAnswers.length < 2) {
+      setQuestionValidationMsg('Please provide at least 2 answer choices.');
+      return;
+    }
+
+    const correctCount = filledAnswers.filter(a => a.isCorrect).length;
+    if (effectiveQType === 'multiple-choice' && correctCount !== 1) {
+      setQuestionValidationMsg('Please select exactly 1 correct answer.');
+      return;
+    }
+    if (effectiveQType === 'multi-select' && correctCount < 2) {
+      setQuestionValidationMsg('Please select at least 2 correct answers.');
+      return;
+    }
+
+    setQuestionValidationMsg(null);
+
+    const questionId = activeQuizQuestionBuilder?.editingQuestionId || `q-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+    const newQuestionObj: QuizQuestion = {
+      id: questionId,
+      question: questionPromptInput.trim(),
+      type: effectiveQType,
+      points: 10,
+      difficulty: 'Intermediate',
+      options: filledAnswers.map(a => ({
+        id: a.id,
+        text: a.text.trim(),
+        isCorrect: a.isCorrect,
+        explanation: a.explanation.trim()
+      }))
+    };
+
+    let updatedPayload: any = null;
+
+    setModules(prev => prev.map(m => {
+      if (m.id === moduleId) {
+        return {
+          ...m,
+          lessons: m.lessons.map(l => {
+            if (l.id === quizLessonId) {
+              const currentQuestions = (l.quizData?.questions || l.questions || []) as QuizQuestion[];
+              const exists = currentQuestions.findIndex((q: any) => q.id === questionId);
+              const updatedQuestions: QuizQuestion[] = exists >= 0 
+                ? currentQuestions.map((q: any) => q.id === questionId ? newQuestionObj : q)
+                : [...currentQuestions, newQuestionObj];
+
+              const updatedQuizData: QuizData = {
+                id: l.id,
+                title: l.title,
+                description: l.description || '',
+                passingScore: l.quizData?.passingScore ?? 80,
+                timeLimitMinutes: l.quizData?.timeLimitMinutes ?? 10,
+                maxAttempts: l.quizData?.maxAttempts ?? 3,
+                shuffleQuestions: l.quizData?.shuffleQuestions ?? false,
+                showExplanations: l.quizData?.showExplanations ?? true,
+                questions: updatedQuestions
+              };
+
+              updatedPayload = {
+                id: l.id,
+                course_id: courseId,
+                module_id: moduleId,
+                title: l.title,
+                description: l.description || '',
+                duration: 10,
+                passing_score: updatedQuizData.passingScore,
+                time_limit_minutes: updatedQuizData.timeLimitMinutes,
+                max_attempts: updatedQuizData.maxAttempts,
+                questions: updatedQuestions,
+                quiz_data: updatedQuizData,
+                status: l.status || 'published',
+                is_published: 1
+              };
+
+              return {
+                ...l,
+                questions: updatedQuestions,
+                quizData: updatedQuizData
+              };
+            }
+            return l;
+          })
+        };
+      }
+      return m;
+    }));
+
+    if (updatedPayload) {
+      saveQuizApi(updatedPayload).catch(err => console.warn('Save quiz question API notice:', err));
+    }
+
+    showNotification(effectiveQType === 'multiple-choice' ? 'Multiple Choice question saved!' : 'Multiple Selection question saved!', 'success');
+    setActiveQuizQuestionBuilder(null);
+    setQuestionPromptInput('');
+    setQuestionAnswersList([
+      { id: '1', text: '', isCorrect: true, explanation: '' },
+      { id: '2', text: '', isCorrect: false, explanation: '' },
+      { id: '3', text: '', isCorrect: false, explanation: '' }
+    ]);
+  };
+
+  const handleDeleteQuizQuestion = (moduleId: string, quizLessonId: string, questionId: string) => {
+    let updatedPayload: any = null;
+
+    setModules(prev => prev.map(m => {
+      if (m.id === moduleId) {
+        return {
+          ...m,
+          lessons: m.lessons.map(l => {
+            if (l.id === quizLessonId) {
+              const currentQuestions = (l.quizData?.questions || l.questions || []) as QuizQuestion[];
+              const updatedQuestions: QuizQuestion[] = currentQuestions.filter((q: any) => q.id !== questionId);
+              const updatedQuizData: QuizData = {
+                id: l.id,
+                title: l.title,
+                description: l.description || '',
+                passingScore: l.quizData?.passingScore ?? 80,
+                timeLimitMinutes: l.quizData?.timeLimitMinutes ?? 10,
+                maxAttempts: l.quizData?.maxAttempts ?? 3,
+                shuffleQuestions: l.quizData?.shuffleQuestions ?? false,
+                showExplanations: l.quizData?.showExplanations ?? true,
+                questions: updatedQuestions
+              };
+
+              updatedPayload = {
+                id: l.id,
+                course_id: courseId,
+                module_id: moduleId,
+                title: l.title,
+                description: l.description || '',
+                questions: updatedQuestions,
+                quiz_data: updatedQuizData,
+                status: l.status || 'published',
+                is_published: 1
+              };
+
+              return {
+                ...l,
+                questions: updatedQuestions,
+                quizData: updatedQuizData
+              };
+            }
+            return l;
+          })
+        };
+      }
+      return m;
+    }));
+
+    if (updatedPayload) {
+      saveQuizApi(updatedPayload).catch(err => console.warn('Delete quiz question API notice:', err));
+    }
+    showNotification('Question removed from quiz.');
+  };
+
   const handleDeleteLesson = async (modId: string, lessonId: string) => {
     setModules(modules.map(mod => {
       if (mod.id === modId) {
@@ -2898,6 +3220,9 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
       await deleteModuleOrLessonApi('lesson', lessonId);
       if (lessonId.startsWith('assg-')) {
         await deleteAssignmentApi(lessonId);
+      }
+      if (lessonId.startsWith('quiz-')) {
+        await deleteQuizApi(lessonId);
       }
     } catch (err) {
       console.warn('Failed to delete curriculum item from backend:', err);
@@ -3763,7 +4088,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
             )}
 
             {/* Back Button & Breadcrumbs when editing any section */}
-            {activeTab !== 'overview' && !editingAssignmentData && (
+            {activeTab !== 'overview' && !editingAssignmentData && !editingRolePlayData && (
               <div className="flex items-center justify-between pb-3.5 border-b border-slate-200 dark:border-slate-800 mb-6">
                 <div className="flex items-center space-x-3">
                   <button
@@ -6274,6 +6599,63 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
                       showNotification('Assignment published successfully!');
                     }}
                   />
+                ) : editingRolePlayData ? (
+                  <CreateRolePlay
+                    courseId={courseId}
+                    moduleId={editingRolePlayData.moduleId}
+                    currentUser={currentUser}
+                    modules={modules}
+                    initialRolePlay={{
+                      id: editingRolePlayData.lesson.id,
+                      courseId: courseId,
+                      moduleId: editingRolePlayData.moduleId,
+                      title: editingRolePlayData.lesson.title,
+                      skillsToPractice: (editingRolePlayData.lesson as any).skillsToPractice || '',
+                      scenario: editingRolePlayData.lesson.description || '',
+                      additionalContext: (editingRolePlayData.lesson as any).additionalContext || '',
+                      status: editingRolePlayData.lesson.status
+                    }}
+                    onBack={() => setEditingRolePlayData(null)}
+                    onSave={(updated) => {
+                      setModules(prev => prev.map(m => {
+                        if (m.id === editingRolePlayData.moduleId) {
+                          return {
+                            ...m,
+                            lessons: m.lessons.map(l => l.id === editingRolePlayData.lesson.id ? {
+                              ...l,
+                              title: updated.title,
+                              description: updated.scenario,
+                              skillsToPractice: updated.skillsToPractice,
+                              additionalContext: updated.additionalContext,
+                              status: updated.status
+                            } : l)
+                          };
+                        }
+                        return m;
+                      }));
+                      showNotification('Role Play saved successfully!');
+                    }}
+                    onPublish={(updated) => {
+                      setModules(prev => prev.map(m => {
+                        if (m.id === editingRolePlayData.moduleId) {
+                          return {
+                            ...m,
+                            lessons: m.lessons.map(l => l.id === editingRolePlayData.lesson.id ? {
+                              ...l,
+                              title: updated.title,
+                              description: updated.scenario,
+                              skillsToPractice: updated.skillsToPractice,
+                              additionalContext: updated.additionalContext,
+                              status: 'published'
+                            } : l)
+                          };
+                        }
+                        return m;
+                      }));
+                      setEditingRolePlayData(null);
+                      showNotification('Role Play published successfully!');
+                    }}
+                  />
                 ) : (
                   <>
                     {isBulkUploaderPageActive && (
@@ -6628,6 +7010,617 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
                                     );
                                   }
 
+                                  if (lesson.type === 'roleplay') {
+                                    const isRolePlayPublished = lesson.status === 'published' || (lesson as any).isPublished || (lesson as any).rolePlayData?.status === 'published';
+
+                                    return (
+                                      <div
+                                        key={lesson.id}
+                                        className="p-3.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-none sm:rounded-lg flex items-center justify-between shadow-2xs group transition-all my-1.5"
+                                      >
+                                        <div 
+                                          className="flex items-center space-x-2 min-w-0 flex-1 cursor-pointer"
+                                          onClick={() => {
+                                            setEditingRolePlayData({
+                                              moduleId: mod.id,
+                                              lesson
+                                            });
+                                          }}
+                                        >
+                                          {isRolePlayPublished ? (
+                                            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                          ) : (
+                                            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                                          )}
+                                          <span className="text-xs font-medium text-slate-800 dark:text-slate-200 shrink-0">
+                                            {isRolePlayPublished ? `Practice Role Play ${lessonIdx + 1}:` : 'Unpublished Practice Role Play:'}
+                                          </span>
+                                          <span className="text-xs font-medium text-slate-900 dark:text-slate-100 truncate">
+                                            {lesson.title}
+                                          </span>
+                                        </div>
+
+                                        <div className="flex items-center space-x-3 shrink-0 pl-3">
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setEditingRolePlayData({
+                                                moduleId: mod.id,
+                                                lesson
+                                              });
+                                            }}
+                                            className="p-1 text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer transition-colors"
+                                            title="Edit Practice Role Play"
+                                          >
+                                            <Pencil className="w-4 h-4" />
+                                          </button>
+
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setDeleteConfirmState({
+                                                isOpen: true,
+                                                moduleId: mod.id,
+                                                lessonId: lesson.id,
+                                                title: lesson.title
+                                              });
+                                            }}
+                                            className="p-1 text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 cursor-pointer transition-colors"
+                                            title="Delete Practice Role Play"
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+
+                                  if (lesson.type === 'quiz') {
+                                    const quizNumber = mod.lessons
+                                      .slice(0, lessonIdx + 1)
+                                      .filter((l: any) => l.type === 'quiz').length;
+
+                                    const isEditingThisQuiz = editingQuizData?.lesson?.id === lesson.id && editingQuizData?.moduleId === mod.id;
+
+                                    if (isEditingThisQuiz) {
+                                      return (
+                                        <div
+                                          key={lesson.id}
+                                          className="p-5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-none sm:rounded-md shadow-2xs space-y-4 my-2 animate-in fade-in duration-150"
+                                        >
+                                          {/* Row 1: Edit Quiz: [Input with character counter] */}
+                                          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                                            <label className="text-sm font-normal text-slate-800 dark:text-slate-200 shrink-0 min-w-[75px]">
+                                              Edit Quiz:
+                                            </label>
+                                            <div className="relative flex-1">
+                                              <input
+                                                type="text"
+                                                placeholder="Enter a Title"
+                                                maxLength={80}
+                                                value={editQuizTitleInput}
+                                                onChange={(e) => setEditQuizTitleInput(e.target.value)}
+                                                className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 border border-purple-600 dark:border-purple-500 rounded-sm sm:rounded-md text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-purple-600 pr-14 shadow-2xs transition-colors"
+                                                autoFocus
+                                                onKeyDown={(e) => {
+                                                  if (e.key === 'Enter' && editQuizTitleInput.trim()) {
+                                                    handleUpdateQuizLesson(mod.id, lesson.id, editQuizTitleInput, editQuizDescriptionInput);
+                                                    setEditingQuizData(null);
+                                                  } else if (e.key === 'Escape') {
+                                                    setEditingQuizData(null);
+                                                  }
+                                                }}
+                                              />
+                                              <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-normal text-slate-400 dark:text-slate-500">
+                                                {80 - editQuizTitleInput.length}
+                                              </span>
+                                            </div>
+                                          </div>
+
+                                          {/* Row 2: Quiz Description container with mini formatting toolbar */}
+                                          <div className="border border-slate-300 dark:border-slate-700 rounded-sm overflow-hidden bg-white dark:bg-slate-950">
+                                            <div className="px-3.5 py-2 border-b border-slate-200 dark:border-slate-800 flex items-center space-x-4 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">
+                                              <button
+                                                type="button"
+                                                onClick={() => setEditQuizDescriptionInput(prev => prev + ' **bold**')}
+                                                className="font-bold text-sm hover:text-purple-600 transition-colors cursor-pointer px-1"
+                                                title="Bold"
+                                              >
+                                                B
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => setEditQuizDescriptionInput(prev => prev + ' *italic*')}
+                                                className="italic font-serif text-sm hover:text-purple-600 transition-colors cursor-pointer px-1"
+                                                title="Italic"
+                                              >
+                                                I
+                                              </button>
+                                            </div>
+                                            <textarea
+                                              rows={3}
+                                              value={editQuizDescriptionInput}
+                                              onChange={(e) => setEditQuizDescriptionInput(e.target.value)}
+                                              placeholder="Quiz Description"
+                                              className="w-full p-3.5 bg-transparent text-sm text-slate-900 dark:text-slate-100 outline-none resize-y placeholder:text-slate-400"
+                                            />
+                                          </div>
+
+                                          {/* Row 3: Action Buttons Cancel & Save Quiz */}
+                                          <div className="flex items-center justify-end space-x-3 pt-1">
+                                            <button
+                                              type="button"
+                                              onClick={() => setEditingQuizData(null)}
+                                              className="px-4 py-2 text-sm font-semibold text-slate-800 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white transition-colors cursor-pointer"
+                                            >
+                                              Cancel
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                if (editQuizTitleInput.trim()) {
+                                                  handleUpdateQuizLesson(mod.id, lesson.id, editQuizTitleInput, editQuizDescriptionInput);
+                                                  setEditingQuizData(null);
+                                                }
+                                              }}
+                                              className="px-5 py-2 bg-[#6D28D9] hover:bg-[#5B21B6] text-white text-sm font-bold rounded-lg shadow-2xs transition-all cursor-pointer active:scale-95"
+                                            >
+                                              Save Quiz
+                                            </button>
+                                          </div>
+                                        </div>
+                                      );
+                                    }
+
+                                    const isQuizQuestionBuilderActive = activeQuizQuestionBuilder?.quizId === lesson.id;
+
+                                    if (isQuizQuestionBuilderActive) {
+                                      return (
+                                        <div
+                                          key={lesson.id}
+                                          className="my-3 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-none sm:rounded-md overflow-hidden shadow-2xs"
+                                        >
+                                          {/* Top Header Row with flush top-right tab matching image_9e735333.png */}
+                                          <div className="flex items-center justify-between border-b border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900">
+                                            <div className="flex items-center space-x-2.5 min-w-0 px-3.5 py-3">
+                                              <div className="w-4 h-4 rounded-full bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 flex items-center justify-center shrink-0">
+                                                <Check className="w-2.5 h-2.5 stroke-[3.5]" />
+                                              </div>
+                                              <span className="text-xs sm:text-sm font-normal text-slate-800 dark:text-slate-200 shrink-0">
+                                                Quiz {quizNumber}:
+                                              </span>
+                                              <HelpCircle className="w-4 h-4 text-slate-700 dark:text-slate-300 stroke-[1.8] shrink-0" />
+                                              <span className="text-xs sm:text-sm font-normal text-slate-900 dark:text-slate-100 truncate">
+                                                {lesson.title}
+                                              </span>
+                                            </div>
+
+                                            {/* Flush tab on top right */}
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                setActiveQuizQuestionBuilder(null);
+                                                setQuestionValidationMsg(null);
+                                              }}
+                                              className="border-l border-slate-300 dark:border-slate-700 px-4 py-3 text-xs sm:text-sm font-medium text-slate-800 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white flex items-center space-x-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors cursor-pointer self-stretch shrink-0"
+                                            >
+                                              <span>
+                                                {activeQuizQuestionBuilder.step === 'select-type'
+                                                  ? 'Select question type'
+                                                  : activeQuizQuestionBuilder.step === 'multiple-choice'
+                                                  ? 'Add Multiple Choice'
+                                                  : 'Add Multiple Selection'}
+                                              </span>
+                                              <X className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                                            </button>
+                                          </div>
+
+                                          {/* Body Content */}
+                                          {activeQuizQuestionBuilder.step === 'select-type' ? (
+                                            /* image_9e735333.png: Two centered cards */
+                                            <div className="py-12 px-4 flex flex-wrap items-center justify-center gap-6 bg-slate-50/40 dark:bg-slate-950/20">
+                                              {/* Multiple Choice card */}
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  setActiveQuizQuestionBuilder({
+                                                    quizId: lesson.id,
+                                                    moduleId: mod.id,
+                                                    step: 'multiple-choice',
+                                                    editingQuestionId: null
+                                                  });
+                                                  setQuestionPromptInput('');
+                                                  setQuestionAnswersList([
+                                                    { id: '1', text: '', isCorrect: true, explanation: '' },
+                                                    { id: '2', text: '', isCorrect: false, explanation: '' },
+                                                    { id: '3', text: '', isCorrect: false, explanation: '' }
+                                                  ]);
+                                                  setQuestionRelatedLectureId('');
+                                                  setQuestionValidationMsg(null);
+                                                }}
+                                                className="group w-36 h-32 border border-slate-300 dark:border-slate-700 hover:border-purple-600 dark:hover:border-purple-400 bg-white dark:bg-slate-800 rounded flex flex-col items-center justify-between overflow-hidden shadow-2xs hover:shadow-md transition-all cursor-pointer"
+                                              >
+                                                <div className="flex-1 flex items-center justify-center pt-2">
+                                                  <div className="w-12 h-12 rounded-full border border-slate-300 dark:border-slate-600 flex items-center justify-center text-slate-400 group-hover:text-purple-600 group-hover:border-purple-500 transition-colors">
+                                                    <HelpCircle className="w-8 h-8 stroke-[1.2]" />
+                                                  </div>
+                                                </div>
+                                                <div className="w-full py-2 bg-slate-100 dark:bg-slate-700/60 border-t border-slate-200 dark:border-slate-700 text-center text-xs font-medium text-slate-800 dark:text-slate-200 group-hover:bg-purple-50 dark:group-hover:bg-purple-900/30 group-hover:text-purple-700 dark:group-hover:text-purple-300 transition-colors">
+                                                  Multiple Choice
+                                                </div>
+                                              </button>
+
+                                              {/* Multiple Selection card */}
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  setActiveQuizQuestionBuilder({
+                                                    quizId: lesson.id,
+                                                    moduleId: mod.id,
+                                                    step: 'multi-select',
+                                                    editingQuestionId: null
+                                                  });
+                                                  setQuestionPromptInput('');
+                                                  setQuestionAnswersList([
+                                                    { id: '1', text: '', isCorrect: true, explanation: '' },
+                                                    { id: '2', text: '', isCorrect: true, explanation: '' },
+                                                    { id: '3', text: '', isCorrect: false, explanation: '' }
+                                                  ]);
+                                                  setQuestionRelatedLectureId('');
+                                                  setQuestionValidationMsg(null);
+                                                }}
+                                                className="group w-36 h-32 border border-slate-300 dark:border-slate-700 hover:border-purple-600 dark:hover:border-purple-400 bg-white dark:bg-slate-800 rounded flex flex-col items-center justify-between overflow-hidden shadow-2xs hover:shadow-md transition-all cursor-pointer"
+                                              >
+                                                <div className="flex-1 flex items-center justify-center pt-2">
+                                                  <div className="w-12 h-12 rounded-full border border-slate-300 dark:border-slate-600 flex items-center justify-center text-slate-400 group-hover:text-purple-600 group-hover:border-purple-500 transition-colors">
+                                                    <HelpCircle className="w-8 h-8 stroke-[1.2]" />
+                                                  </div>
+                                                </div>
+                                                <div className="w-full py-2 bg-slate-100 dark:bg-slate-700/60 border-t border-slate-200 dark:border-slate-700 text-center text-xs font-medium text-slate-800 dark:text-slate-200 group-hover:bg-purple-50 dark:group-hover:bg-purple-900/30 group-hover:text-purple-700 dark:group-hover:text-purple-300 transition-colors">
+                                                  Multiple Selection
+                                                </div>
+                                              </button>
+                                            </div>
+                                          ) : (
+                                            /* image_55e0e88e.png & image_42e278a3.png: Question + Answers + Related Lecture + Save */
+                                            <div className="p-4 sm:p-6 space-y-6 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">
+                                              {/* Question section */}
+                                              <div>
+                                                <label className="block text-xs font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
+                                                  Question
+                                                </label>
+                                                <div className="border border-slate-300 dark:border-slate-700 rounded-sm focus-within:ring-2 focus-within:ring-purple-500 focus-within:border-purple-500 transition-all overflow-hidden bg-white dark:bg-slate-900">
+                                                  {/* Toolbar */}
+                                                  <div className="flex items-center space-x-3 px-3 py-1.5 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300 select-none">
+                                                    <button type="button" className="font-bold text-xs hover:text-purple-600 px-1 cursor-pointer" title="Bold">B</button>
+                                                    <button type="button" className="italic font-serif text-xs hover:text-purple-600 px-1 cursor-pointer" title="Italic">I</button>
+                                                    <button type="button" className="hover:text-purple-600 p-0.5 cursor-pointer" title="Image"><ImageIcon className="w-3.5 h-3.5" /></button>
+                                                    <button type="button" className="hover:text-purple-600 p-0.5 cursor-pointer" title="Code"><Code className="w-3.5 h-3.5" /></button>
+                                                    <button type="button" className="hover:text-purple-600 p-0.5 cursor-pointer" title="Table"><Table className="w-3.5 h-3.5" /></button>
+                                                  </div>
+                                                  <textarea
+                                                    value={questionPromptInput}
+                                                    onChange={(e) => setQuestionPromptInput(e.target.value)}
+                                                    placeholder="Write your question here..."
+                                                    className="w-full p-3 bg-transparent border-none outline-none resize-y min-h-[90px] text-xs sm:text-sm text-slate-900 dark:text-white"
+                                                  />
+                                                </div>
+                                              </div>
+
+                                              {/* Answers section */}
+                                              <div>
+                                                <label className="block text-xs font-semibold text-slate-800 dark:text-slate-200 mb-2">
+                                                  Answers
+                                                </label>
+                                                <div className="space-y-4">
+                                                  {questionAnswersList.map((ans, aIdx) => (
+                                                    <div key={ans.id || aIdx} className="space-y-1.5">
+                                                      <div className="flex items-center space-x-3">
+                                                        {activeQuizQuestionBuilder.step === 'multiple-choice' ? (
+                                                          <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                              setQuestionAnswersList(prev => prev.map((a, i) => ({
+                                                                ...a,
+                                                                isCorrect: i === aIdx
+                                                              })));
+                                                            }}
+                                                            className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center cursor-pointer transition-colors ${
+                                                              ans.isCorrect
+                                                                ? 'border-purple-600 bg-purple-600'
+                                                                : 'border-slate-400 dark:border-slate-500 bg-transparent hover:border-slate-600'
+                                                            }`}
+                                                            title="Mark as correct answer"
+                                                          >
+                                                            {ans.isCorrect && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                                          </button>
+                                                        ) : (
+                                                          <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                              setQuestionAnswersList(prev => prev.map((a, i) => i === aIdx ? { ...a, isCorrect: !a.isCorrect } : a));
+                                                            }}
+                                                            className={`w-4 h-4 rounded-xs border-2 shrink-0 flex items-center justify-center cursor-pointer transition-colors ${
+                                                              ans.isCorrect
+                                                                ? 'border-purple-600 bg-purple-600 text-white'
+                                                                : 'border-slate-400 dark:border-slate-500 bg-transparent hover:border-slate-600'
+                                                            }`}
+                                                            title="Toggle correct answer"
+                                                          >
+                                                            {ans.isCorrect && <Check className="w-3 h-3 stroke-[3]" />}
+                                                          </button>
+                                                        )}
+
+                                                        <div className="flex-1 flex items-center space-x-2">
+                                                          <input
+                                                            type="text"
+                                                            value={ans.text}
+                                                            onChange={(e) => {
+                                                              const val = e.target.value;
+                                                              setQuestionAnswersList(prev => prev.map((a, i) => i === aIdx ? { ...a, text: val } : a));
+                                                            }}
+                                                            placeholder="Add an answer."
+                                                            className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 dark:border-slate-700 rounded-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                                                          />
+                                                          {questionAnswersList.length > 2 && (
+                                                            <button
+                                                              type="button"
+                                                              onClick={() => {
+                                                                setQuestionAnswersList(prev => prev.filter((_, i) => i !== aIdx));
+                                                              }}
+                                                              className="p-1 text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
+                                                              title="Remove choice"
+                                                            >
+                                                              <Trash2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                          )}
+                                                        </div>
+                                                      </div>
+
+                                                      {/* Indented explanation sub-box */}
+                                                      <div className="pl-7">
+                                                        <input
+                                                          type="text"
+                                                          value={ans.explanation}
+                                                          onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            setQuestionAnswersList(prev => prev.map((a, i) => i === aIdx ? { ...a, explanation: val } : a));
+                                                          }}
+                                                          placeholder="Explain why this is or isn't the best answer."
+                                                          className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 dark:border-slate-700 rounded-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                                                        />
+                                                      </div>
+                                                    </div>
+                                                  ))}
+                                                </div>
+
+                                                {/* Add more answers button if < 15 */}
+                                                {questionAnswersList.length < 15 && (
+                                                  <div className="mt-3 pl-7">
+                                                    <button
+                                                      type="button"
+                                                      onClick={() => {
+                                                        setQuestionAnswersList(prev => [
+                                                          ...prev,
+                                                          { id: String(Date.now()), text: '', isCorrect: false, explanation: '' }
+                                                        ]);
+                                                      }}
+                                                      className="inline-flex items-center space-x-1 text-xs font-bold text-purple-600 dark:text-purple-400 hover:text-purple-700 cursor-pointer"
+                                                    >
+                                                      <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                                                      <span>Add another answer</span>
+                                                    </button>
+                                                  </div>
+                                                )}
+
+                                                {/* Helper text matching screenshots */}
+                                                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
+                                                  {activeQuizQuestionBuilder.step === 'multiple-choice'
+                                                    ? 'Write up to 15 possible answers and indicate which one is the best.'
+                                                    : 'Write up to 15 possible answers and indicate which ones are correct (at least 2).'}
+                                                </p>
+                                              </div>
+
+                                              {/* Related Lecture */}
+                                              <div>
+                                                <label className="block text-xs font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
+                                                  Related Lecture
+                                                </label>
+                                                <select
+                                                  value={questionRelatedLectureId}
+                                                  onChange={(e) => setQuestionRelatedLectureId(e.target.value)}
+                                                  className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 dark:border-slate-700 rounded-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 cursor-pointer"
+                                                >
+                                                  <option value="">-- Select One --</option>
+                                                  {modules.flatMap(m => (m.lessons || []).filter(l => l.type === 'video' || l.type === 'article' || l.type === 'audio')).map((lec, idx) => (
+                                                    <option key={lec.id || idx} value={lec.id}>
+                                                      {lec.title || `Lecture ${idx + 1}`}
+                                                    </option>
+                                                  ))}
+                                                </select>
+                                                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                                                  Select a related video lecture to help students answer this question.
+                                                </p>
+                                              </div>
+
+                                              {/* Validation warning */}
+                                              {questionValidationMsg && (
+                                                <div className="text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 p-2.5 rounded border border-red-200 dark:border-red-900">
+                                                  {questionValidationMsg}
+                                                </div>
+                                              )}
+
+                                              {/* Bottom Save button */}
+                                              <div className="flex items-center justify-end space-x-3 pt-2">
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    setActiveQuizQuestionBuilder(null);
+                                                    setQuestionValidationMsg(null);
+                                                  }}
+                                                  className="px-4 py-2 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white cursor-pointer"
+                                                >
+                                                  Cancel
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleSaveQuizQuestion(mod.id, lesson.id)}
+                                                  className="px-6 py-2 bg-[#6D28D9] hover:bg-[#5B21B6] text-white text-xs sm:text-sm font-bold rounded-lg shadow-2xs transition-all cursor-pointer active:scale-95"
+                                                >
+                                                  Save
+                                                </button>
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    }
+
+                                    const quizQuestions = (lesson.quizData?.questions || lesson.questions || []) as QuizQuestion[];
+
+                                    return (
+                                      <div key={lesson.id} className="my-1.5 space-y-1.5">
+                                        {/* Closed Quiz Row */}
+                                        <div className="p-3.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-none sm:rounded-md flex items-center justify-between shadow-2xs group transition-all">
+                                          <div className="flex items-center space-x-2.5 min-w-0 flex-1">
+                                            {/* Black circle with checkmark matching image_9b002ad4.png */}
+                                            <div className="w-4 h-4 rounded-full bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 flex items-center justify-center shrink-0">
+                                              <Check className="w-2.5 h-2.5 stroke-[3.5]" />
+                                            </div>
+
+                                            <span className="text-xs sm:text-sm font-normal text-slate-800 dark:text-slate-200 shrink-0">
+                                              Quiz {quizNumber}:
+                                            </span>
+
+                                            <HelpCircle className="w-4 h-4 text-slate-700 dark:text-slate-300 stroke-[1.8] shrink-0" />
+
+                                            <span className="text-xs sm:text-sm font-normal text-slate-900 dark:text-slate-100 truncate">
+                                              {lesson.title}
+                                            </span>
+                                          </div>
+
+                                          <div className="flex items-center space-x-2.5 shrink-0 pl-3">
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                setEditingQuizData({
+                                                  moduleId: mod.id,
+                                                  lesson
+                                                });
+                                                setEditQuizTitleInput(lesson.title);
+                                                setEditQuizDescriptionInput((lesson as any).description || lesson.quizData?.description || '');
+                                              }}
+                                              className="p-1 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer transition-colors opacity-80 group-hover:opacity-100"
+                                              title="Edit Quiz details"
+                                            >
+                                              <Pencil className="w-3.5 h-3.5" />
+                                            </button>
+
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                setDeleteConfirmState({
+                                                  isOpen: true,
+                                                  moduleId: mod.id,
+                                                  lessonId: lesson.id,
+                                                  title: lesson.title
+                                                });
+                                              }}
+                                              className="p-1 text-slate-400 hover:text-red-600 dark:hover:text-red-400 cursor-pointer transition-colors opacity-80 group-hover:opacity-100"
+                                              title="Delete Quiz"
+                                            >
+                                              <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+
+                                            {/* "+ Questions" outline button matching image_9b002ad4.png */}
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                setActiveQuizQuestionBuilder({
+                                                  quizId: lesson.id,
+                                                  moduleId: mod.id,
+                                                  step: 'select-type',
+                                                  editingQuestionId: null
+                                                });
+                                                setQuestionPromptInput('');
+                                                setQuestionAnswersList([
+                                                  { id: '1', text: '', isCorrect: true, explanation: '' },
+                                                  { id: '2', text: '', isCorrect: false, explanation: '' },
+                                                  { id: '3', text: '', isCorrect: false, explanation: '' }
+                                                ]);
+                                                setQuestionRelatedLectureId('');
+                                                setQuestionValidationMsg(null);
+                                              }}
+                                              className="px-4 py-1.5 border border-purple-600 dark:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-950/30 text-purple-700 dark:text-purple-300 font-bold rounded-lg text-xs sm:text-sm flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs active:scale-95"
+                                              title="Add and manage questions for this quiz"
+                                            >
+                                              <Plus className="w-4 h-4 stroke-[2.5]" />
+                                              <span>Questions</span>
+                                            </button>
+                                          </div>
+                                        </div>
+
+                                        {/* Nested existing questions list if any */}
+                                        {quizQuestions.length > 0 && (
+                                          <div className="pl-6 space-y-1.5">
+                                            {quizQuestions.map((q: any, qIdx: number) => (
+                                              <div
+                                                key={q.id || qIdx}
+                                                className="p-2.5 px-3 border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 rounded flex items-center justify-between text-xs"
+                                              >
+                                                <div className="flex items-center space-x-2 min-w-0 flex-1">
+                                                  <span className="font-semibold text-purple-600 dark:text-purple-400 shrink-0">
+                                                    Q{qIdx + 1}.
+                                                  </span>
+                                                  <span className="text-slate-800 dark:text-slate-200 truncate">
+                                                    {q.question}
+                                                  </span>
+                                                  <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300">
+                                                    {q.type === 'multi-select' ? 'Multiple Selection' : 'Multiple Choice'}
+                                                  </span>
+                                                </div>
+                                                <div className="flex items-center space-x-1.5 shrink-0 pl-2">
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                      setActiveQuizQuestionBuilder({
+                                                        quizId: lesson.id,
+                                                        moduleId: mod.id,
+                                                        step: q.type === 'multi-select' ? 'multi-select' : 'multiple-choice',
+                                                        editingQuestionId: q.id
+                                                      });
+                                                      setQuestionPromptInput(q.question || '');
+                                                      setQuestionAnswersList((q.options || []).map((opt: any, idx: number) => ({
+                                                        id: opt.id || String(idx + 1),
+                                                        text: opt.text || opt.title || '',
+                                                        isCorrect: !!opt.isCorrect,
+                                                        explanation: opt.explanation || ''
+                                                      })));
+                                                      setQuestionRelatedLectureId(q.relatedLectureId || '');
+                                                      setQuestionValidationMsg(null);
+                                                    }}
+                                                    className="p-1 text-slate-400 hover:text-indigo-600 transition-colors cursor-pointer"
+                                                    title="Edit question"
+                                                  >
+                                                    <Pencil className="w-3 h-3" />
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => handleDeleteQuizQuestion(mod.id, lesson.id, q.id)}
+                                                    className="p-1 text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
+                                                    title="Delete question"
+                                                  >
+                                                    <Trash2 className="w-3 h-3" />
+                                                  </button>
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  }
+
                                   const isLessonExpanded = !!expandedLessons[lesson.id];
                                   const currentSubTab = activeLessonSubTab[lesson.id] || null;
                                   
@@ -6657,10 +7650,10 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
 
                                             <div className="flex items-center space-x-2 flex-1 min-w-0">
                                               <span className="text-xs font-black text-slate-700 dark:text-slate-300 shrink-0">
-                                                {lesson.type === 'quiz' ? `Quiz ${lessonIdx + 1}:` : `Lecture ${lessonIdx + 1}:`}
+                                                {`Lecture ${lessonIdx + 1}:`}
                                               </span>
                                               <span className="text-slate-400 text-xs shrink-0 font-semibold">
-                                                {lesson.type === 'quiz' ? '❓' : lesson.type === 'article' ? '📝' : lesson.type === 'audio' ? '🎙️' : '📄'}
+                                                {lesson.type === 'article' ? '📝' : lesson.type === 'audio' ? '🎙️' : '📄'}
                                               </span>
                                               <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
                                                 {lesson.title}
@@ -6689,7 +7682,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
                                             className="flex items-center space-x-3.5 flex-1 min-w-0 cursor-pointer"
                                             onClick={() => {
                                               setSelectedLessonId(lesson.id);
-                                              setActiveTab(lesson.type === 'quiz' ? 'assessment' : 'content');
+                                              setActiveTab('content');
                                             }}
                                             title="Click to open and edit lecture content"
                                           >
@@ -6700,10 +7693,10 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
 
                                             <div className="flex items-center space-x-2 flex-1 min-w-0">
                                               <span className="text-xs font-bold text-slate-700 dark:text-slate-300 shrink-0">
-                                                {lesson.type === 'quiz' ? `Quiz ${lessonIdx + 1}:` : `Lecture ${lessonIdx + 1}:`}
+                                                {`Lecture ${lessonIdx + 1}:`}
                                               </span>
                                               <span className="text-slate-400 text-xs shrink-0 font-semibold">
-                                                {lesson.type === 'quiz' ? '❓' : lesson.type === 'article' ? '📝' : lesson.type === 'audio' ? '🎙️' : '📄'}
+                                                {lesson.type === 'article' ? '📝' : lesson.type === 'audio' ? '🎙️' : '📄'}
                                               </span>
                                               <input
                                                 type="text"
@@ -6727,7 +7720,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
                                               type="button"
                                               onClick={() => {
                                                 setSelectedLessonId(lesson.id);
-                                                setActiveTab(lesson.type === 'quiz' ? 'assessment' : 'content');
+                                              setActiveTab('content');
                                               }}
                                               className="px-3.5 py-1.5 border border-indigo-600 dark:border-indigo-500 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center space-x-1.5"
                                               title="Open lecture editor directly"
@@ -7487,6 +8480,245 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
                             );
                           })()}
 
+                          {/* Inline Practice Role Play Title Entry Card matching image_66bdfe07.png */}
+                          {addingRolePlayModuleId === mod.id && (() => {
+                            const hasTitleErr = isInlineRolePlayTitleTouched && !rolePlayTitleInput.trim();
+                            return (
+                              <div className="relative p-6 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 shadow-sm space-y-3.5 animate-in fade-in duration-150 my-4">
+                                {/* Top-left X close icon button */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setAddingRolePlayModuleId(null);
+                                    setRolePlayTitleInput('');
+                                    setIsInlineRolePlayTitleTouched(false);
+                                  }}
+                                  className="absolute top-3 left-3 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                                  title="Close"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+
+                                <div className="pt-2 space-y-2">
+                                  <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                    Practice Role Play title
+                                  </h3>
+                                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                                    Create a clear and specific title that captures the essence of the Role Play exercise, highlighting the core skills and real-world situations learners will encounter. Read{' '}
+                                    <span className="text-purple-600 dark:text-purple-400 underline cursor-pointer">
+                                      teaching center article
+                                    </span>{' '}
+                                    to learn more.
+                                  </p>
+                                  <p className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-1.5 pt-1">
+                                    <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
+                                    <span>
+                                      This feature is powered by AI. Be sure to review before publishing. Read{' '}
+                                      <span className="text-purple-600 dark:text-purple-400 underline cursor-pointer">
+                                        FAQ
+                                      </span>{' '}
+                                      to learn more.
+                                    </span>
+                                  </p>
+                                </div>
+
+                                <div className="relative pt-1">
+                                  <input
+                                    type="text"
+                                    placeholder="Role Play title here"
+                                    maxLength={100}
+                                    value={rolePlayTitleInput}
+                                    onBlur={() => setIsInlineRolePlayTitleTouched(true)}
+                                    onChange={(e) => {
+                                      setRolePlayTitleInput(e.target.value);
+                                      if (e.target.value.trim()) setIsInlineRolePlayTitleTouched(false);
+                                    }}
+                                    className={`w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 border rounded-lg text-xs font-normal text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 pr-14 shadow-2xs transition-colors ${
+                                      hasTitleErr
+                                        ? 'border-red-500 focus:ring-red-500/40'
+                                        : 'border-purple-600 dark:border-purple-500 focus:ring-purple-600/50'
+                                    }`}
+                                    autoFocus
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        if (rolePlayTitleInput.trim()) {
+                                          handleAddLesson(mod.id, 'roleplay', rolePlayTitleInput.trim());
+                                          setAddingRolePlayModuleId(null);
+                                          setRolePlayTitleInput('');
+                                          setIsInlineRolePlayTitleTouched(false);
+                                        } else {
+                                          setIsInlineRolePlayTitleTouched(true);
+                                        }
+                                      } else if (e.key === 'Escape') {
+                                        setAddingRolePlayModuleId(null);
+                                        setRolePlayTitleInput('');
+                                        setIsInlineRolePlayTitleTouched(false);
+                                      }
+                                    }}
+                                  />
+                                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400 dark:text-slate-500">
+                                    {100 - rolePlayTitleInput.length}
+                                  </span>
+                                </div>
+                                {hasTitleErr && (
+                                  <p className="text-[11px] font-bold text-red-500 dark:text-red-400">
+                                    Title is required
+                                  </p>
+                                )}
+
+                                <div className="flex items-center justify-end space-x-3 pt-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setAddingRolePlayModuleId(null);
+                                      setRolePlayTitleInput('');
+                                      setIsInlineRolePlayTitleTouched(false);
+                                    }}
+                                    className="px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setIsInlineRolePlayTitleTouched(true);
+                                      if (rolePlayTitleInput.trim()) {
+                                        handleAddLesson(mod.id, 'roleplay', rolePlayTitleInput.trim());
+                                        setAddingRolePlayModuleId(null);
+                                        setRolePlayTitleInput('');
+                                        setIsInlineRolePlayTitleTouched(false);
+                                      }
+                                    }}
+                                    className="px-4 py-2 bg-[#6D28D9] hover:bg-[#5B21B6] text-white text-xs font-bold rounded-lg shadow-2xs transition-all cursor-pointer active:scale-95"
+                                  >
+                                    Add Practice Role Play
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })()}
+
+                          {/* Inline New Quiz Entry Card matching image_583999c4.png */}
+                          {addingQuizModuleId === mod.id && (() => {
+                            const hasTitleErr = isInlineQuizTitleTouched && !quizTitleInput.trim();
+                            return (
+                              <div className="p-5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-none sm:rounded-md shadow-2xs space-y-4 my-3 animate-in fade-in duration-150">
+                                {/* Row 1: New Quiz: [Input with character counter] */}
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                                  <label className="text-sm font-normal text-slate-800 dark:text-slate-200 shrink-0 min-w-[75px]">
+                                    New Quiz:
+                                  </label>
+                                  <div className="relative flex-1">
+                                    <input
+                                      type="text"
+                                      placeholder="Enter a Title"
+                                      maxLength={80}
+                                      value={quizTitleInput}
+                                      onBlur={() => setIsInlineQuizTitleTouched(true)}
+                                      onChange={(e) => {
+                                        setQuizTitleInput(e.target.value);
+                                        if (e.target.value.trim()) setIsInlineQuizTitleTouched(false);
+                                      }}
+                                      className={`w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 border rounded-sm sm:rounded-md text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 pr-14 shadow-2xs transition-colors ${
+                                        hasTitleErr
+                                          ? 'border-red-500 focus:ring-red-500/40'
+                                          : 'border-purple-600 dark:border-purple-500 focus:ring-purple-600'
+                                      }`}
+                                      autoFocus
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          if (quizTitleInput.trim()) {
+                                            handleAddQuizLesson(mod.id, quizTitleInput, quizDescriptionInput);
+                                            setAddingQuizModuleId(null);
+                                            setQuizTitleInput('');
+                                            setQuizDescriptionInput('');
+                                            setIsInlineQuizTitleTouched(false);
+                                          } else {
+                                            setIsInlineQuizTitleTouched(true);
+                                          }
+                                        } else if (e.key === 'Escape') {
+                                          setAddingQuizModuleId(null);
+                                          setQuizTitleInput('');
+                                          setQuizDescriptionInput('');
+                                          setIsInlineQuizTitleTouched(false);
+                                        }
+                                      }}
+                                    />
+                                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-normal text-slate-400 dark:text-slate-500">
+                                      {80 - quizTitleInput.length}
+                                    </span>
+                                  </div>
+                                </div>
+                                {hasTitleErr && (
+                                  <p className="text-xs text-red-500 font-semibold pl-0 sm:pl-[88px]">
+                                    Title is required
+                                  </p>
+                                )}
+
+                                {/* Row 2: Quiz Description container with mini formatting toolbar */}
+                                <div className="border border-slate-300 dark:border-slate-700 rounded-sm overflow-hidden bg-white dark:bg-slate-950">
+                                  <div className="px-3.5 py-2 border-b border-slate-200 dark:border-slate-800 flex items-center space-x-4 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">
+                                    <button
+                                      type="button"
+                                      onClick={() => setQuizDescriptionInput(prev => prev + ' **bold**')}
+                                      className="font-bold text-sm hover:text-purple-600 transition-colors cursor-pointer px-1"
+                                      title="Bold"
+                                    >
+                                      B
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setQuizDescriptionInput(prev => prev + ' *italic*')}
+                                      className="italic font-serif text-sm hover:text-purple-600 transition-colors cursor-pointer px-1"
+                                      title="Italic"
+                                    >
+                                      I
+                                    </button>
+                                  </div>
+                                  <textarea
+                                    rows={3}
+                                    value={quizDescriptionInput}
+                                    onChange={(e) => setQuizDescriptionInput(e.target.value)}
+                                    placeholder="Quiz Description"
+                                    className="w-full p-3.5 bg-transparent text-sm text-slate-900 dark:text-slate-100 outline-none resize-y placeholder:text-slate-400"
+                                  />
+                                </div>
+
+                                {/* Row 3: Action Buttons Cancel & Add Quiz */}
+                                <div className="flex items-center justify-end space-x-3 pt-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setAddingQuizModuleId(null);
+                                      setQuizTitleInput('');
+                                      setQuizDescriptionInput('');
+                                      setIsInlineQuizTitleTouched(false);
+                                    }}
+                                    className="px-4 py-2 text-sm font-semibold text-slate-800 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white transition-colors cursor-pointer"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setIsInlineQuizTitleTouched(true);
+                                      if (quizTitleInput.trim()) {
+                                        handleAddQuizLesson(mod.id, quizTitleInput, quizDescriptionInput);
+                                        setAddingQuizModuleId(null);
+                                        setQuizTitleInput('');
+                                        setQuizDescriptionInput('');
+                                        setIsInlineQuizTitleTouched(false);
+                                      }
+                                    }}
+                                    className="px-5 py-2 bg-[#6D28D9] hover:bg-[#5B21B6] text-white text-sm font-bold rounded-lg shadow-2xs transition-all cursor-pointer active:scale-95"
+                                  >
+                                    Add Quiz
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })()}
+
                           {/* "+ Curriculum item" button triggering the rich Dropdown/Drop-up menu */}
                           <div className="pt-2 relative">
                             <div className="flex items-center space-x-2">
@@ -7522,6 +8754,17 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({
                                   setAddingAssignmentModuleId(mod.id);
                                   setAssignmentTitleInput('');
                                   setActiveAddCurriculumModuleId(null);
+                                } else if (type === 'roleplay') {
+                                  setAddingRolePlayModuleId(mod.id);
+                                  setRolePlayTitleInput('');
+                                  setActiveAddCurriculumModuleId(null);
+                                } else if (type === 'quiz') {
+                                  setAddingQuizModuleId(mod.id);
+                                  setQuizTitleInput('');
+                                  setQuizDescriptionInput('');
+                                  setIsInlineQuizTitleTouched(false);
+                                  setActiveAddCurriculumModuleId(null);
+                                  setModules(prev => prev.map(m => m.id === mod.id ? { ...m, isExpanded: true } : m));
                                 } else {
                                   handleAddLesson(mod.id, type, title);
                                 }
